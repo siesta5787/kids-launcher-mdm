@@ -1,5 +1,3 @@
-# Reporting Security Issues
+# Security
 
-For security related issues, please use the contact information
-from the [security.txt](https://jrpie.de/.well-known/security.txt) on my website
-or [report a vulnerability](https://github.com/jrpie/Launcher/security/advisories/new) on github.
+This is a private, personal fork with no formal security reporting process.

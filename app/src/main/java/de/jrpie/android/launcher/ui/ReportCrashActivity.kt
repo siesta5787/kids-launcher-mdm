@@ -6,8 +6,6 @@ import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.copyToClipboard
 import de.jrpie.android.launcher.databinding.ActivityReportCrashBinding
 import de.jrpie.android.launcher.getDeviceInfo
-import de.jrpie.android.launcher.openInBrowser
-import de.jrpie.android.launcher.writeEmail
 
 const val EXTRA_CRASH_LOG = "crashLog"
 
@@ -37,23 +35,5 @@ class ReportCrashActivity : AppCompatActivity() {
             )
         }
 
-        binding.reportCrashButtonMail.setOnClickListener {
-            writeEmail(
-                this,
-                getString(R.string.settings_meta_report_bug_mail),
-                "Crash in μLauncher",
-                "Hi!\nUnfortunately, μLauncher crashed:\n" +
-                        "\nDevice Info\n\n${getDeviceInfo()}\n\n" +
-                        "\nCrash Log\n\n${report}\n" +
-                        "\nAdditional Information\n\n" +
-                        "[Please add additional information: What did you do when the crash happened? Do you know how to trigger it? ... ]"
-            )
-        }
-        binding.reportCrashButtonReport.setOnClickListener {
-            openInBrowser(
-                getString(R.string.settings_meta_report_bug_link),
-                this
-            )
-        }
     }
 }

@@ -41,22 +41,6 @@
                 android:text="@string/report_crash_button_copy"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="20dp" />
-
-            <Button
-                android:id="@+id/report_crash_button_mail"
-                android:text="@string/report_crash_button_mail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <Button
-                android:id="@+id/report_crash_button_report"
-                android:text="@string/report_crash_button_report"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
         </LinearLayout>
     </ScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
