@@ -11,8 +11,10 @@ import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.actions.LauncherAction
 import de.jrpie.android.launcher.databinding.ActivityHomeBinding
 import de.jrpie.android.launcher.openTutorial
+import de.jrpie.android.launcher.preferences.HomeMode
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.ui.minimalist.MinimalistHomeAdapter
+import de.jrpie.android.launcher.ui.traditional.TraditionalHomeController
 import de.jrpie.android.launcher.ui.util.LauncherGestureActivity
 
 
@@ -25,6 +27,7 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
 
     private lateinit var binding: ActivityHomeBinding
     private lateinit var minimalistAdapter: MinimalistHomeAdapter
+    private lateinit var traditionalController: TraditionalHomeController
 
     private var sharedPreferencesListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
@@ -37,8 +40,11 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
                     this@HomeActivity,
                     LauncherPreferences.widgets().widgets()
                 )
-            } else if (prefKey?.startsWith("minimalist.") == true) {
-                updateMinimalistMode()
+            } else if (prefKey?.startsWith("minimalist.") == true ||
+                prefKey?.startsWith("traditional.") == true ||
+                prefKey == LauncherPreferences.general().keys().homeMode()
+            ) {
+                updateHomeMode()
             }
 
         }
@@ -56,17 +62,27 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
         binding.homeMinimalistList.layoutManager = LinearLayoutManager(this)
         binding.homeMinimalistList.adapter = minimalistAdapter
 
+        traditionalController = TraditionalHomeController(
+            this,
+            binding.homeTraditionalPager,
+            binding.homeTraditionalPageIndicator,
+            binding.homeTraditionalDock
+        )
+
         binding.buttonFallbackSettings.setOnClickListener {
             LauncherAction.SETTINGS.invoke(this)
         }
     }
 
-    private fun updateMinimalistMode() {
-        val enabled = LauncherPreferences.minimalist().enabled()
-        binding.homeMinimalistContainer.visibility = if (enabled) View.VISIBLE else View.GONE
-        binding.homeWidgetContainer.visibility = if (enabled) View.GONE else View.VISIBLE
-        if (enabled) {
-            minimalistAdapter.updateAppsList()
+    private fun updateHomeMode() {
+        val mode = LauncherPreferences.general().homeMode()
+        binding.homeWidgetContainer.visibility = if (mode == HomeMode.GESTURES) View.VISIBLE else View.GONE
+        binding.homeMinimalistContainer.visibility = if (mode == HomeMode.MINIMAL) View.VISIBLE else View.GONE
+        binding.homeTraditionalContainer.visibility = if (mode == HomeMode.TRADITIONAL) View.VISIBLE else View.GONE
+        when (mode) {
+            HomeMode.MINIMAL -> minimalistAdapter.updateAppsList()
+            HomeMode.TRADITIONAL -> traditionalController.updateApps()
+            HomeMode.GESTURES -> {}
         }
     }
 
@@ -123,7 +139,7 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
     override fun onResume() {
         super.onResume()
         updateSettingsFallbackButtonVisibility()
-        updateMinimalistMode()
+        updateHomeMode()
 
         binding.homeWidgetContainer.updateWidgets(
             this@HomeActivity,
@@ -138,6 +154,7 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
         LauncherPreferences.getSharedPreferences()
             .unregisterOnSharedPreferenceChangeListener(sharedPreferencesListener)
         minimalistAdapter.destroy()
+        traditionalController.destroy()
         super.onDestroy()
     }
 

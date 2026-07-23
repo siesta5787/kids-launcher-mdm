@@ -17,7 +17,6 @@ import de.jrpie.android.launcher.preferences.legacy.migratePreferencesFromVersio
 import de.jrpie.android.launcher.sendCrashNotification
 import de.jrpie.android.launcher.ui.HomeActivity
 import de.jrpie.android.launcher.widgets.ClockWidget
-import de.jrpie.android.launcher.widgets.DebugInfoWidget
 import de.jrpie.android.launcher.widgets.WidgetPanel
 import de.jrpie.android.launcher.widgets.WidgetPosition
 import de.jrpie.android.launcher.widgets.generateInternalId
@@ -108,20 +107,6 @@ fun resetPreferences(context: Context) {
             )
         )
     )
-
-    if (BuildConfig.DEBUG) {
-        LauncherPreferences.widgets().widgets(
-            LauncherPreferences.widgets().widgets().also {
-                it.add(
-                    DebugInfoWidget(
-                        generateInternalId(),
-                        WidgetPosition(1, 1, 10, 4),
-                        WidgetPanel.HOME.id
-                    )
-                )
-            }
-        )
-    }
 
     val hidden: MutableSet<AbstractAppInfo> = mutableSetOf()
 

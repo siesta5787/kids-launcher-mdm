@@ -22,9 +22,23 @@
     <string name="settings_list_app_name_format_key" translatable="false">list.app_name_format</string>
     <string name="settings_list_reverse_layout_key" translatable="false">list.reverse_layout</string>
     <string name="settings_general_choose_home_screen_key" translatable="false">general.select_launcher</string>
-    <string name="settings_minimalist_enabled_key" translatable="false">minimalist.enabled</string>
+    <string name="settings_general_home_mode_key" translatable="false">general.home_mode</string>
     <string name="settings_minimalist_allow_gestures_key" translatable="false">minimalist.allow_gestures</string>
     <string name="settings_minimalist_apps_key" translatable="false">minimalist.apps</string>
+    <string name="settings_traditional_dock_apps_key" translatable="false">traditional.dock_apps</string>
+
+    <!-- values of de.jrpie.android.launcher.preferences.HomeMode -->
+    <string-array name="settings_general_home_mode_values" translatable="false">
+        <item>TRADITIONAL</item>
+        <item>GESTURES</item>
+        <item>MINIMAL</item>
+    </string-array>
+
+    <string-array name="settings_general_home_mode_items" translatable="false">
+        <item>@string/settings_general_home_mode_item_traditional</item>
+        <item>@string/settings_general_home_mode_item_gestures</item>
+        <item>@string/settings_general_home_mode_item_minimal</item>
+    </string-array>
 
     <!-- values of de.jrpie.android.launcher.preferences.list.ListLayout -->
     <string-array name="settings_list_layout_values" translatable="false">

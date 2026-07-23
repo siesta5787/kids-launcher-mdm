@@ -3,6 +3,7 @@ package de.jrpie.android.launcher.actions
 import android.content.Context
 import android.util.Log
 import de.jrpie.android.launcher.R
+import de.jrpie.android.launcher.preferences.HomeMode
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
@@ -445,10 +446,10 @@ enum class Gesture(
     operator fun invoke(context: Context) {
         Log.i("Launcher", "Detected gesture: $this")
 
-        if (LauncherPreferences.minimalist().enabled() &&
+        if (LauncherPreferences.general().homeMode() == HomeMode.MINIMAL &&
             !LauncherPreferences.minimalist().allowGestures()
         ) {
-            // In minimalist mode every gesture is disabled, except long click,
+            // In minimal mode every gesture is disabled, except long click,
             // which always opens µLauncher settings - regardless of what is bound to it.
             // (Unless "allow gestures" is on, in which case gestures behave normally.)
             if (this == LONG_CLICK) {

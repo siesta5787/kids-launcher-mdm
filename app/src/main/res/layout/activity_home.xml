@@ -41,6 +41,41 @@
 
     </LinearLayout>
 
+    <!-- shown instead of home_widget_container while traditional mode is enabled -->
+    <LinearLayout
+        android:id="@+id/home_traditional_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/home_traditional_pager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:id="@+id/home_traditional_page_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:orientation="horizontal" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/home_traditional_dock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            tools:listitem="@layout/list_apps_row_variant_grid_only_icons" />
+
+    </LinearLayout>
+
     <!-- only shown when µLauncher settings can't be reached by a gesture -->
     <ImageView
         android:id="@+id/button_fallback_settings"

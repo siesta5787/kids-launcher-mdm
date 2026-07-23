@@ -48,7 +48,8 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 @PreferenceGroup(name = "gestures", prefix = "settings_gesture_", suffix = "_key", value = {
                 }),
                 @PreferenceGroup(name = "general", prefix = "settings_general_", suffix = "_key", value = {
-                        @Preference(name = "choose_home_screen", type = void.class)
+                        @Preference(name = "choose_home_screen", type = void.class),
+                        @Preference(name = "home_mode", type = HomeMode.class, defaultValue = "GESTURES"),
                 }),
                 @PreferenceGroup(name = "theme", prefix = "settings_theme_", suffix = "_key", value = {
                         @Preference(name = "wallpaper", type = void.class),
@@ -95,9 +96,11 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "custom_panels", type = Set.class, serializer = SetWidgetPanelSerializer.class)
                 }),
                 @PreferenceGroup(name = "minimalist", prefix = "settings_minimalist_", suffix = "_key", value = {
-                        @Preference(name = "enabled", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "allow_gestures", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "apps", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
+                }),
+                @PreferenceGroup(name = "traditional", prefix = "settings_traditional_", suffix = "_key", value = {
+                        @Preference(name = "dock_apps", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                 }),
         })
 public final class LauncherPreferences$Config {

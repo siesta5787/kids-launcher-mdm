@@ -49,7 +49,7 @@ enum class ListLayout(
     ),
 }
 
-private fun getNumColumns(context: Context, columnWidthSP: Float = 90f): Int {
+internal fun getNumColumns(context: Context, columnWidthSP: Float = 90f): Int {
     val displayMetrics = context.resources.displayMetrics
     val widthColumnPx =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, columnWidthSP, displayMetrics)

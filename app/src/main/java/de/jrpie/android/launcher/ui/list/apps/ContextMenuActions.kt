@@ -85,6 +85,21 @@ fun AbstractAppInfo.toggleMinimalistApp() {
     LauncherPreferences.minimalist().apps(apps)
 }
 
+fun AbstractAppInfo.toggleTraditionalDockApp() {
+    val apps: MutableSet<AbstractAppInfo> =
+        LauncherPreferences.traditional().dockApps() ?: mutableSetOf()
+
+    if (apps.contains(this)) {
+        apps.remove(this)
+        Log.i(LOG_TAG, "Removing $this from dock.")
+    } else {
+        Log.i(LOG_TAG, "Adding $this to dock.")
+        apps.add(this)
+    }
+
+    LauncherPreferences.traditional().dockApps(apps)
+}
+
 /**
  * @param view: used to show a snackbar letting the user undo the action
  */

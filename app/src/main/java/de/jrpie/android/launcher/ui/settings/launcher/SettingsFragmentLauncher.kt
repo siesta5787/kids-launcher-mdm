@@ -8,6 +8,7 @@ import androidx.preference.PreferenceFragmentCompat
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.actions.lock.LockMethod
 import de.jrpie.android.launcher.actions.openAppsList
+import de.jrpie.android.launcher.preferences.HomeMode
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.preferences.theme.ColorTheme
 import de.jrpie.android.launcher.setDefaultHomeScreen
@@ -25,7 +26,9 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
 
     private var sharedPreferencesListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
-            if (prefKey?.startsWith("clock.") == true) {
+            if (prefKey?.startsWith("clock.") == true ||
+                prefKey == LauncherPreferences.general().keys().homeMode()
+            ) {
                 updateVisibility()
             }
         }
@@ -47,6 +50,23 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             LauncherPreferences.apps().keys().hidePausedApps()
         )
         hidePausedApps?.isVisible = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+
+        val homeMode = LauncherPreferences.general().homeMode()
+
+        val allowGestures = findPreference<androidx.preference.Preference>(
+            LauncherPreferences.minimalist().keys().allowGestures()
+        )
+        allowGestures?.isVisible = homeMode == HomeMode.MINIMAL
+
+        val minimalistApps = findPreference<androidx.preference.Preference>(
+            LauncherPreferences.minimalist().keys().apps()
+        )
+        minimalistApps?.isVisible = homeMode == HomeMode.MINIMAL
+
+        val dockApps = findPreference<androidx.preference.Preference>(
+            LauncherPreferences.traditional().keys().dockApps()
+        )
+        dockApps?.isVisible = homeMode == HomeMode.TRADITIONAL
     }
 
     override fun onStart() {
@@ -111,6 +131,14 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             LauncherPreferences.minimalist().keys().apps()
         )
         minimalistApps?.setOnPreferenceClickListener {
+            openAppsList(requireContext())
+            true
+        }
+
+        val dockApps = findPreference<androidx.preference.Preference>(
+            LauncherPreferences.traditional().keys().dockApps()
+        )
+        dockApps?.setOnPreferenceClickListener {
             openAppsList(requireContext())
             true
         }
