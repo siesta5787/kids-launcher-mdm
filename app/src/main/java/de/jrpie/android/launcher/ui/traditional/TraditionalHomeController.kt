@@ -1,6 +1,7 @@
 package de.jrpie.android.launcher.ui.traditional
 
 import android.app.Activity
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.MeasureSpec
@@ -53,6 +54,12 @@ class TraditionalHomeController(
 
     private val baseDockBottomPadding = dock.paddingBottom
 
+    // Extra breathing room above the grid, beyond just clearing the status bar - about a
+    // third of an app icon (icon size is 40sp, see list_apps_row_variant_grid.xml).
+    private val extraTopPaddingPx = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_SP, 13f, activity.resources.displayMetrics
+    ).toInt()
+
     // HomeActivity is a plain Activity (not a LifecycleOwner) - see MinimalistHomeAdapter
     // for why this needs observeForever()/destroy() instead of the usual observe().
     private val appsObserver = Observer<List<AbstractDetailedAppInfo>> { updateApps() }
@@ -75,7 +82,9 @@ class TraditionalHomeController(
             if (bars.top != lastInsetTop || bars.bottom != lastInsetBottom) {
                 lastInsetTop = bars.top
                 lastInsetBottom = bars.bottom
-                view.setPadding(view.paddingLeft, bars.top, view.paddingRight, view.paddingBottom)
+                view.setPadding(
+                    view.paddingLeft, bars.top + extraTopPaddingPx, view.paddingRight, view.paddingBottom
+                )
                 dock.setPadding(
                     dock.paddingLeft, dock.paddingTop, dock.paddingRight,
                     baseDockBottomPadding + bars.bottom
@@ -128,11 +137,7 @@ class TraditionalHomeController(
         val margins = probe.layoutParams as? ViewGroup.MarginLayoutParams
         val rowHeight = (probe.measuredHeight + (margins?.topMargin ?: 0) + (margins?.bottomMargin ?: 0))
             .coerceAtLeast(1)
-        val rowsThatFit = pager.height / rowHeight
-        // Deliberately underestimate by one row: a mostly-empty page is far less noticeable
-        // than a page whose last row needs an internal scroll to see, and this measurement
-        // is inherently a bit approximate (theme/font differences, etc.).
-        val rows = (rowsThatFit - 1).coerceAtLeast(1)
+        val rows = (pager.height / rowHeight).coerceAtLeast(1)
         return columns * rows
     }
 
