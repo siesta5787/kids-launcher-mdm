@@ -67,6 +67,11 @@
             android:layout_gravity="center_horizontal"
             android:orientation="horizontal" />
 
+        <!-- fixed visual gap between the grid and the dock, independent of any inset -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="16dp" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/home_traditional_dock"
             android:layout_width="match_parent"

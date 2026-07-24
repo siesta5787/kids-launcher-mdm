@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -36,9 +38,20 @@ class TraditionalHomeController(
 ) {
     private val apps = (activity.applicationContext as Application).apps
 
+    // The outer vertical LinearLayout (home_traditional_container) holding pager+indicator+dock.
+    // Padding is applied here (not on the ViewPager2 itself) so it goes through completely
+    // standard ViewGroup measurement - subtracted from available space before the pager's
+    // layout_weight is resolved - rather than depending on how ViewPager2 internally handles
+    // padding/clipToPadding for its full-page children, which is far less predictable.
+    private val container = pager.parent as ViewGroup
+
     private var iconsPerPage = 0
     private var lastWidth = 0
     private var lastHeight = 0
+    private var lastInsetTop = -1
+    private var lastInsetBottom = -1
+
+    private val baseDockBottomPadding = dock.paddingBottom
 
     // HomeActivity is a plain Activity (not a LifecycleOwner) - see MinimalistHomeAdapter
     // for why this needs observeForever()/destroy() instead of the usual observe().
@@ -52,6 +65,26 @@ class TraditionalHomeController(
                 updatePageIndicator(position)
             }
         })
+
+        // Some devices/Android versions don't reliably propagate the parent's fitsSystemWindows
+        // padding down through ViewPager2's internally-created RecyclerView pages, letting the
+        // grid's first row render under the status bar. Apply the system bar insets explicitly
+        // to the container instead of relying on that propagation.
+        ViewCompat.setOnApplyWindowInsetsListener(container) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            if (bars.top != lastInsetTop || bars.bottom != lastInsetBottom) {
+                lastInsetTop = bars.top
+                lastInsetBottom = bars.bottom
+                view.setPadding(view.paddingLeft, bars.top, view.paddingRight, view.paddingBottom)
+                dock.setPadding(
+                    dock.paddingLeft, dock.paddingTop, dock.paddingRight,
+                    baseDockBottomPadding + bars.bottom
+                )
+                iconsPerPage = computeIconsPerPage()
+                updateApps()
+            }
+            insets
+        }
 
         pager.viewTreeObserver.addOnGlobalLayoutListener(object :
             ViewTreeObserver.OnGlobalLayoutListener {
