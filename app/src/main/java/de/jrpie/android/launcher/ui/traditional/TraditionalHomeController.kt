@@ -110,13 +110,29 @@ class TraditionalHomeController(
 
     private fun computeIconsPerPage(): Int {
         val columns = getNumColumns(activity).coerceAtLeast(1)
+        // Inflate against a throwaway RecyclerView (not `pager`) so the resulting LayoutParams
+        // is a RecyclerView.LayoutParams / MarginLayoutParams - matching how GridLayoutManager
+        // actually lays these rows out - and therefore captures the row's own
+        // android:layout_margin (list_apps_row_variant_grid.xml), which a plain measuredHeight
+        // read does not include, but GridLayoutManager still spaces rows out by.
+        // RecyclerView.generateLayoutParams() delegates to its LayoutManager, which throws
+        // if none is set - needs one even though it's never actually laid out.
+        val probeParent = RecyclerView(activity).apply {
+            layoutManager = GridLayoutManager(activity, columns)
+        }
         val probe = LayoutInflater.from(activity)
-            .inflate(R.layout.list_apps_row_variant_grid, pager, false)
+            .inflate(R.layout.list_apps_row_variant_grid, probeParent, false)
         val widthSpec = MeasureSpec.makeMeasureSpec(pager.width / columns, MeasureSpec.EXACTLY)
         val heightSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         probe.measure(widthSpec, heightSpec)
-        val rowHeight = probe.measuredHeight.coerceAtLeast(1)
-        val rows = (pager.height / rowHeight).coerceAtLeast(1)
+        val margins = probe.layoutParams as? ViewGroup.MarginLayoutParams
+        val rowHeight = (probe.measuredHeight + (margins?.topMargin ?: 0) + (margins?.bottomMargin ?: 0))
+            .coerceAtLeast(1)
+        val rowsThatFit = pager.height / rowHeight
+        // Deliberately underestimate by one row: a mostly-empty page is far less noticeable
+        // than a page whose last row needs an internal scroll to see, and this measurement
+        // is inherently a bit approximate (theme/font differences, etc.).
+        val rows = (rowsThatFit - 1).coerceAtLeast(1)
         return columns * rows
     }
 
