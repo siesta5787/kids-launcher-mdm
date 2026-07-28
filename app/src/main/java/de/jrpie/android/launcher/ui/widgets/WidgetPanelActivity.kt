@@ -49,14 +49,6 @@ class WidgetPanelActivity : LauncherGestureActivity(), UIObject {
         return mTheme
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-
-        if (hasFocus && LauncherPreferences.display().hideNavigationBar()) {
-            hideNavigationBar()
-        }
-    }
-
     override fun onStart() {
         super<LauncherGestureActivity>.onStart()
         super<UIObject>.onStart()

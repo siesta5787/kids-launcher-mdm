@@ -132,19 +132,6 @@
             android:entryValues="@array/settings_list_layout_values"
             android:defaultValue="DEFAULT"
             app:useSimpleSummaryProvider="true" />
-        <DropDownPreference
-            android:key="list.app_name_format"
-            android:title="@string/settings_list_app_name_format"
-            android:entries="@array/settings_list_app_name_format_items"
-            android:entryValues="@array/settings_list_app_name_format_values"
-            android:defaultValue="DEFAULT"
-            app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreference
-            android:key="@string/settings_list_reverse_layout_key"
-            android:title="@string/settings_list_reverse_layout"
-            android:defaultValue="false" />
-
 
     </PreferenceCategory>
     <PreferenceCategory
@@ -164,19 +151,6 @@
             android:key="@string/settings_display_rotate_screen_key"
             android:defaultValue="true"
             android:title="@string/settings_display_rotate_screen" />
-        <SwitchPreference
-            android:key="@string/settings_display_screen_timeout_disabled_key"
-            android:defaultValue="false"
-            android:title="@string/settings_display_screen_timeout_disabled" />
-        <SwitchPreference
-            android:key="@string/settings_display_hide_status_bar_key"
-            android:defaultValue="true"
-            android:title="@string/settings_display_hide_status_bar" />
-        <SwitchPreference
-            android:key="@string/settings_display_hide_navigation_bar_key"
-            android:defaultValue="false"
-            android:title="@string/settings_display_hide_navigation_bar" />
-
 
     </PreferenceCategory>
 

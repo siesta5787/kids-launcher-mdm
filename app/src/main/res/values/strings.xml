@@ -134,9 +134,6 @@
 
     <string name="settings_launcher_section_display">Display</string>
 
-    <string name="settings_display_screen_timeout_disabled">Keep screen on</string>
-    <string name="settings_display_hide_status_bar">Hide status bar</string>
-    <string name="settings_display_hide_navigation_bar">Hide navigation bar</string>
     <string name="settings_display_rotate_screen">Rotate screen</string>
 
     <string name="settings_launcher_section_functionality">Functionality</string>
@@ -162,17 +159,11 @@
     <string name="settings_apps_hide_paused_apps">Hide paused apps</string>
     <string name="settings_apps_hide_private_space_apps">Hide private space from app list</string>
     <string name="settings_list_layout">Layout of app list</string>
-    <string name="settings_list_reverse_layout">Reverse the app list</string>
-    <string name="settings_list_app_name_format">Names of Apps</string>
 
     <string name="settings_list_layout_item_default">Default</string>
     <string name="settings_list_layout_item_text">Text</string>
     <string name="settings_list_layout_item_grid">Grid</string>
     <string name="settings_list_layout_item_grid_only_icons">Grid (only icons)</string>
-
-    <string name="settings_list_app_name_format_item_default">Default</string>
-    <string name="settings_list_app_name_format_item_uppercase">Uppercase</string>
-    <string name="settings_list_app_name_format_item_lowercase">Lowercase</string>
 
     <!--
       -

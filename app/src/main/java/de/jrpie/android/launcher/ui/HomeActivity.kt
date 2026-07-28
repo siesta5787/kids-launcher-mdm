@@ -100,14 +100,6 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
 
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-
-        if (hasFocus && LauncherPreferences.display().hideNavigationBar()) {
-            hideNavigationBar()
-        }
-    }
-
     private fun updateSettingsFallbackButtonVisibility() {
         // If µLauncher settings can not be reached from any action bound to an enabled gesture,
         // show the fallback button.

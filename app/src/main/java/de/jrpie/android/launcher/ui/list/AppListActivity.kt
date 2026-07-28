@@ -76,7 +76,6 @@ class AppListActivity : AbstractListActivity() {
         // Initialise layout
         binding = ActivityListBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        useSoftInputResizeWorkaround(binding.listContainer)
 
         binding.listSettings.setOnClickListener {
             LauncherAction.SETTINGS.launch(this@AppListActivity)

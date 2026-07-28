@@ -27,7 +27,6 @@ class SelectActionActivity : AbstractListActivity() {
         // Initialise layout
         binding = ActivitySelectActionBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        useSoftInputResizeWorkaround(binding.selectContainer)
 
         val sectionsPagerAdapter = ListSectionsPagerAdapter(this)
         binding.selectActionViewpager.apply {

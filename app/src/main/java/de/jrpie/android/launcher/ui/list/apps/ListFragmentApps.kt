@@ -7,8 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.apps.AppFilter
@@ -86,8 +84,7 @@ class ListFragmentApps : Fragment(), UIObject {
                     privateSpaceVisibility = listActivity.privateSpaceVisibility,
                     hiddenVisibility = listActivity.hiddenVisibility
                 ),
-                layout = LauncherPreferences.list().layout(),
-                nameFormat = LauncherPreferences.list().appNameFormat()
+                layout = LauncherPreferences.list().layout()
             )
 
 
@@ -96,12 +93,6 @@ class ListFragmentApps : Fragment(), UIObject {
             // improve performance (since content changes don't change the layout size)
             setHasFixedSize(true)
             layoutManager = LauncherPreferences.list().layout().layoutManager(context)
-                .also {
-                    if (LauncherPreferences.list().reverseLayout()) {
-                        (it as? LinearLayoutManager)?.reverseLayout = true
-                        (it as? GridLayoutManager)?.reverseLayout = true
-                    }
-                }
             adapter = appsRecyclerAdapter
             if (LauncherPreferences.functionality().searchAutoCloseKeyboard()) {
                 addOnScrollListener(object : RecyclerView.OnScrollListener() {

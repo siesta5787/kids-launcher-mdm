@@ -27,7 +27,6 @@ import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.AppInfo
 import de.jrpie.android.launcher.apps.DetailedAppInfo
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.preferences.list.AppNameFormat
 import de.jrpie.android.launcher.preferences.list.ListLayout
 import de.jrpie.android.launcher.ui.list.AbstractListActivity
 import de.jrpie.android.launcher.ui.transformMonochrome
@@ -48,7 +47,6 @@ class AppsRecyclerAdapter(
     private val forGesture: String? = "",
     private var appFilter: AppFilter = AppFilter(activity, ""),
     private val layout: ListLayout,
-    private val nameFormat: AppNameFormat
 ) :
     RecyclerView.Adapter<AppsRecyclerAdapter.ViewHolder>() {
 
@@ -99,7 +97,7 @@ class AppsRecyclerAdapter(
         viewHolder.img.transformMonochrome(grayscale, colorTheme)
         viewHolder.img.setImageDrawable(appIcon.constantState?.newDrawable() ?: appIcon)
 
-        viewHolder.textView.text = nameFormat.format(appLabel)
+        viewHolder.textView.text = appLabel
 
         // layouts whose icon is hidden (e.g. TEXT) can't show the OS profile badge (private
         // space, work profile, ...) on the icon like the others do, so show it here instead;

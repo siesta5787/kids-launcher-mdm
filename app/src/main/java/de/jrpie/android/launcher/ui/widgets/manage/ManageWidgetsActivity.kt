@@ -111,14 +111,6 @@ class ManageWidgetsActivity : UIObject, Activity() {
         )
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-
-        if (hasFocus && LauncherPreferences.display().hideNavigationBar()) {
-            hideNavigationBar()
-        }
-    }
-
     override fun getTheme(): Resources.Theme {
         return modifyTheme(super.getTheme())
     }

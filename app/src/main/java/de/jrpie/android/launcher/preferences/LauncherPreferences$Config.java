@@ -5,7 +5,6 @@ import java.util.Set;
 
 import de.jrpie.android.launcher.R;
 import de.jrpie.android.launcher.actions.lock.LockMethod;
-import de.jrpie.android.launcher.preferences.list.AppNameFormat;
 import de.jrpie.android.launcher.preferences.list.ListLayout;
 import de.jrpie.android.launcher.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
@@ -40,8 +39,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 }),
                 @PreferenceGroup(name = "list", prefix = "settings_list_", suffix = "_key", value = {
                         @Preference(name = "layout", type = ListLayout.class, defaultValue = "DEFAULT"),
-                        @Preference(name = "reverse_layout", type = boolean.class, defaultValue = "false"),
-                        @Preference(name = "app_name_format", type = AppNameFormat.class, defaultValue = "DEFAULT")
                 }),
                 @PreferenceGroup(name = "gestures", prefix = "settings_gesture_", suffix = "_key", value = {
                 }),
@@ -54,9 +51,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "monochrome_icons", type = boolean.class, defaultValue = "false"),
                 }),
                 @PreferenceGroup(name = "display", prefix = "settings_display_", suffix = "_key", value = {
-                        @Preference(name = "screen_timeout_disabled", type = boolean.class, defaultValue = "false"),
-                        @Preference(name = "hide_status_bar", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "hide_navigation_bar", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "rotate_screen", type = boolean.class, defaultValue = "true"),
                 }),
                 @PreferenceGroup(name = "functionality", prefix = "settings_functionality_", suffix = "_key", value = {
