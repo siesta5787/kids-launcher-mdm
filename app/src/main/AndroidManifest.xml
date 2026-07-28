@@ -52,9 +52,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.tutorial.TutorialActivity"
-            android:configChanges="orientation|screenSize" />
-        <activity
             android:name=".ui.list.AppListActivity"
             android:configChanges="orientation|screenSize"
             android:windowSoftInputMode="adjustResize" />

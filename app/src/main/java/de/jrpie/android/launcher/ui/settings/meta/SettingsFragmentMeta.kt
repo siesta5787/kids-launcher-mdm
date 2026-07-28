@@ -12,7 +12,6 @@ import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.copyToClipboard
 import de.jrpie.android.launcher.databinding.SettingsMetaBinding
 import de.jrpie.android.launcher.getDeviceInfo
-import de.jrpie.android.launcher.openTutorial
 import de.jrpie.android.launcher.preferences.resetPreferences
 import de.jrpie.android.launcher.ui.LegalInfoActivity
 import de.jrpie.android.launcher.ui.UIObject
@@ -43,10 +42,6 @@ class SettingsFragmentMeta : Fragment(), UIObject {
     }
 
     override fun setOnClicks() {
-
-        binding.settingsMetaButtonViewTutorial.setOnClickListener {
-            openTutorial(requireContext())
-        }
 
         // prompting for settings-reset confirmation
         binding.settingsMetaButtonResetSettings.setOnClickListener {

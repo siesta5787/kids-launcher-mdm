@@ -131,13 +131,6 @@
     <string name="settings_meta_chat_url" translatable="false">https://s.jrpie.de/launcher-chat</string>
     <string name="settings_meta_donate_url" translatable="false">https://s.jrpie.de/launcher-donate</string>
 
-    <!--
-      -
-      - Tutorial
-      -
-      -->
-    <string name="swipe" translatable="false"><![CDATA[>>>>>>]]></string>
-
 
     <!-- Legal -->
     <string name="legal_info_text"><![CDATA[

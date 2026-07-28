@@ -10,9 +10,10 @@ import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.actions.LauncherAction
 import de.jrpie.android.launcher.databinding.ActivityHomeBinding
-import de.jrpie.android.launcher.openTutorial
 import de.jrpie.android.launcher.preferences.HomeMode
 import de.jrpie.android.launcher.preferences.LauncherPreferences
+import de.jrpie.android.launcher.requestNotificationPermission
+import de.jrpie.android.launcher.setDefaultHomeScreen
 import de.jrpie.android.launcher.ui.minimalist.MinimalistHomeAdapter
 import de.jrpie.android.launcher.ui.util.LauncherGestureActivity
 
@@ -78,9 +79,12 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
         super<LauncherGestureActivity>.onStart()
         super<UIObject>.onStart()
 
-        // If the tutorial was not finished, start it
+        // First launch: no tutorial, just mark it done and try to set the default home screen
         if (!LauncherPreferences.internal().started()) {
-            openTutorial(this)
+            LauncherPreferences.internal().started(true)
+            LauncherPreferences.internal().startedTime(System.currentTimeMillis() / 1000L)
+            setDefaultHomeScreen(this, checkDefault = true)
+            requestNotificationPermission(this)
         }
 
         LauncherPreferences.getSharedPreferences()

@@ -25,8 +25,6 @@ import de.jrpie.android.launcher.ui.transformMonochrome
 /**
  *  The [SettingsFragmentActionsRecycler] is a fragment containing the [ActionsRecyclerAdapter],
  *  which displays all selected actions / apps.
- *
- *  It is used in the Tutorial and in Settings
  */
 class SettingsFragmentActionsRecycler : Fragment(), UIObject {
 

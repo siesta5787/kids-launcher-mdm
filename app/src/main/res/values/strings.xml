@@ -175,8 +175,6 @@
 
     <string name="settings_meta_cant_select_launcher">App Info</string>
 
-    <string name="settings_meta_show_tutorial">View OCM Launcher Tutorial</string>
-
     <string name="settings_meta_reset">Reset Settings</string>
     <string name="settings_meta_reset_confirm">You are going to discard all your preferences. Continue?</string>
 
@@ -252,37 +250,6 @@
     <string name="pin_shortcut_switch_visible">Show in app list</string>
 
     <!--
-      -
-      - Tutorial
-      -
-      -->
-    <string name="tutorial_title">Tutorial</string>
-    <string name="tutorial_start_text">👋\n\nTake a few seconds to learn how to use this Launcher!</string>
-
-    <string name="tutorial_concept_title">Concept</string>
-    <string name="tutorial_concept_text">OCM Launcher is designed to be minimal, efficient and free of distraction.
-        \n\nIt contains no ads and collects no data.</string>
-    <string name="tutorial_concept_text_2">It is free software (MIT license)!\nMake sure to check out the repository!</string>
-    <string name="tutorial_concept_label_version">Version</string>
-
-    <string name="tutorial_usage_title">Usage</string>
-    <string name="tutorial_usage_text">Your home screen contains the local date and time. No distraction.</string>
-    <string name="tutorial_usage_text_2">You can launch your most important apps with touch gestures or button presses.</string>
-
-    <string name="tutorial_app_list_title">All Apps</string>
-    <string name="tutorial_app_list_text">You can quickly search through all apps in the app list.\n\nSwipe up to open it, or bind it to a different gesture.</string>
-    <string name="tutorial_app_list_text_2">Once only one app matches, it launches automatically.\nThis can be disabled by prefixing the query with a space.</string>
-
-
-    <string name="tutorial_setup_title">Setup</string>
-    <string name="tutorial_setup_text">We chose some default apps for you. You can change them now if you want to:</string>
-    <string name="tutorial_setup_text_2">You can also change your selection later.</string>
-
-    <string name="tutorial_finish_title">Let\'s go!</string>
-    <string name="tutorial_finish_text">You are ready to get started!\n\nI hope this is of great value to you!\n\nOCM Launcher is a fork of Josia\'s μLauncher, which is itself a fork of Finn\'s original Launcher.</string>
-    <string name="tutorial_finish_button">Start</string>
-
-
     <string name="settings">Settings</string>
     <string name="ic_menu_alt">More options</string>
     <string name="alert_cant_expand_status_bar_panel">Error: Can\'t expand status bar. This action is using functionality that is not part of the published Android API. Unfortunately, it does not seem to work on your device.</string>

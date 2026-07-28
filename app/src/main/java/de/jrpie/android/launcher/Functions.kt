@@ -25,7 +25,6 @@ import de.jrpie.android.launcher.apps.DetailedAppInfo
 import de.jrpie.android.launcher.apps.getPrivateSpaceUser
 import de.jrpie.android.launcher.apps.isPrivateSpaceSupported
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.ui.tutorial.TutorialActivity
 
 
 const val LOG_TAG = "Launcher"
@@ -97,11 +96,6 @@ fun openInBrowser(url: String, context: Context) {
         Toast.makeText(context, R.string.toast_activity_not_found_browser, Toast.LENGTH_LONG).show()
     }
 }
-
-fun openTutorial(context: Context) {
-    context.startActivity(Intent(context, TutorialActivity::class.java))
-}
-
 
 /**
  * Load all apps.

@@ -126,7 +126,7 @@ class Application : android.app.Application() {
         migratePreferencesToNewVersion(this)
 
         // First time opening the app: set defaults
-        // The tutorial is started from HomeActivity#onStart, as starting it here is blocked by android
+        // (the rest of first-launch setup happens in HomeActivity#onStart)
         if (!LauncherPreferences.internal().started()) {
             resetPreferences(this)
         }
