@@ -240,12 +240,6 @@
     <string name="list_other_torch">Toggle Torch</string>
     <string name="list_other_launch_other_launcher">Launch Other Home Screen</string>
 
-    <!-- Pin shortcuts -->
-    <string name="pin_shortcut_title">Add Shortcut</string>
-    <string name="pin_shortcut_button_bind">Bind to gesture</string>
-    <string name="pin_shortcut_switch_visible">Show in app list</string>
-
-    <!--
     <string name="settings">Settings</string>
     <string name="ic_menu_alt">More options</string>
     <string name="alert_cant_expand_status_bar_panel">Error: Can\'t expand status bar. This action is using functionality that is not part of the published Android API. Unfortunately, it does not seem to work on your device.</string>
