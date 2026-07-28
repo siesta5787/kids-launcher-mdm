@@ -158,10 +158,6 @@ class AppsRecyclerAdapter(
             popup.menu.findItem(R.id.app_menu_minimalist).setTitle(R.string.list_app_minimalist_remove)
         }
 
-        if (LauncherPreferences.traditional().dockApps()?.contains(appInfo.getRawInfo()) == true) {
-            popup.menu.findItem(R.id.app_menu_dock).setTitle(R.string.list_app_dock_remove)
-        }
-
 
         popup.setOnMenuItemClickListener {
             when (it.itemId) {
@@ -183,10 +179,6 @@ class AppsRecyclerAdapter(
 
                 R.id.app_menu_minimalist -> {
                     appInfo.getRawInfo().toggleMinimalistApp(); true
-                }
-
-                R.id.app_menu_dock -> {
-                    appInfo.getRawInfo().toggleTraditionalDockApp(); true
                 }
 
                 R.id.app_menu_rename -> {

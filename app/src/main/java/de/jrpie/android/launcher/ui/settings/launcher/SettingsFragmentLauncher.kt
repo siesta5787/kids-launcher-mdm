@@ -48,11 +48,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             LauncherPreferences.minimalist().keys().apps()
         )
         minimalistApps?.isVisible = homeMode == HomeMode.MINIMAL
-
-        val dockApps = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.traditional().keys().dockApps()
-        )
-        dockApps?.isVisible = homeMode == HomeMode.TRADITIONAL
     }
 
     override fun onStart() {
@@ -106,14 +101,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             LauncherPreferences.minimalist().keys().apps()
         )
         minimalistApps?.setOnPreferenceClickListener {
-            openAppsList(requireContext())
-            true
-        }
-
-        val dockApps = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.traditional().keys().dockApps()
-        )
-        dockApps?.setOnPreferenceClickListener {
             openAppsList(requireContext())
             true
         }

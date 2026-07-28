@@ -223,8 +223,6 @@
     <string name="list_app_hidden_remove">Show</string>
     <string name="list_app_minimalist_add">Add to minimal list</string>
     <string name="list_app_minimalist_remove">Remove from minimal list</string>
-    <string name="list_app_dock_add">Add to dock</string>
-    <string name="list_app_dock_remove">Remove from dock</string>
     <string name="list_app_rename">Rename</string>
 
     <string name="list_apps_search_hint">Search</string>
@@ -410,15 +408,12 @@
     <string name="settings_launcher_section_widgets">Widgets</string>
     <string name="settings_launcher_section_home_mode">Home Screen Mode</string>
     <string name="settings_general_home_mode">Home screen mode</string>
-    <string name="settings_general_home_mode_item_traditional">Traditional</string>
     <string name="settings_general_home_mode_item_gestures">Gestures</string>
     <string name="settings_general_home_mode_item_minimal">Minimal</string>
     <string name="settings_minimalist_allow_gestures">Allow gestures</string>
     <string name="settings_minimalist_allow_gestures_summary">Let gestures work normally in Minimal mode, instead of disabling them. Long click will no longer be forced to open settings.</string>
     <string name="settings_minimalist_apps">Manage minimal list apps</string>
     <string name="settings_minimalist_apps_summary">Choose which apps show up on the minimal home screen (long-press an app in the list)</string>
-    <string name="settings_traditional_dock_apps">Manage dock apps</string>
-    <string name="settings_traditional_dock_apps_summary">Choose which apps show up in the dock, pinned at the bottom of every page (long-press an app in the list)</string>
     <string name="notification_crash_title">OCM Launcher crashed</string>
     <string name="notification_crash_explanation">Sorry! Click for more information.</string>
     <string name="crash_info"><![CDATA[

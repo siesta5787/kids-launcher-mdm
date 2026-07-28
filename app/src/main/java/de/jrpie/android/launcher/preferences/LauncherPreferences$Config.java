@@ -75,9 +75,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "allow_gestures", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "apps", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                 }),
-                @PreferenceGroup(name = "traditional", prefix = "settings_traditional_", suffix = "_key", value = {
-                        @Preference(name = "dock_apps", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
-                }),
         })
 public final class LauncherPreferences$Config {
 }

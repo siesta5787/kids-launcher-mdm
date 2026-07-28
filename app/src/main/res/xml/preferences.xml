@@ -20,10 +20,6 @@
             android:key="@string/settings_minimalist_apps_key"
             android:title="@string/settings_minimalist_apps"
             android:summary="@string/settings_minimalist_apps_summary" />
-        <Preference
-            android:key="@string/settings_traditional_dock_apps_key"
-            android:title="@string/settings_traditional_dock_apps"
-            android:summary="@string/settings_traditional_dock_apps_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory app:allowDividerAbove="false"> <!-- general -->
