@@ -9,7 +9,8 @@
     android:fitsSystemWindows="true"
     tools:context=".ui.HomeActivity">
 
-    <de.jrpie.android.launcher.ui.widgets.WidgetContainerView
+    <!-- blank for now; Kid Mode home-screen UI goes here -->
+    <FrameLayout
         android:id="@+id/home_widget_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

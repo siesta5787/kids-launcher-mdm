@@ -105,10 +105,6 @@
     <string name="settings_gesture_long_click">Long Click</string>
     <string name="settings_gesture_description_long_click">Long click an empty area</string>
 
-    <string name="settings_widgets_widgets">Manage widgets</string>
-    <string name="settings_widgets_custom_panels">Manage widget panels</string>
-
-
     <string name="settings_apps_choose">Choose App</string>
 
     <string name="settings_apps_install">Install apps</string>
@@ -341,38 +337,8 @@
     <string name="settings_meta_licenses">Open Source Licenses</string>
     <string name="legal_info_title">Open Source Licenses</string>
     <string name="toast_activity_not_found_browser">Can\'t open URL: no browser found.</string>
-    <string name="select_widget_title">Choose Widget</string>
-
-    <string name="widget_menu_remove">Remove</string>
-    <string name="widget_menu_configure">Configure</string>
-    <string name="widget_menu_enable_interaction">Enable Interaction</string>
-    <string name="widget_menu_disable_interaction">Disable Interaction</string>
-    <string name="widget_menu_reconfigure">Reconfigure</string>
-    <string name="widget_menu_raise">Raise</string>
-    <string name="widget_menu_lower">Lower</string>
-    <string name="widget_overlay_interaction_disabled">Interaction off</string>
-
-
-    <string name="widget_clock_label">Clock</string>
-    <string name="widget_clock_description">The default clock of OCM Launcher</string>
-    <string name="manage_widget_panels_delete">Delete</string>
-    <string name="manage_widget_panels_rename">Rename</string>
-
-    <string name="widget_panel_default_name">Widget Panel #%1$d</string>
-    <plurals name="widget_panel_number_of_widgets">
-        <item quantity="one">Contains %1$d widget.</item>
-        <item quantity="other">Contains %1$d widgets.</item>
-    </plurals>
-
 
     <string name="dialog_ok">Ok</string>
-    <string name="widget_panels_title">Widget Panels</string>
-    <string name="dialog_select_widget_panel_title">Select a Widget Panel</string>
-    <string name="dialog_create_widget_panel_title">Create new widget panel</string>
-    <string name="dialog_select_widget_panel_info_no_panels"><![CDATA[No widget panels found. You can create widget panels in Settings > Launcher > Manage Widget Panels.]]></string>
-    <string name="list_other_open_widget_panel">Open Widget Panel</string>
-    <string name="alert_widget_panel_not_found">This widget panel no longer exists.</string>
-    <string name="settings_launcher_section_widgets">Widgets</string>
     <string name="settings_launcher_section_home_mode">Home Screen Mode</string>
     <string name="settings_general_home_mode">Home screen mode</string>
     <string name="settings_general_home_mode_item_gestures">Gestures</string>
@@ -411,9 +377,6 @@
       - Content Descriptions
       -
       -->
-    <string name="content_description_add_widget">Add widget</string>
-    <string name="content_description_add_widget_panel">Add widget panel</string>
-    <string name="content_description_widget_settings">Widget settings</string>
     <string name="content_description_close">Close</string>
     <string name="content_description_navigate_back">Navigate back</string>
     <string name="content_description_navigate_next">Navigate next</string>

@@ -11,7 +11,6 @@ import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.actions.LauncherAction
-import de.jrpie.android.launcher.actions.WidgetPanelAction
 import de.jrpie.android.launcher.ui.list.SelectActionActivity
 
 /**
@@ -26,7 +25,6 @@ class OtherRecyclerAdapter(val activity: Activity) :
 
     private val othersList: Array<Action> =
         LauncherAction.entries.filter { it.isAvailable(activity) }
-            .plus(WidgetPanelAction(-1))
             .toTypedArray()
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView),

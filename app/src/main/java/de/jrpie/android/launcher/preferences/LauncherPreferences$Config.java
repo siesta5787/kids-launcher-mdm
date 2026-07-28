@@ -8,8 +8,6 @@ import de.jrpie.android.launcher.actions.lock.LockMethod;
 import de.jrpie.android.launcher.preferences.list.ListLayout;
 import de.jrpie.android.launcher.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
-import de.jrpie.android.launcher.preferences.serialization.SetWidgetPanelSerializer;
-import de.jrpie.android.launcher.preferences.serialization.SetWidgetSerializer;
 import de.jrpie.android.launcher.preferences.theme.ColorTheme;
 import eu.jonahbauer.android.preference.annotations.Preference;
 import eu.jonahbauer.android.preference.annotations.PreferenceGroup;
@@ -64,10 +62,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 }),
                 @PreferenceGroup(name = "actions", prefix = "settings_actions_", suffix = "_key", value = {
                         @Preference(name = "lock_method", type = LockMethod.class, defaultValue = "DEVICE_ADMIN"),
-                }),
-                @PreferenceGroup(name = "widgets", prefix = "settings_widgets_", suffix = "_key", value = {
-                        @Preference(name = "widgets", type = Set.class, serializer = SetWidgetSerializer.class),
-                        @Preference(name = "custom_panels", type = Set.class, serializer = SetWidgetPanelSerializer.class)
                 }),
                 @PreferenceGroup(name = "minimalist", prefix = "settings_minimalist_", suffix = "_key", value = {
                         @Preference(name = "allow_gestures", type = boolean.class, defaultValue = "false"),

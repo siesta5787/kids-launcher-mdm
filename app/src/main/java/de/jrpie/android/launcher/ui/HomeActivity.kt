@@ -5,7 +5,6 @@ import android.content.res.Resources
 import android.os.Bundle
 import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
-import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.actions.LauncherAction
@@ -20,8 +19,7 @@ import de.jrpie.android.launcher.ui.util.LauncherGestureActivity
 
 /**
  * [HomeActivity] is the actual application launcher.
- * It displays widgets (usually just the clock)
- * and listens for gestures.
+ * It listens for gestures.
  */
 class HomeActivity : UIObject, LauncherGestureActivity() {
 
@@ -34,11 +32,6 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
                 recreate()
             } else if (prefKey?.startsWith("action.") == true) {
                 updateSettingsFallbackButtonVisibility()
-            } else if (prefKey == LauncherPreferences.widgets().keys().widgets()) {
-                binding.homeWidgetContainer.updateWidgets(
-                    this@HomeActivity,
-                    LauncherPreferences.widgets().widgets()
-                )
             } else if (prefKey?.startsWith("minimalist.") == true ||
                 prefKey == LauncherPreferences.general().keys().homeMode()
             ) {
@@ -110,27 +103,10 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
         return modifyTheme(super.getTheme())
     }
 
-    override fun onPause() {
-        try {
-            (application as Application).appWidgetHost.stopListening()
-        } catch (e: Exception) {
-            // Throws a NullPointerException on Android 12 an earlier, see #172
-            e.printStackTrace()
-        }
-        super.onPause()
-    }
-
     override fun onResume() {
         super.onResume()
         updateSettingsFallbackButtonVisibility()
         updateHomeMode()
-
-        binding.homeWidgetContainer.updateWidgets(
-            this@HomeActivity,
-            LauncherPreferences.widgets().widgets()
-        )
-
-        (application as Application).appWidgetHost.startListening()
     }
 
 

@@ -1,7 +1,5 @@
 package de.jrpie.android.launcher
 
-import android.appwidget.AppWidgetHost
-import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -28,14 +26,9 @@ import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
 
 
-const val APP_WIDGET_HOST_ID = 42
-
-
 class Application : android.app.Application() {
     val apps = MutableLiveData<List<AbstractDetailedAppInfo>>()
     val privateSpaceLocked = MutableLiveData<Boolean>()
-    lateinit var appWidgetHost: AppWidgetHost
-    lateinit var appWidgetManager: AppWidgetManager
 
     private val profileAvailabilityBroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -114,10 +107,6 @@ class Application : android.app.Application() {
         if (Build.VERSION.SDK_INT >= VERSION_CODES.M) {
             torchManager = TorchManager(this)
         }
-
-        appWidgetHost = AppWidgetHost(this.applicationContext, APP_WIDGET_HOST_ID)
-        appWidgetManager = AppWidgetManager.getInstance(this.applicationContext)
-
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         LauncherPreferences.init(preferences, this.resources)

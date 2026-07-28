@@ -131,16 +131,6 @@
 
     </PreferenceCategory>
     <PreferenceCategory
-        android:title="@string/settings_launcher_section_widgets"
-        app:allowDividerAbove="false">
-        <Preference
-            android:key="@string/settings_widgets_widgets_key"
-            android:title="@string/settings_widgets_widgets" />
-        <Preference
-            android:key="@string/settings_widgets_custom_panels_key"
-            android:title="@string/settings_widgets_custom_panels" />
-    </PreferenceCategory>
-    <PreferenceCategory
         android:title="@string/settings_launcher_section_display"
         app:allowDividerAbove="false">
         <SwitchPreference

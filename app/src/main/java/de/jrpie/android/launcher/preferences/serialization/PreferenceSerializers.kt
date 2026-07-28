@@ -3,8 +3,6 @@
 package de.jrpie.android.launcher.preferences.serialization
 
 import de.jrpie.android.launcher.apps.AbstractAppInfo
-import de.jrpie.android.launcher.widgets.Widget
-import de.jrpie.android.launcher.widgets.WidgetPanel
 import eu.jonahbauer.android.preference.annotations.serializer.PreferenceSerializationException
 import eu.jonahbauer.android.preference.annotations.serializer.PreferenceSerializer
 import kotlinx.serialization.Serializable
@@ -24,39 +22,6 @@ class SetAbstractAppInfoPreferenceSerializer :
     override fun deserialize(value: java.util.Set<java.lang.String>?): java.util.Set<AbstractAppInfo>? {
         return value?.map(java.lang.String::toString)?.map(AbstractAppInfo::deserialize)
             ?.toHashSet() as? java.util.Set<AbstractAppInfo>
-    }
-}
-
-
-@Suppress("UNCHECKED_CAST")
-class SetWidgetSerializer :
-    PreferenceSerializer<java.util.Set<Widget>?, java.util.Set<java.lang.String>?> {
-    @Throws(PreferenceSerializationException::class)
-    override fun serialize(value: java.util.Set<Widget>?): java.util.Set<java.lang.String>? {
-        return value?.map(Widget::serialize)
-            ?.toHashSet() as? java.util.Set<java.lang.String>
-    }
-
-    @Throws(PreferenceSerializationException::class)
-    override fun deserialize(value: java.util.Set<java.lang.String>?): java.util.Set<Widget>? {
-        return value?.map(java.lang.String::toString)?.map(Widget::deserialize)
-            ?.toHashSet() as? java.util.Set<Widget>
-    }
-}
-
-@Suppress("UNCHECKED_CAST")
-class SetWidgetPanelSerializer :
-    PreferenceSerializer<java.util.Set<WidgetPanel>?, java.util.Set<java.lang.String>?> {
-    @Throws(PreferenceSerializationException::class)
-    override fun serialize(value: java.util.Set<WidgetPanel>?): java.util.Set<java.lang.String>? {
-        return value?.map(WidgetPanel::serialize)
-            ?.toHashSet() as? java.util.Set<java.lang.String>
-    }
-
-    @Throws(PreferenceSerializationException::class)
-    override fun deserialize(value: java.util.Set<java.lang.String>?): java.util.Set<WidgetPanel>? {
-        return value?.map(java.lang.String::toString)?.map(WidgetPanel::deserialize)
-            ?.toHashSet() as? java.util.Set<WidgetPanel>
     }
 }
 
