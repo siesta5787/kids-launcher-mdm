@@ -78,8 +78,6 @@ To every gesture you can bind one of the following actions:
 OCM Launcher is compatible with [work profile](https://www.android.com/enterprise/work-profile/),
 so apps like [Shelter](https://gitea.angry.im/PeterCxy/Shelter) can be used.
 
-See [build.md](docs/build.md) for instructions how to build this project.
-
 ---
   [original-repo]: https://github.com/finnmglas/Launcher
   [ulauncher-repo]: https://github.com/jrpie/launcher

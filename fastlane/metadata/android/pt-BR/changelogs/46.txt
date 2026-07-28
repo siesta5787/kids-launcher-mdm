@@ -1,2 +1,0 @@
-* Corrigidos diversos bugs relacionados a widgets
-* Copia informações do dispositivo ao clicar no número da versão (obrigado, wassupluke!)
