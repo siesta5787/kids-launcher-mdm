@@ -42,10 +42,6 @@
             android:configChanges="orientation|screenSize"
             android:windowSoftInputMode="adjustResize" />
         <activity
-            android:name=".ui.list.SelectActionActivity"
-            android:configChanges="orientation|screenSize"
-            android:windowSoftInputMode="adjustResize" />
-        <activity
             android:name=".ui.settings.SettingsActivity"
             android:configChanges="orientation|screenSize"
             android:exported="true"

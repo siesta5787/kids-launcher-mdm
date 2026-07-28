@@ -8,8 +8,6 @@
     <string name="alert_cant_open_message">Want to change its settings?</string>
 
     <string name="toast_cant_open_message">Open settings to choose an action for this gesture</string>
-    <string name="snackbar_cant_open_message">The gesture %1$s has no assigned action</string>
-    <string name="snackbar_cant_open_message_button">Choose</string>
 
     <!--
       -
@@ -18,7 +16,6 @@
       -->
     <string name="settings_title">Settings</string>
 
-    <string name="settings_tab_actions">Actions</string>
     <string name="settings_tab_launcher">Launcher</string>
     <string name="settings_tab_meta">Meta</string>
 
@@ -104,11 +101,6 @@
     <string name="settings_gesture_description_double_click">Double click an empty area</string>
     <string name="settings_gesture_long_click">Long Click</string>
     <string name="settings_gesture_description_long_click">Long click an empty area</string>
-
-    <string name="settings_apps_choose">Choose App</string>
-
-    <string name="settings_apps_install">Install apps</string>
-    <string name="settings_apps_toast_store_not_found">Store not found</string>
 
     <!--
       -
@@ -202,11 +194,6 @@
     <string name="list_title_view">All Apps</string>
     <string name="list_title_hidden">Hidden Apps</string>
     <string name="list_title_private_space">Private Space</string>
-
-    <string name="activity_select_action_title">Choose Action</string>
-
-    <string name="list_tab_app">Apps</string>
-    <string name="list_tab_other">Other</string>
 
     <string name="list_app_delete">Uninstall</string>
     <string name="list_app_info">App Info</string>
@@ -304,7 +291,6 @@
     <string name="content_description_navigate_back">Navigate back</string>
     <string name="content_description_navigate_next">Navigate next</string>
     <string name="content_description_lock">Lock</string>
-    <string name="content_description_settings_actions_row_button_remove">Remove binding</string>
     <string name="toast_cant_launch_app">Error: Can\'t launch app</string>
     <string name="action_unknown">Invalid action (probably an uninstalled app)</string>
 </resources>

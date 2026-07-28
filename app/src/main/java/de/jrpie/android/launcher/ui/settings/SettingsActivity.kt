@@ -12,14 +12,12 @@ import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.databinding.SettingsBinding
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.ui.UIObjectActivity
-import de.jrpie.android.launcher.ui.settings.actions.SettingsFragmentActions
 import de.jrpie.android.launcher.ui.settings.launcher.SettingsFragmentLauncher
 import de.jrpie.android.launcher.ui.settings.meta.SettingsFragmentMeta
 
 /**
  * The [SettingsActivity] is a tabbed activity:
  *
- * | Actions    |   Choose apps or intents to be launched   | [SettingsFragmentActions] |
  * | Theme      |   Select a theme / Customize              | [SettingsFragmentLauncher]   |
  * | Meta       |   About Launcher / Contact etc.           | [SettingsFragmentMeta]    |
  *
@@ -82,7 +80,6 @@ class SettingsActivity : UIObjectActivity() {
 }
 
 private val TAB_TITLES = arrayOf(
-    R.string.settings_tab_actions,
     R.string.settings_tab_launcher,
     R.string.settings_tab_meta
 )
@@ -92,9 +89,8 @@ class SettingsSectionsPagerAdapter(private val activity: FragmentActivity) :
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
-            0 -> SettingsFragmentActions()
-            1 -> SettingsFragmentLauncher()
-            2 -> SettingsFragmentMeta()
+            0 -> SettingsFragmentLauncher()
+            1 -> SettingsFragmentMeta()
             else -> Fragment()
         }
     }
@@ -104,6 +100,6 @@ class SettingsSectionsPagerAdapter(private val activity: FragmentActivity) :
     }
 
     override fun getItemCount(): Int {
-        return 3
+        return 2
     }
 }

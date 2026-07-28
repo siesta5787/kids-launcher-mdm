@@ -20,15 +20,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
-import de.jrpie.android.launcher.actions.Action
-import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.AppInfo
 import de.jrpie.android.launcher.apps.DetailedAppInfo
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.preferences.list.ListLayout
-import de.jrpie.android.launcher.ui.list.AbstractListActivity
 import de.jrpie.android.launcher.ui.transformMonochrome
 
 /**
@@ -36,15 +33,11 @@ import de.jrpie.android.launcher.ui.transformMonochrome
  * The apps details are represented by [AppInfo].
  *
  * @param activity - the activity this is in
- * @param intention - why the list is displayed ("view", "pick")
- * @param forGesture - the action which an app is chosen for (when the intention is "pick")
  */
 @SuppressLint("NotifyDataSetChanged")
 class AppsRecyclerAdapter(
     val activity: Activity,
     val root: View,
-    private val intention: AbstractListActivity.Companion.Intention = AbstractListActivity.Companion.Intention.VIEW,
-    private val forGesture: String? = "",
     private var appFilter: AppFilter = AppFilter(activity, ""),
     private val layout: ListLayout,
 ) :
@@ -108,24 +101,21 @@ class AppsRecyclerAdapter(
         )
 
 
-        // decide when to show the options popup menu about
-        if (intention == AbstractListActivity.Companion.Intention.VIEW) {
-            viewHolder.textView.setOnLongClickListener {
-                showOptionsPopup(
-                    viewHolder,
-                    appsListDisplayed[i]
-                )
-            }
-            viewHolder.img.setOnLongClickListener {
-                showOptionsPopup(
-                    viewHolder,
-                    appsListDisplayed[i]
-                )
-            }
-            // ensure onClicks are actually caught
-            viewHolder.textView.setOnClickListener { viewHolder.onClick(viewHolder.textView) }
-            viewHolder.img.setOnClickListener { viewHolder.onClick(viewHolder.img) }
+        viewHolder.textView.setOnLongClickListener {
+            showOptionsPopup(
+                viewHolder,
+                appsListDisplayed[i]
+            )
         }
+        viewHolder.img.setOnLongClickListener {
+            showOptionsPopup(
+                viewHolder,
+                appsListDisplayed[i]
+            )
+        }
+        // ensure onClicks are actually caught
+        viewHolder.textView.setOnClickListener { viewHolder.onClick(viewHolder.textView) }
+        viewHolder.img.setOnClickListener { viewHolder.onClick(viewHolder.img) }
     }
 
     @Suppress("SameReturnValue")
@@ -198,18 +188,7 @@ class AppsRecyclerAdapter(
 
     fun selectItem(pos: Int, rect: Rect = Rect()) {
         val appInfo = appsListDisplayed.getOrNull(pos) ?: return
-        when (intention) {
-            AbstractListActivity.Companion.Intention.VIEW -> {
-                appInfo.getAction().invoke(activity, rect)
-            }
-
-            AbstractListActivity.Companion.Intention.PICK -> {
-                activity.finish()
-                forGesture ?: return
-                val gesture = Gesture.byId(forGesture) ?: return
-                Action.setActionForGesture(gesture, appInfo.getAction())
-            }
-        }
+        appInfo.getAction().invoke(activity, rect)
     }
 
     fun updateAppsList(triggerAutoLaunch: Boolean = false) {
@@ -218,7 +197,6 @@ class AppsRecyclerAdapter(
 
         if (triggerAutoLaunch &&
             appsListDisplayed.size == 1
-            && intention == AbstractListActivity.Companion.Intention.VIEW
             && !disableAutoLaunch
             && LauncherPreferences.functionality().searchAutoLaunch()
         ) {

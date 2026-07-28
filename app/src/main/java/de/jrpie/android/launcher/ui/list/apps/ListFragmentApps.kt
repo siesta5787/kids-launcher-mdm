@@ -72,7 +72,7 @@ class ListFragmentApps : Fragment(), UIObject {
 
         appsRecyclerAdapter =
             AppsRecyclerAdapter(
-                listActivity, binding.root, listActivity.intention, listActivity.forGesture,
+                listActivity, binding.root,
                 appFilter = AppFilter(
                     requireContext(),
                     "",
@@ -117,8 +117,6 @@ class ListFragmentApps : Fragment(), UIObject {
 
                 if (newText == " " &&
                     !appsRecyclerAdapter.disableAutoLaunch &&
-                    (activity as? AbstractListActivity)?.intention
-                    == AbstractListActivity.Companion.Intention.VIEW &&
                     LauncherPreferences.functionality().searchAutoLaunch()
                 ) {
                     appsRecyclerAdapter.disableAutoLaunch = true
@@ -134,9 +132,7 @@ class ListFragmentApps : Fragment(), UIObject {
             }
         })
 
-        if (listActivity.intention == AbstractListActivity.Companion.Intention.VIEW
-            && LauncherPreferences.functionality().searchAutoOpenKeyboard()
-        ) {
+        if (LauncherPreferences.functionality().searchAutoOpenKeyboard()) {
             binding.listAppsSearchview.openSoftKeyboard(requireContext())
         }
     }

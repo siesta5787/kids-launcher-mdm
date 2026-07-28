@@ -18,10 +18,8 @@ import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
  * The [AppListActivity] is used to view all apps and edit their settings.
- * The activity itself can also be chosen to be launched as an action.
  */
 class AppListActivity : AbstractListActivity() {
-    override val intention = Companion.Intention.VIEW
     private lateinit var binding: ActivityListBinding
 
     private fun updateLockIcon(locked: Boolean) {

@@ -8,10 +8,8 @@ import android.graphics.drawable.Drawable
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.edit
-import com.google.android.material.snackbar.Snackbar
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.ui.list.SelectActionActivity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -98,24 +96,11 @@ sealed interface Action {
                     context.overridePendingTransition(0, 0)
                 }
             } else {
-                if (context is Activity && gesture != null) {
-                    val message = context.getString(
-                        R.string.snackbar_cant_open_message,
-                        gesture.getLabel(context)
-                    )
-                    Snackbar
-                        .make(context.window.decorView.rootView, message, Snackbar.LENGTH_SHORT)
-                        .setAction(R.string.snackbar_cant_open_message_button) {
-                            SelectActionActivity.selectAction(context, gesture)
-                        }
-                        .show()
-                } else {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.toast_cant_open_message),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.toast_cant_open_message),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }

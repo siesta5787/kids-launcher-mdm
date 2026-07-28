@@ -48,7 +48,7 @@
                 android:gravity="center"
                 android:minHeight="?actionBarSize"
                 android:padding="@dimen/appbar_padding"
-                android:text="@string/activity_select_action_title"
+                android:text="@string/list_title_view"
                 android:textAppearance="@style/TextAppearance.Widget.AppCompat.Toolbar.Title"
                 android:textSize="30sp"
                 app:layout_constraintEnd_toStartOf="@id/list_lock"
