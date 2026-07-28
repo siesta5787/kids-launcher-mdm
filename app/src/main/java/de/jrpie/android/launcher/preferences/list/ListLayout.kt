@@ -13,19 +13,16 @@ enum class ListLayout(
     val layoutManager: (context: Context) -> RecyclerView.LayoutManager,
     val updateLayoutManager: (context: Context, layoutManager: RecyclerView.LayoutManager) -> Unit,
     val layoutResource: Int,
-    val useBadgedText: Boolean,
 ) {
     DEFAULT(
         { c -> LinearLayoutManager(c) },
         { _, _ -> },
         R.layout.list_apps_row,
-        false
     ),
     TEXT(
         { c -> LinearLayoutManager(c) },
         { _, _ -> },
         R.layout.list_apps_row_variant_text,
-        true
     ),
     GRID(
         { c ->
@@ -35,7 +32,6 @@ enum class ListLayout(
             (l as? GridLayoutManager)?.spanCount = getNumColumns(c)
         },
         R.layout.list_apps_row_variant_grid,
-        false
     ),
     GRID_ONLY_ICONS(
         { c ->
@@ -45,7 +41,6 @@ enum class ListLayout(
             (l as? GridLayoutManager)?.spanCount = getNumColumns(c, 55f)
         },
         R.layout.list_apps_row_variant_grid_only_icons,
-        false
     ),
 }
 
