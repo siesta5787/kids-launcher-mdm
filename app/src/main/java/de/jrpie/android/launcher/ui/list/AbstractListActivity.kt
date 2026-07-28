@@ -10,8 +10,6 @@ import de.jrpie.android.launcher.ui.UIObjectActivity
  */
 sealed class AbstractListActivity : UIObjectActivity() {
     // TODO: this should be a view model
-    var privateSpaceVisibility: AppFilter.Companion.AppSetVisibility =
-        AppFilter.Companion.AppSetVisibility.VISIBLE
     var hiddenVisibility: AppFilter.Companion.AppSetVisibility =
         AppFilter.Companion.AppSetVisibility.HIDDEN
     var pinnedVisibility: AppFilter.Companion.AppSetVisibility =
@@ -21,9 +19,6 @@ sealed class AbstractListActivity : UIObjectActivity() {
         super.onCreate(savedInstanceState)
 
         intent.extras?.let { bundle ->
-            @Suppress("deprecation") // required to support API level < 33
-            privateSpaceVisibility = bundle.getSerializable(KEY_PRIVATE_SPACE_VISIBILITY)
-                    as? AppFilter.Companion.AppSetVisibility ?: privateSpaceVisibility
             @Suppress("deprecation") // required to support API level < 33
             hiddenVisibility = bundle.getSerializable(KEY_HIDDEN_VISIBILITY)
                     as? AppFilter.Companion.AppSetVisibility ?: hiddenVisibility
@@ -42,7 +37,6 @@ sealed class AbstractListActivity : UIObjectActivity() {
     }
 
     companion object {
-        const val KEY_PRIVATE_SPACE_VISIBILITY = "privateSpaceVisibility"
         const val KEY_HIDDEN_VISIBILITY = "hiddenVisibility"
         const val KEY_PINNED_VISIBILITY = "pinnedVisibility"
     }

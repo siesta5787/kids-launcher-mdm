@@ -2,13 +2,7 @@ package de.jrpie.android.launcher.ui.list.apps
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Rect
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
-import android.os.UserHandle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -66,10 +60,6 @@ class AppsRecyclerAdapter(
         var textView: TextView = itemView.findViewById(R.id.list_apps_row_name)
         var img: ImageView = itemView.findViewById(R.id.list_apps_row_icon)
 
-        // only present in list_apps_row_variant_text.xml, where the icon itself is hidden and
-        // so can't carry the OS profile badge (e.g. private space) the way other layouts do
-        var badge: ImageView? = itemView.findViewById(R.id.list_apps_row_badge)
-
         override fun onClick(v: View) {
             val rect = Rect()
             img.getGlobalVisibleRect(rect)
@@ -91,15 +81,6 @@ class AppsRecyclerAdapter(
         viewHolder.img.setImageDrawable(appIcon.constantState?.newDrawable() ?: appIcon)
 
         viewHolder.textView.text = appLabel
-
-        // layouts whose icon is hidden (e.g. TEXT) can't show the OS profile badge (private
-        // space, work profile, ...) on the icon like the others do, so show it here instead;
-        // getUserBadgedIcon() returns the transparent base unchanged for the default profile,
-        // so this is naturally invisible for regular apps without checking isPrivate() here
-        viewHolder.badge?.setImageDrawable(
-            getProfileBadge(activity, appsListDisplayed[i].getUser(activity))
-        )
-
 
         viewHolder.textView.setOnLongClickListener {
             showOptionsPopup(
@@ -220,21 +201,4 @@ class AppsRecyclerAdapter(
 
     }
 
-}
-
-/*
- * Extracts just the OS profile badge (e.g. the private space shield) as its own small
- * drawable, by asking the system to badge a blank transparent square - PackageManager
- * composites the badge onto whatever icon it's given, so a transparent base leaves only
- * the badge itself visible. Returns the base unchanged (i.e. fully transparent) for users
- * the system doesn't badge, such as the default profile.
- */
-private fun getProfileBadge(context: Context, user: UserHandle): Drawable {
-    val size = TypedValue.applyDimension(
-        TypedValue.COMPLEX_UNIT_SP, 40f, context.resources.displayMetrics
-    ).toInt().coerceAtLeast(1)
-    val transparent = BitmapDrawable(
-        context.resources, Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    )
-    return context.packageManager.getUserBadgedIcon(transparent, user)
 }

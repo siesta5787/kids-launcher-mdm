@@ -49,8 +49,6 @@
 
     <string name="settings_launcher_section_apps">Apps</string>
     <string name="settings_apps_hidden">Hidden apps</string>
-    <string name="settings_apps_hide_paused_apps">Hide paused apps</string>
-    <string name="settings_apps_hide_private_space_apps">Hide private space from app list</string>
     <string name="settings_list_layout">Layout of app list</string>
 
     <string name="settings_list_layout_item_default">Default</string>
@@ -98,7 +96,6 @@
       -->
     <string name="list_title_view">All Apps</string>
     <string name="list_title_hidden">Hidden Apps</string>
-    <string name="list_title_private_space">Private Space</string>
 
     <string name="list_app_delete">Uninstall</string>
     <string name="list_app_info">App Info</string>
@@ -112,20 +109,11 @@
     <string name="list_apps_search_hint_no_auto_launch">Search (no auto launch)</string>
 
     <string name="settings">Settings</string>
-    <string name="ic_menu_alt">More options</string>
-    <string name="alert_cant_expand_status_bar_panel">Error: Can\'t expand status bar. This action is using functionality that is not part of the published Android API. Unfortunately, it does not seem to work on your device.</string>
-    <string name="alert_requires_android_v">This functionality requires Android 15 or later.</string>
     <string name="snackbar_app_hidden">App hidden. You can make it visible again in settings.</string>
     <string name="undo">Undo</string>
     <string name="toast_device_admin_not_enabled">OCM Launcher needs to be a device admin in order to lock the screen.</string>
     <string name="device_admin_explanation">This is required for the lock screen action.</string>
     <string name="device_admin_description">Enable the lock screen action</string>
-    <string name="toast_private_space_locked">Private space locked</string>
-    <string name="toast_private_space_unlocked">Private space unlocked</string>
-    <string name="toast_private_space_not_available">Private space is not available</string>
-    <string name="toast_private_space_default_home_screen">OCM Launcher needs to be the default home screen to access private space.</string>
-    <string name="tooltip_lock_private_space">Lock private space</string>
-    <string name="tooltip_unlock_private_space">Unlock private space</string>
     <string name="dialog_rename_title">Rename %1$s</string>
     <string name="dialog_select_color_red">Red</string>
     <string name="dialog_select_color_alpha">Alpha</string>
@@ -173,8 +161,5 @@
       -
       -->
     <string name="content_description_close">Close</string>
-    <string name="content_description_navigate_back">Navigate back</string>
-    <string name="content_description_navigate_next">Navigate next</string>
-    <string name="content_description_lock">Lock</string>
     <string name="toast_cant_launch_app">Error: Can\'t launch app</string>
 </resources>

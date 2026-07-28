@@ -76,7 +76,6 @@ class ListFragmentApps : Fragment(), UIObject {
                 appFilter = AppFilter(
                     requireContext(),
                     "",
-                    privateSpaceVisibility = listActivity.privateSpaceVisibility,
                     hiddenVisibility = listActivity.hiddenVisibility,
                     pinnedVisibility = listActivity.pinnedVisibility
                 ),

@@ -11,7 +11,6 @@ class AppFilter(
     var context: Context,
     var query: String,
     var hiddenVisibility: AppSetVisibility = AppSetVisibility.HIDDEN,
-    var privateSpaceVisibility: AppSetVisibility = AppSetVisibility.VISIBLE,
     var pinnedVisibility: AppSetVisibility = AppSetVisibility.VISIBLE
 ) {
 
@@ -20,13 +19,10 @@ class AppFilter(
             apps.sortedBy { app -> app.getCustomLabel(context).lowercase(Locale.ROOT) }
 
         val hidden = LauncherPreferences.apps().hidden() ?: setOf()
-        val private = apps.filter { it.isPrivate() }
-            .map { it.getRawInfo() }.toSet()
         val pinned = LauncherPreferences.minimalist().apps() ?: setOf()
 
         apps = apps.filter { info ->
             hiddenVisibility.predicate(hidden, info)
-                    && privateSpaceVisibility.predicate(private, info)
                     && pinnedVisibility.predicate(pinned, info)
         }
 

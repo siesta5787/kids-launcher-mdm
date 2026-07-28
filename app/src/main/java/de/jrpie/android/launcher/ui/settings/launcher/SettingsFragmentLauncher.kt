@@ -1,6 +1,5 @@
 package de.jrpie.android.launcher.ui.settings.launcher
 
-import android.os.Build
 import android.os.Bundle
 import androidx.preference.PreferenceFragmentCompat
 import de.jrpie.android.launcher.R
@@ -52,10 +51,5 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             entryValues = ColorTheme.entries.filter { x -> x.isAvailable() }
                 .map { x -> x.name }.toTypedArray()
         }
-
-        val hidePausedApps = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.apps().keys().hidePausedApps()
-        )
-        hidePausedApps?.isVisible = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
     }
 }

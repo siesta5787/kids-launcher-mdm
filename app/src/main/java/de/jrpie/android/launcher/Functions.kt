@@ -23,8 +23,6 @@ import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.AppInfo
 import de.jrpie.android.launcher.apps.DetailedAppInfo
-import de.jrpie.android.launcher.apps.getPrivateSpaceUser
-import de.jrpie.android.launcher.apps.isPrivateSpaceSupported
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.ui.list.AbstractListActivity
 import de.jrpie.android.launcher.ui.list.AppListActivity
@@ -89,7 +87,6 @@ fun openSettings(context: Context) {
 fun openAppsList(
     context: Context,
     hidden: Boolean = false,
-    private: Boolean = false,
     excludePinned: Boolean = false
 ) {
     val intent = Intent(context, AppListActivity::class.java)
@@ -99,16 +96,6 @@ fun openAppsList(
             AppFilter.Companion.AppSetVisibility.EXCLUSIVE
         } else {
             AppFilter.Companion.AppSetVisibility.HIDDEN
-        }
-    )
-    intent.putExtra(
-        AbstractListActivity.KEY_PRIVATE_SPACE_VISIBILITY,
-        if (private) {
-            AppFilter.Companion.AppSetVisibility.EXCLUSIVE
-        } else if (!hidden && LauncherPreferences.apps().hidePrivateSpaceApps()) {
-            AppFilter.Companion.AppSetVisibility.HIDDEN
-        } else {
-            AppFilter.Companion.AppSetVisibility.VISIBLE
         }
     )
     intent.putExtra(
@@ -155,29 +142,12 @@ fun getApps(
     val launcherApps = context.getSystemService(Service.LAUNCHER_APPS_SERVICE) as LauncherApps
     val userManager = context.getSystemService(Service.USER_SERVICE) as UserManager
 
-    val privateSpaceUser = getPrivateSpaceUser(context)
-
     // TODO: shortcuts - launcherApps.getShortcuts()
     val users = userManager.userProfiles
     for (user in users) {
-        // don't load apps from a user profile that has quiet mode enabled
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            if (userManager.isQuietModeEnabled(user)) {
-                // hide paused apps
-                if (LauncherPreferences.apps().hidePausedApps()) {
-                    continue
-                }
-                // hide apps from private space
-                if (isPrivateSpaceSupported() &&
-                    launcherApps.getLauncherUserInfo(user)?.userType == UserManager.USER_TYPE_PROFILE_PRIVATE
-                ) {
-                    continue
-                }
-            }
-        }
         try {
             launcherApps.getActivityList(null, user).forEach {
-                loadList.add(DetailedAppInfo(it, it.user == privateSpaceUser))
+                loadList.add(DetailedAppInfo(it))
             }
         } catch (e: Exception) {
             // getActivityList seems to be broken on some Android distributions.
@@ -204,8 +174,7 @@ fun getApps(
             val detailedAppInfo = DetailedAppInfo(
                 app,
                 ri.loadLabel(packageManager),
-                ri.activityInfo.loadIcon(packageManager),
-                false
+                ri.activityInfo.loadIcon(packageManager)
             )
             loadList.add(detailedAppInfo)
         }

@@ -15,7 +15,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
 import de.jrpie.android.launcher.apps.AbstractAppInfo
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
-import de.jrpie.android.launcher.apps.isPrivateSpaceLocked
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.preferences.migratePreferencesToNewVersion
 import de.jrpie.android.launcher.preferences.resetPreferences
@@ -27,7 +26,6 @@ import kotlin.system.exitProcess
 
 class Application : android.app.Application() {
     val apps = MutableLiveData<List<AbstractDetailedAppInfo>>()
-    val privateSpaceLocked = MutableLiveData<Boolean>()
 
     private val profileAvailabilityBroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -149,7 +147,6 @@ class Application : android.app.Application() {
     }
 
     private fun loadApps() {
-        privateSpaceLocked.postValue(isPrivateSpaceLocked(this))
         CoroutineScope(Dispatchers.Default).launch {
             apps.postValue(getApps(packageManager, applicationContext))
         }

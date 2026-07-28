@@ -51,7 +51,7 @@
                 android:text="@string/list_title_view"
                 android:textAppearance="@style/TextAppearance.Widget.AppCompat.Toolbar.Title"
                 android:textSize="30sp"
-                app:layout_constraintEnd_toStartOf="@id/list_lock"
+                app:layout_constraintEnd_toStartOf="@id/list_close"
                 app:layout_constraintStart_toEndOf="@id/list_settings"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -69,22 +69,6 @@
                 android:src="@drawable/baseline_close_24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <ImageView
-                android:id="@+id/list_lock"
-                android:contentDescription="@string/content_description_lock"
-                android:visibility="gone"
-                tools:visibility="visible"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:includeFontPadding="true"
-                android:paddingLeft="0sp"
-                android:paddingRight="0sp"
-                android:src="@drawable/baseline_lock_24"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/list_close"
                 app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.appbar.AppBarLayout>

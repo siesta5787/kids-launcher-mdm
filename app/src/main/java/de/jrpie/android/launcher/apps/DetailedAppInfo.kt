@@ -15,11 +15,10 @@ class DetailedAppInfo(
     private val app: AppInfo,
     private val label: CharSequence,
     private val icon: Drawable,
-    private val privateSpace: Boolean,
     private val removable: Boolean = true,
 ) : AbstractDetailedAppInfo {
 
-    constructor(activityInfo: LauncherActivityInfo, private: Boolean) : this(
+    constructor(activityInfo: LauncherActivityInfo) : this(
         AppInfo(
             activityInfo.applicationInfo.packageName,
             activityInfo.name,
@@ -27,7 +26,6 @@ class DetailedAppInfo(
         ),
         activityInfo.label,
         activityInfo.getBadgedIcon(0),
-        private,
         // App can be uninstalled iff it is not a system app
         activityInfo.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
     )
@@ -49,10 +47,6 @@ class DetailedAppInfo(
         return getUserFromId(app.user, context)
     }
 
-    override fun isPrivate(): Boolean {
-        return privateSpace
-    }
-
     override fun isRemovable(): Boolean {
         return removable
     }
@@ -65,7 +59,7 @@ class DetailedAppInfo(
     companion object {
         fun fromAppInfo(appInfo: AppInfo, context: Context): DetailedAppInfo? {
             return appInfo.getLauncherActivityInfo(context)?.let {
-                DetailedAppInfo(it, it.user == getPrivateSpaceUser(context))
+                DetailedAppInfo(it)
             }
         }
     }
