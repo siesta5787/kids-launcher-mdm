@@ -5,7 +5,6 @@ import android.os.Build
 import android.os.Bundle
 import androidx.preference.PreferenceFragmentCompat
 import de.jrpie.android.launcher.R
-import de.jrpie.android.launcher.actions.lock.LockMethod
 import de.jrpie.android.launcher.actions.openAppsList
 import de.jrpie.android.launcher.preferences.HomeMode
 import de.jrpie.android.launcher.preferences.LauncherPreferences
@@ -86,15 +85,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             true
         }
 
-        val lockMethod = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.actions().keys().lockMethod()
-        )
-
-        lockMethod?.setOnPreferenceClickListener {
-            LockMethod.chooseMethod(requireContext())
-            true
-        }
-
         findPreference<androidx.preference.DropDownPreference>(
             LauncherPreferences.theme().keys().colorTheme()
         )?.apply {
@@ -104,10 +94,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                 .map { x -> x.name }.toTypedArray()
         }
 
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            lockMethod?.isVisible = false
-        }
 
         updateVisibility()
     }

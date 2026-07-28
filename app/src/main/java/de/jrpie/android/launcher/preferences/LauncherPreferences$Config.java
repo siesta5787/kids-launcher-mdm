@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Set;
 
 import de.jrpie.android.launcher.R;
-import de.jrpie.android.launcher.actions.lock.LockMethod;
 import de.jrpie.android.launcher.preferences.list.ListLayout;
 import de.jrpie.android.launcher.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
@@ -58,9 +57,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "edge_swipe", type = boolean.class, defaultValue = "true"),
                         @Preference(name = "edge_swipe_edge_width", type = int.class, defaultValue = "15"),
                         @Preference(name = "diagonal_swipe", type = boolean.class, defaultValue = "false"),
-                }),
-                @PreferenceGroup(name = "actions", prefix = "settings_actions_", suffix = "_key", value = {
-                        @Preference(name = "lock_method", type = LockMethod.class, defaultValue = "DEVICE_ADMIN"),
                 }),
                 @PreferenceGroup(name = "minimalist", prefix = "settings_minimalist_", suffix = "_key", value = {
                         @Preference(name = "allow_gestures", type = boolean.class, defaultValue = "false"),

@@ -5,14 +5,12 @@ import android.content.Intent
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.media.AudioManager
-import android.os.Build
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
-import de.jrpie.android.launcher.actions.lock.LauncherAccessibilityService
 import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.hidePrivateSpaceWhenLocked
 import de.jrpie.android.launcher.apps.isPrivateSpaceSupported
@@ -127,25 +125,6 @@ enum class LauncherAction(
         R.drawable.baseline_settings_applications_24,
         ::expandSettingsPanel
     ),
-    RECENT_APPS(
-        "recent_apps",
-        R.string.list_other_recent_apps,
-        R.drawable.baseline_apps_24,
-        LauncherAccessibilityService::openRecentApps,
-        false,
-    ),
-    LOCK_SCREEN(
-        "lock_screen",
-        R.string.list_other_lock_screen,
-        R.drawable.baseline_lock_24,
-        { c -> LauncherPreferences.actions().lockMethod().lockOrEnable(c) }
-    ),
-    TORCH(
-        "toggle_torch",
-        R.string.list_other_torch,
-        R.drawable.baseline_flashlight_on_24,
-        ::toggleTorch,
-    ),
     LAUNCH_OTHER_LAUNCHER(
         "launcher_other_launcher",
         R.string.list_other_launch_other_launcher,
@@ -207,19 +186,6 @@ private fun audioVolumeAdjust(context: Context, direction: Int) {
 }
 
 /* End media player actions */
-
-private fun toggleTorch(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-        Toast.makeText(
-            context,
-            context.getString(R.string.alert_requires_android_m),
-            Toast.LENGTH_LONG
-        ).show()
-        return
-    }
-
-    (context.applicationContext as Application).torchManager?.toggleTorch(context)
-}
 
 private fun expandNotificationsPanel(context: Context) {
     /* https://stackoverflow.com/a/15582509 */

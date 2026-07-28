@@ -13,7 +13,6 @@ import android.os.UserHandle
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
-import de.jrpie.android.launcher.actions.TorchManager
 import de.jrpie.android.launcher.apps.AbstractAppInfo
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.apps.isPrivateSpaceLocked
@@ -85,7 +84,6 @@ class Application : android.app.Application() {
         }
     }
 
-    var torchManager: TorchManager? = null
     private var customAppNames: HashMap<AbstractAppInfo, String>? = null
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, pref ->
         if (pref == getString(R.string.settings_apps_custom_names_key)) {
@@ -103,10 +101,6 @@ class Application : android.app.Application() {
             exitProcess(1)
         }
 
-
-        if (Build.VERSION.SDK_INT >= VERSION_CODES.M) {
-            torchManager = TorchManager(this)
-        }
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         LauncherPreferences.init(preferences, this.resources)

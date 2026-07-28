@@ -230,16 +230,12 @@
     <string name="list_other_track_previous">Music: Previous</string>
     <string name="list_other_track_play_pause">Music: Play / Pause</string>
     <string name="list_other_expand_notifications_panel">Expand Notifications Panel</string>
-    <string name="list_other_recent_apps">Recent Apps</string>
     <string name="list_other_nop">Do Nothing</string>
-    <string name="list_other_lock_screen">Lock Screen</string>
-    <string name="list_other_torch">Toggle Torch</string>
     <string name="list_other_launch_other_launcher">Launch Other Home Screen</string>
 
     <string name="settings">Settings</string>
     <string name="ic_menu_alt">More options</string>
     <string name="alert_cant_expand_status_bar_panel">Error: Can\'t expand status bar. This action is using functionality that is not part of the published Android API. Unfortunately, it does not seem to work on your device.</string>
-    <string name="alert_requires_android_m">This functionality requires Android 6 or later.</string>
     <string name="alert_requires_android_v">This functionality requires Android 15 or later.</string>
     <string name="snackbar_app_hidden">App hidden. You can make it visible again in settings.</string>
     <string name="undo">Undo</string>
@@ -247,63 +243,12 @@
     <string name="toast_device_admin_not_enabled">OCM Launcher needs to be a device admin in order to lock the screen.</string>
     <string name="device_admin_explanation">This is required for the lock screen action.</string>
     <string name="device_admin_description">Enable the lock screen action</string>
-    <string name="alert_no_torch_found">No camera with torch detected.</string>
-    <string name="alert_torch_access_exception">Error: Can\'t access torch.</string>
-    <string name="alert_lock_screen_failed">Error: Failed to lock screen. (If you just upgraded the app, try to disable and re-enable the accessibility service in phone settings)</string>
-    <string name="alert_recent_apps_failed">Error: Failed to show recent apps. (If you just upgraded the app, try to disable and re-enable the accessibility service in phone settings)</string>
-    <string name="alert_enable_accessibility_failed">Error: Failed to enable the accessibility service.</string>
-    <string name="toast_accessibility_service_not_enabled">OCM Launcher\'s accessibility service is not enabled. Please enable it in settings</string>
     <string name="toast_private_space_locked">Private space locked</string>
     <string name="toast_private_space_unlocked">Private space unlocked</string>
     <string name="toast_private_space_not_available">Private space is not available</string>
     <string name="toast_private_space_default_home_screen">OCM Launcher needs to be the default home screen to access private space.</string>
     <string name="tooltip_lock_private_space">Lock private space</string>
     <string name="tooltip_unlock_private_space">Unlock private space</string>
-    <string name="toast_lock_screen_not_supported">Error: Locking the screen using accessibility is not supported on this device. Please use device admin instead.</string>
-    <string name="accessibility_service_name">OCM Launcher</string>
-    <string name="accessibility_service_description">
-        Setting OCM Launcher as an accessibility service allows it to lock the screen and open the recent apps menu.
-        Note that excessive permissions are required. You should never grant such permissions lightly to any app.
-
-        OCM Launcher will use the accessibility service only for performing the following actions when requested by the user:
-
-        * lock screen
-        * open recent apps
-
-        OCM Launcher will never use the accessibility service to collect data. You can check the source code to make sure.
-
-        Note that locking the screen can also be accomplished by granting OCM Launcher device administrator permissions. However that method doesn\'t work with fingerprint and face unlock.
-    </string>
-
-
-    <string name="screen_lock_method_dialog_title">Choose Method for Locking</string>
-    <string name="screen_lock_method_dialog_text"><![CDATA[
-        <h1>Choose locking method</h1>
-        There are two methods to lock the screen.
-        Unfortunately both have downsides:<br/><br/>
-
-        <h3>Device Admin</h3>
-        Doesn\'t work with unlocking by fingerprint or face recognition.
-
-        <br/>
-        <br/>
-
-        <h3>Accessibility Service</h3>
-        Requires excessive privileges.
-        OCM Launcher will use those privileges only for locking the screen.
-        <br/>
-        (You really should not trust a random app you just downloaded with such a claim, but you can check the <a href=\"https://github.com/jrpie/Launcher\">source code</a>.)
-        <br/>
-        On some devices, the start-up PIN will no longer be used for encrypting data after activating an accessibility service.
-        This can be <a href="https://issuetracker.google.com/issues/37010136#comment36">reactivated</a> afterwards.
-
-        <br/><br/><br/><br/>
-        You can change your selection later in settings.
-        ]]>
-    </string>
-    <string name="screen_lock_method_use_accessibility">Use Accessibility Service</string>
-    <string name="screen_lock_method_use_device_admin">Use Device Admin</string>
-    <string name="settings_actions_lock_method">Choose method for locking the screen</string>
     <string name="dialog_rename_title">Rename %1$s</string>
     <string name="dialog_select_color_red">Red</string>
     <string name="dialog_select_color_alpha">Alpha</string>
@@ -311,18 +256,6 @@
     <string name="dialog_select_color_green">Green</string>
     <string name="dialog_select_color_color_hex">Color</string>
     <string name="dialog_choose_color_title">Choose color</string>
-    <string name="dialog_consent_accessibility_privileges">I am aware that this will grant far-reaching privileges to OCM Launcher.</string>
-    <string name="dialog_consent_accessibility_other_options">I am aware that other options exist (using device administrator privileges or the power button).</string>
-    <string name="dialog_consent_accessibility_consent">I consent to OCM Launcher using the accessibility service to provide functionality unrelated to accessibility.</string>
-    <string name="dialog_consent_accessibility_data_collection">I consent to OCM Launcher not collecting any data.</string>
-    <string name="dialog_consent_accessibility_text"><![CDATA[You are about to activate the accessibility service. This will grant <strong>far-reaching privileges</strong> to OCM Launcher.<br/>OCM Launcher will use these privileges <strong>only</strong> to perform the following actions:
-    <ul>
-        <li>Lock Screen</li>
-        <li>Recent Apps</li>
-    </ul>
-     OCM Launcher <strong>will never collect any data</strong>. In particular, OCM Launcher does not use the accessibility service to collect any data.]]></string>
-    <string name="dialog_consent_accessibility_title">Activating the Accessibility Service</string>
-    <string name="dialog_consent_accessibility_ok">Activate Accessibility Service</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="settings_meta_licenses">Open Source Licenses</string>
     <string name="legal_info_title">Open Source Licenses</string>
