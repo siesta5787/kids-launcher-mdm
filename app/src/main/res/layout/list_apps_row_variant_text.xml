@@ -24,7 +24,7 @@
         android:gravity="start|center_horizontal"
         android:padding="5dp"
         android:paddingStart="20dp"
-        android:paddingEnd="20dp"
+        android:paddingEnd="6dp"
         android:text=""
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -36,8 +36,8 @@
          by getUserBadgedIcon() - invisible for the default profile, so no per-app check needed -->
     <ImageView
         android:id="@+id/list_apps_row_badge"
-        android:layout_width="26sp"
-        android:layout_height="26sp"
+        android:layout_width="32sp"
+        android:layout_height="32sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/list_apps_row_name"
         app:layout_constraintTop_toTopOf="parent"
