@@ -100,8 +100,6 @@ class AppListActivity : AbstractListActivity() {
                 R.string.list_title_hidden
             } else if (privateSpaceVisibility == AppFilter.Companion.AppSetVisibility.EXCLUSIVE) {
                 R.string.list_title_private_space
-            } else if (favoritesVisibility == AppFilter.Companion.AppSetVisibility.EXCLUSIVE) {
-                R.string.list_title_favorite
             } else {
                 R.string.list_title_view
             }

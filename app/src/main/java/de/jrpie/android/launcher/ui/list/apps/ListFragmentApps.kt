@@ -15,7 +15,6 @@ import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.ui.UIObject
 import de.jrpie.android.launcher.ui.closeSoftKeyboard
 import de.jrpie.android.launcher.ui.list.AbstractListActivity
-import de.jrpie.android.launcher.ui.list.AppListActivity
 import de.jrpie.android.launcher.ui.openSoftKeyboard
 import kotlin.math.absoluteValue
 
@@ -48,9 +47,6 @@ class ListFragmentApps : Fragment(), UIObject {
         super<UIObject>.onStart()
         LauncherPreferences.getSharedPreferences()
             .registerOnSharedPreferenceChangeListener(sharedPreferencesListener)
-
-        binding.listAppsCheckBoxFavorites.isChecked =
-            ((activity as? AppListActivity)?.favoritesVisibility == AppFilter.Companion.AppSetVisibility.EXCLUSIVE)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -80,7 +76,6 @@ class ListFragmentApps : Fragment(), UIObject {
                 appFilter = AppFilter(
                     requireContext(),
                     "",
-                    favoritesVisibility = listActivity.favoritesVisibility,
                     privateSpaceVisibility = listActivity.privateSpaceVisibility,
                     hiddenVisibility = listActivity.hiddenVisibility
                 ),
@@ -138,17 +133,6 @@ class ListFragmentApps : Fragment(), UIObject {
                 return false
             }
         })
-
-        binding.listAppsCheckBoxFavorites.setOnClickListener {
-            listActivity.favoritesVisibility =
-                if (binding.listAppsCheckBoxFavorites.isChecked) {
-                    AppFilter.Companion.AppSetVisibility.EXCLUSIVE
-                } else {
-                    AppFilter.Companion.AppSetVisibility.VISIBLE
-                }
-            appsRecyclerAdapter.setFavoritesVisibility(listActivity.favoritesVisibility)
-            (activity as? AppListActivity)?.updateTitle()
-        }
 
         if (listActivity.intention == AbstractListActivity.Companion.Intention.VIEW
             && LauncherPreferences.functionality().searchAutoOpenKeyboard()

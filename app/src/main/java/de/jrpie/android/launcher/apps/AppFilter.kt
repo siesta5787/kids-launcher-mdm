@@ -13,7 +13,6 @@ import kotlin.text.Regex.Companion.escape
 class AppFilter(
     var context: Context,
     var query: String,
-    var favoritesVisibility: AppSetVisibility = AppSetVisibility.VISIBLE,
     var hiddenVisibility: AppSetVisibility = AppSetVisibility.HIDDEN,
     var privateSpaceVisibility: AppSetVisibility = AppSetVisibility.VISIBLE
 ) {
@@ -23,13 +22,11 @@ class AppFilter(
             apps.sortedBy { app -> app.getCustomLabel(context).lowercase(Locale.ROOT) }
 
         val hidden = LauncherPreferences.apps().hidden() ?: setOf()
-        val favorites = LauncherPreferences.apps().favorites() ?: setOf()
         val private = apps.filter { it.isPrivate() }
             .map { it.getRawInfo() }.toSet()
 
         apps = apps.filter { info ->
-            favoritesVisibility.predicate(favorites, info)
-                    && hiddenVisibility.predicate(hidden, info)
+            hiddenVisibility.predicate(hidden, info)
                     && privateSpaceVisibility.predicate(private, info)
         }
 

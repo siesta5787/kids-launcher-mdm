@@ -200,7 +200,6 @@
       -
       -->
     <string name="list_title_view">All Apps</string>
-    <string name="list_title_favorite">Favorite Apps</string>
     <string name="list_title_hidden">Hidden Apps</string>
     <string name="list_title_private_space">Private Space</string>
 
@@ -211,8 +210,6 @@
 
     <string name="list_app_delete">Uninstall</string>
     <string name="list_app_info">App Info</string>
-    <string name="list_app_favorite_add">Add to favorites</string>
-    <string name="list_app_favorite_remove">Remove from favorites</string>
     <string name="list_app_hidden_add">Hide</string>
     <string name="list_app_hidden_remove">Show</string>
     <string name="list_app_minimalist_add">Add to minimal list</string>
@@ -224,7 +221,6 @@
 
     <string name="list_other_settings">OCM Launcher Settings</string>
     <string name="list_other_list">All Applications</string>
-    <string name="list_other_list_favorites">Favorite Applications</string>
     <string name="list_other_list_private_space">Private Space</string>
     <string name="list_other_toggle_private_space_lock">Toggle Private Space Lock</string>
     <string name="list_other_volume_up">Raise Volume</string>
@@ -378,6 +374,4 @@
     <string name="content_description_settings_actions_row_button_remove">Remove binding</string>
     <string name="toast_cant_launch_app">Error: Can\'t launch app</string>
     <string name="action_unknown">Invalid action (probably an uninstalled app)</string>
-    <string name="invalid_shortcut">Invalid shortcut</string>
-    <string name="content_description_toggle_favorites">Filter favorite apps</string>
 </resources>

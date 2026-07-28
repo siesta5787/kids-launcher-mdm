@@ -74,7 +74,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             LauncherPreferences.apps().keys().hidden()
         )
         hiddenApps?.setOnPreferenceClickListener {
-            openAppsList(requireContext(), favorite = false, hidden = true)
+            openAppsList(requireContext(), hidden = true)
             true
         }
 

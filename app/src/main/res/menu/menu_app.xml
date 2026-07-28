@@ -4,9 +4,6 @@
         android:id="@+id/app_menu_info"
         android:title="@string/list_app_info" />
     <item
-        android:id="@+id/app_menu_favorite"
-        android:title="@string/list_app_favorite_add" />
-    <item
         android:id="@+id/app_menu_hidden"
         android:title="@string/list_app_hidden_add" />
     <item

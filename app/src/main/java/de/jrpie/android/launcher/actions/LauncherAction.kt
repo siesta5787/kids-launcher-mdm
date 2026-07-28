@@ -57,13 +57,6 @@ enum class LauncherAction(
         ::openAppsList,
         true
     ),
-    CHOOSE_FROM_FAVORITES(
-        "choose_from_favorites",
-        R.string.list_other_list_favorites,
-        R.drawable.baseline_favorite_24,
-        { context -> openAppsList(context, favorite = true) },
-        true
-    ),
     CHOOSE_FROM_PRIVATE_SPACE(
         "choose_from_private_space",
         R.string.list_other_list_private_space,
@@ -278,19 +271,10 @@ private fun openSettings(context: Context) {
 
 fun openAppsList(
     context: Context,
-    favorite: Boolean = false,
     hidden: Boolean = false,
     private: Boolean = false
 ) {
     val intent = Intent(context, AppListActivity::class.java)
-    intent.putExtra(
-        AbstractListActivity.KEY_FAVORITES_VISIBILITY,
-        if (favorite) {
-            AppFilter.Companion.AppSetVisibility.EXCLUSIVE
-        } else {
-            AppFilter.Companion.AppSetVisibility.VISIBLE
-        }
-    )
     intent.putExtra(
         AbstractListActivity.KEY_HIDDEN_VISIBILITY,
         if (hidden) {

@@ -150,10 +150,6 @@ class AppsRecyclerAdapter(
             popup.menu.findItem(R.id.app_menu_hidden).setTitle(R.string.list_app_hidden_remove)
         }
 
-        if (LauncherPreferences.apps().favorites()?.contains(appInfo.getRawInfo()) == true) {
-            popup.menu.findItem(R.id.app_menu_favorite).setTitle(R.string.list_app_favorite_remove)
-        }
-
         if (LauncherPreferences.minimalist().apps()?.contains(appInfo.getRawInfo()) == true) {
             popup.menu.findItem(R.id.app_menu_minimalist).setTitle(R.string.list_app_minimalist_remove)
         }
@@ -167,10 +163,6 @@ class AppsRecyclerAdapter(
 
                 R.id.app_menu_info -> {
                     (appInfo.getRawInfo() as? AppInfo)?.openSettings(activity); true
-                }
-
-                R.id.app_menu_favorite -> {
-                    appInfo.getRawInfo().toggleFavorite(); true
                 }
 
                 R.id.app_menu_hidden -> {
@@ -250,10 +242,6 @@ class AppsRecyclerAdapter(
 
     }
 
-    fun setFavoritesVisibility(v: AppFilter.Companion.AppSetVisibility) {
-        appFilter.favoritesVisibility = v
-        updateAppsList()
-    }
 }
 
 /*

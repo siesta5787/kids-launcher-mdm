@@ -15,8 +15,6 @@ sealed class AbstractListActivity : UIObjectActivity() {
     abstract val intention: Intention
 
     // TODO: this should be a view model
-    var favoritesVisibility: AppFilter.Companion.AppSetVisibility =
-        AppFilter.Companion.AppSetVisibility.VISIBLE
     var privateSpaceVisibility: AppFilter.Companion.AppSetVisibility =
         AppFilter.Companion.AppSetVisibility.VISIBLE
     var hiddenVisibility: AppFilter.Companion.AppSetVisibility =
@@ -29,9 +27,6 @@ sealed class AbstractListActivity : UIObjectActivity() {
         super.onCreate(savedInstanceState)
 
         intent.extras?.let { bundle ->
-            @Suppress("deprecation") // required to support API level < 33
-            favoritesVisibility = bundle.getSerializable(KEY_FAVORITES_VISIBILITY)
-                    as? AppFilter.Companion.AppSetVisibility ?: favoritesVisibility
             @Suppress("deprecation") // required to support API level < 33
             privateSpaceVisibility = bundle.getSerializable(KEY_PRIVATE_SPACE_VISIBILITY)
                     as? AppFilter.Companion.AppSetVisibility ?: privateSpaceVisibility
@@ -51,7 +46,6 @@ sealed class AbstractListActivity : UIObjectActivity() {
     }
 
     companion object {
-        const val KEY_FAVORITES_VISIBILITY = "favoritesVisibility"
         const val KEY_PRIVATE_SPACE_VISIBILITY = "privateSpaceVisibility"
         const val KEY_HIDDEN_VISIBILITY = "hiddenVisibility"
         const val KEY_FOR_GESTURE = "forGesture"

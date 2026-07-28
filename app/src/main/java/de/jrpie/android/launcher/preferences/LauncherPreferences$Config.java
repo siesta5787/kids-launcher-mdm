@@ -26,7 +26,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "version_code", type = int.class, defaultValue = "-1"),
                 }),
                 @PreferenceGroup(name = "apps", prefix = "settings_apps_", suffix = "_key", value = {
-                        @Preference(name = "favorites", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                         @Preference(name = "hidden", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                         @Preference(name = "custom_names", type = HashMap.class, serializer = MapAbstractAppInfoStringPreferenceSerializer.class),
                         @Preference(name = "hide_bound_apps", type = boolean.class, defaultValue = "false"),

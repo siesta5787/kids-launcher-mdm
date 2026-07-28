@@ -49,21 +49,6 @@ fun AbstractAppInfo.uninstall(activity: Activity) {
     }
 }
 
-fun AbstractAppInfo.toggleFavorite() {
-    val favorites: MutableSet<AbstractAppInfo> =
-        LauncherPreferences.apps().favorites() ?: mutableSetOf()
-
-    if (favorites.contains(this)) {
-        favorites.remove(this)
-        Log.i(LOG_TAG, "Removing $this from favorites.")
-    } else {
-        Log.i(LOG_TAG, "Adding $this to favorites.")
-        favorites.add(this)
-    }
-
-    LauncherPreferences.apps().favorites(favorites)
-}
-
 fun AbstractAppInfo.toggleMinimalistApp() {
     val apps: MutableSet<AbstractAppInfo> =
         LauncherPreferences.minimalist().apps() ?: mutableSetOf()

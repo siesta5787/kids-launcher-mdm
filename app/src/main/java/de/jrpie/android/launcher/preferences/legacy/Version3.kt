@@ -76,7 +76,6 @@ fun migratePreferencesFromVersion3(context: Context) {
 
     val preferences = LauncherPreferences.getSharedPreferences()
     preferences.edit {
-        migrateSetAppInfo(LauncherPreferences.apps().keys().favorites(), preferences, this)
         migrateSetAppInfo(LauncherPreferences.apps().keys().hidden(), preferences, this)
         migrateMapAppInfoString(LauncherPreferences.apps().keys().customNames(), preferences, this)
     }
