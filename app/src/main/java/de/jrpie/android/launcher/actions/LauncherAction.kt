@@ -11,7 +11,6 @@ import android.view.KeyEvent
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import de.jrpie.android.launcher.Application
-import de.jrpie.android.launcher.BuildConfig
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.actions.lock.LauncherAccessibilityService
 import de.jrpie.android.launcher.apps.AppFilter
@@ -141,7 +140,6 @@ enum class LauncherAction(
         R.drawable.baseline_apps_24,
         LauncherAccessibilityService::openRecentApps,
         false,
-        { _ -> BuildConfig.USE_ACCESSIBILITY_SERVICE }
     ),
     LOCK_SCREEN(
         "lock_screen",

@@ -62,31 +62,8 @@ android {
         }
     }
 
-    val distributionDimension = "distribution"
-    flavorDimensions += distributionDimension
-
     defaultConfig {
         buildConfigField("String", "GIT_COMMIT", "\"${gitCommit}\"")
-    }
-
-    productFlavors {
-        create("default") {
-            dimension = distributionDimension
-            isDefault = true
-            buildConfigField("boolean", "USE_ACCESSIBILITY_SERVICE", "true")
-        }
-        create("accrescent") {
-            dimension = distributionDimension
-            applicationIdSuffix = ".accrescent"
-            versionNameSuffix = "+accrescent"
-            buildConfigField("boolean", "USE_ACCESSIBILITY_SERVICE", "false")
-        }
-    }
-
-    sourceSets {
-        this.getByName("accrescent") {
-            this.java.srcDir("src/accrescent")
-        }
     }
 
     compileOptions {
