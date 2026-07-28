@@ -16,8 +16,8 @@ import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
  * A minimal [RecyclerView.Adapter] showing a plain text list of the apps chosen for
- * minimalist mode ([LauncherPreferences.minimalist] `apps`). Tapping a row launches the
- * app directly, bypassing the gesture system entirely.
+ * the home screen ([LauncherPreferences.minimalist] `apps`). Tapping a row launches the
+ * app directly.
  */
 @SuppressLint("NotifyDataSetChanged")
 class MinimalistHomeAdapter(private val activity: Activity) :
