@@ -14,6 +14,8 @@ sealed class AbstractListActivity : UIObjectActivity() {
         AppFilter.Companion.AppSetVisibility.VISIBLE
     var hiddenVisibility: AppFilter.Companion.AppSetVisibility =
         AppFilter.Companion.AppSetVisibility.HIDDEN
+    var pinnedVisibility: AppFilter.Companion.AppSetVisibility =
+        AppFilter.Companion.AppSetVisibility.VISIBLE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +27,9 @@ sealed class AbstractListActivity : UIObjectActivity() {
             @Suppress("deprecation") // required to support API level < 33
             hiddenVisibility = bundle.getSerializable(KEY_HIDDEN_VISIBILITY)
                     as? AppFilter.Companion.AppSetVisibility ?: hiddenVisibility
+            @Suppress("deprecation") // required to support API level < 33
+            pinnedVisibility = bundle.getSerializable(KEY_PINNED_VISIBILITY)
+                    as? AppFilter.Companion.AppSetVisibility ?: pinnedVisibility
         }
     }
 
@@ -39,5 +44,6 @@ sealed class AbstractListActivity : UIObjectActivity() {
     companion object {
         const val KEY_PRIVATE_SPACE_VISIBILITY = "privateSpaceVisibility"
         const val KEY_HIDDEN_VISIBILITY = "hiddenVisibility"
+        const val KEY_PINNED_VISIBILITY = "pinnedVisibility"
     }
 }

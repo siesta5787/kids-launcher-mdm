@@ -77,7 +77,8 @@ class ListFragmentApps : Fragment(), UIObject {
                     requireContext(),
                     "",
                     privateSpaceVisibility = listActivity.privateSpaceVisibility,
-                    hiddenVisibility = listActivity.hiddenVisibility
+                    hiddenVisibility = listActivity.hiddenVisibility,
+                    pinnedVisibility = listActivity.pinnedVisibility
                 ),
                 layout = LauncherPreferences.list().layout()
             )

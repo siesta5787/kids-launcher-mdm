@@ -66,7 +66,7 @@ class HomeActivity : UIObjectActivity() {
                     -diffY > SWIPE_UP_MIN_DISTANCE &&
                     abs(velocityY) > SWIPE_UP_MIN_VELOCITY
                 ) {
-                    openAppsList(this@HomeActivity)
+                    openAppsList(this@HomeActivity, excludePinned = true)
                     return true
                 }
                 return false

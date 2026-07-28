@@ -89,7 +89,8 @@ fun openSettings(context: Context) {
 fun openAppsList(
     context: Context,
     hidden: Boolean = false,
-    private: Boolean = false
+    private: Boolean = false,
+    excludePinned: Boolean = false
 ) {
     val intent = Intent(context, AppListActivity::class.java)
     intent.putExtra(
@@ -105,6 +106,14 @@ fun openAppsList(
         if (private) {
             AppFilter.Companion.AppSetVisibility.EXCLUSIVE
         } else if (!hidden && LauncherPreferences.apps().hidePrivateSpaceApps()) {
+            AppFilter.Companion.AppSetVisibility.HIDDEN
+        } else {
+            AppFilter.Companion.AppSetVisibility.VISIBLE
+        }
+    )
+    intent.putExtra(
+        AbstractListActivity.KEY_PINNED_VISIBILITY,
+        if (excludePinned) {
             AppFilter.Companion.AppSetVisibility.HIDDEN
         } else {
             AppFilter.Companion.AppSetVisibility.VISIBLE
