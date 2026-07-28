@@ -4,11 +4,14 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.view.View
-import de.jrpie.android.launcher.ui.widgets.ClockView
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
+/*
+ * Retained only so preferences persisted before the clock widget was removed still
+ * deserialize without crashing - removeStrayWidgets() in Preferences.kt strips any
+ * instance of this on the next app start, and it can no longer be added.
+ */
 @Serializable
 @SerialName("widget:clock")
 class ClockWidget(
@@ -18,29 +21,17 @@ class ClockWidget(
     override var allowInteraction: Boolean = true
 ) : Widget() {
 
-    override fun createView(activity: Activity): View {
-        return ClockView(activity, null, id, panelId)
-    }
+    override fun createView(activity: Activity): View? = null
 
-    override fun findView(views: Sequence<View>): ClockView? {
-        return views.mapNotNull { it as? ClockView }.firstOrNull { it.appWidgetId == id }
-    }
+    override fun findView(views: Sequence<View>): View? = null
 
-    override fun getPreview(context: Context): Drawable? {
-        return null
-    }
+    override fun getPreview(context: Context): Drawable? = null
 
-    override fun getIcon(context: Context): Drawable? {
-        return null
-    }
+    override fun getIcon(context: Context): Drawable? = null
 
-    override fun isConfigurable(context: Context): Boolean {
-        return false
-    }
+    override fun isConfigurable(context: Context): Boolean = false
 
-    override fun isReconfigurable(context: Context): Boolean {
-       return false
-    }
+    override fun isReconfigurable(context: Context): Boolean = false
 
     override fun configure(activity: Activity, requestCode: Int) {}
 }

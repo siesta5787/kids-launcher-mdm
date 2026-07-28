@@ -35,18 +35,6 @@ enum class Gesture(
         R.string.settings_gesture_description_vol_down,
         R.array.default_volume_down, 0, 0
     ),
-    TIME(
-        "action.time",
-        R.string.settings_gesture_time,
-        R.string.settings_gesture_description_time,
-        R.array.default_time
-    ),
-    DATE(
-        "action.date",
-        R.string.settings_gesture_date,
-        R.string.settings_gesture_description_date,
-        R.array.default_date
-    ),
     BACK(
         "action.back",
         R.string.settings_gesture_back,

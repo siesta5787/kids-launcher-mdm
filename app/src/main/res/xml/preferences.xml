@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        android:title="@string/settings_launcher_section_home_mode"
+        app:allowDividerAbove="false">
+        <DropDownPreference
+            android:key="@string/settings_general_home_mode_key"
+            android:title="@string/settings_general_home_mode"
+            android:entries="@array/settings_general_home_mode_items"
+            android:entryValues="@array/settings_general_home_mode_values"
+            android:defaultValue="GESTURES"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            android:key="@string/settings_minimalist_allow_gestures_key"
+            android:defaultValue="false"
+            android:title="@string/settings_minimalist_allow_gestures"
+            android:summary="@string/settings_minimalist_allow_gestures_summary" />
+        <Preference
+            android:key="@string/settings_minimalist_apps_key"
+            android:title="@string/settings_minimalist_apps"
+            android:summary="@string/settings_minimalist_apps_summary" />
+        <Preference
+            android:key="@string/settings_traditional_dock_apps_key"
+            android:title="@string/settings_traditional_dock_apps"
+            android:summary="@string/settings_traditional_dock_apps_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:allowDividerAbove="false"> <!-- general -->
 
         <Preference
@@ -26,41 +51,6 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="@string/settings_launcher_section_date_time"
-        app:allowDividerAbove="false">
-        <de.jrpie.android.launcher.preferences.ColorPreference
-            android:key="@string/settings_clock_color_key"
-            android:title="@string/settings_clock_color" />
-        <SwitchPreference
-            android:key="@string/settings_clock_localized_key"
-            android:defaultValue="false"
-            android:title="@string/settings_clock_localized" />
-        <SwitchPreference
-            android:key="@string/settings_clock_time_visible_key"
-            android:defaultValue="true"
-            android:title="@string/settings_clock_time_visible" />
-        <SwitchPreference
-            android:key="@string/settings_clock_show_seconds_key"
-            android:defaultValue="true"
-            android:title="@string/settings_clock_show_seconds" />
-        <SwitchPreference
-            android:key="@string/settings_clock_date_visible_key"
-            android:defaultValue="true"
-            android:title="@string/settings_clock_date_visible" />
-        <SwitchPreference
-            android:key="@string/settings_clock_flip_date_time_key"
-            android:defaultValue="false"
-            android:title="@string/settings_clock_flip_date_time" />
-        <SeekBarPreference
-            android:key="@string/settings_clock_font_size_key"
-            android:defaultValue="30"
-            app:min="12"
-            android:max="64"
-            android:title="@string/settings_clock_font_size"
-            app:showSeekBarValue="true" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
         android:title="@string/settings_launcher_section_functionality"
         app:allowDividerAbove="false">
 
@@ -69,11 +59,6 @@
             android:defaultValue="true"
             android:title="@string/settings_functionality_auto_launch"
             android:summary="@string/settings_functionality_auto_launch_summary" />
-        <SwitchPreference
-            android:key="@string/settings_functionality_search_web_key"
-            android:title="@string/settings_functionality_search_web"
-            android:defaultValue="false"
-            android:summary="@string/settings_functionality_search_web_summary" />
         <SwitchPreference
             android:key="@string/settings_functionality_search_auto_open_keyboard_key"
             android:defaultValue="true"
@@ -193,31 +178,6 @@
             android:title="@string/settings_display_hide_navigation_bar" />
 
 
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        android:title="@string/settings_launcher_section_home_mode"
-        app:allowDividerAbove="false">
-        <DropDownPreference
-            android:key="@string/settings_general_home_mode_key"
-            android:title="@string/settings_general_home_mode"
-            android:entries="@array/settings_general_home_mode_items"
-            android:entryValues="@array/settings_general_home_mode_values"
-            android:defaultValue="GESTURES"
-            app:useSimpleSummaryProvider="true" />
-        <SwitchPreference
-            android:key="@string/settings_minimalist_allow_gestures_key"
-            android:defaultValue="false"
-            android:title="@string/settings_minimalist_allow_gestures"
-            android:summary="@string/settings_minimalist_allow_gestures_summary" />
-        <Preference
-            android:key="@string/settings_minimalist_apps_key"
-            android:title="@string/settings_minimalist_apps"
-            android:summary="@string/settings_minimalist_apps_summary" />
-        <Preference
-            android:key="@string/settings_traditional_dock_apps_key"
-            android:title="@string/settings_traditional_dock_apps"
-            android:summary="@string/settings_traditional_dock_apps_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>

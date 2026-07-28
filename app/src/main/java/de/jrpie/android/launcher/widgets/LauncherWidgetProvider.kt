@@ -5,8 +5,6 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.DisplayMetrics
-import androidx.appcompat.content.res.AppCompatResources
-import de.jrpie.android.launcher.R
 
 sealed class LauncherWidgetProvider(
     val label: CharSequence?,
@@ -35,10 +33,3 @@ class LauncherAppWidgetProvider(
         info.loadPreviewImage(context, DisplayMetrics.DENSITY_DEFAULT)
     )
 }
-
-class LauncherClockWidgetProvider(context: Context) : LauncherWidgetProvider(
-    context.getString(R.string.widget_clock_label),
-    context.getString(R.string.widget_clock_description),
-    AppCompatResources.getDrawable(context, R.drawable.baseline_clock_24),
-    null
-)

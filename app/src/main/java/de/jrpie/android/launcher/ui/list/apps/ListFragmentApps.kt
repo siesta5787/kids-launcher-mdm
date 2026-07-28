@@ -1,14 +1,11 @@
 package de.jrpie.android.launcher.ui.list.apps
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -126,23 +123,7 @@ class ListFragmentApps : Fragment(), UIObject {
 
             override fun onQueryTextSubmit(query: String): Boolean {
                 appsRecyclerAdapter.setSearchString(query)
-
-                if (LauncherPreferences.functionality().searchWeb()) {
-                    val i = Intent(Intent.ACTION_WEB_SEARCH).putExtra("query", query)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    try {
-                        activity?.startActivity(i)
-                    } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(
-                            requireContext(),
-                            R.string.toast_activity_not_found_search_web,
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-
-                } else {
-                    appsRecyclerAdapter.selectItem(0)
-                }
+                appsRecyclerAdapter.selectItem(0)
                 return true
             }
 

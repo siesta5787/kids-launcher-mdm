@@ -53,15 +53,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "color_theme", type = ColorTheme.class, defaultValue = "DEFAULT"),
                         @Preference(name = "monochrome_icons", type = boolean.class, defaultValue = "false"),
                 }),
-                @PreferenceGroup(name = "clock", prefix = "settings_clock_", suffix = "_key", value = {
-                        @Preference(name = "color", type = int.class, defaultValue = "0xffffffff"),
-                        @Preference(name = "date_visible", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "time_visible", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "flip_date_time", type = boolean.class, defaultValue = "false"),
-                        @Preference(name = "localized", type = boolean.class, defaultValue = "false"),
-                        @Preference(name = "show_seconds", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "font_size", type = int.class, defaultValue = "30")
-                }),
                 @PreferenceGroup(name = "display", prefix = "settings_display_", suffix = "_key", value = {
                         @Preference(name = "screen_timeout_disabled", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "hide_status_bar", type = boolean.class, defaultValue = "true"),
@@ -70,7 +61,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 }),
                 @PreferenceGroup(name = "functionality", prefix = "settings_functionality_", suffix = "_key", value = {
                         @Preference(name = "search_auto_launch", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "search_web", type = boolean.class, description = "false"),
                         @Preference(name = "search_auto_open_keyboard", type = boolean.class, defaultValue = "true"),
                         @Preference(name = "search_auto_close_keyboard", type = boolean.class, defaultValue = "false"),
                 }),

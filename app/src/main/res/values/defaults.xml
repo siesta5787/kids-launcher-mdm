@@ -138,19 +138,4 @@
         <item>{\"type\": \"action:launcher\", \"value\": \"settings\"}</item> <!-- Launcher Settings -->
     </string-array>
 
-    <!-- Time / Clock -->
-    <string-array name="default_time">
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"com.android.deskclock\", \"activityName\": null}}</item>
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"com.google.android.deskclock\", \"activityName\": null}}</item>
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"com.sec.android.app.clockpackage\", \"activityName\": null}}</item> <!-- Android Clock -->
-    </string-array>
-
-    <!-- Date / Calendar -->
-    <string-array name="default_date">
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"org.lineageos.etar\", \"activityName\": null}}</item> <!-- LineageOS Calendar -->
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"ws.xsoh.etar\", \"activityName\": null}}</item> <!-- Etar -->
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"com.google.android.calendar\", \"activityName\": null}}</item> <!-- Google Calendar -->
-        <item>{\"type\": \"action:app\", \"app\": {\"packageName\": \"com.samsung.android.calendar\", \"activityName\": null}}</item> <!-- Samsung Calendar -->
-    </string-array>
-
 </resources>

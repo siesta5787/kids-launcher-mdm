@@ -15,16 +15,11 @@ import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.databinding.ActivitySelectWidgetBinding
 import de.jrpie.android.launcher.ui.UIObjectActivity
-import de.jrpie.android.launcher.widgets.ClockWidget
 import de.jrpie.android.launcher.widgets.LauncherAppWidgetProvider
-import de.jrpie.android.launcher.widgets.LauncherClockWidgetProvider
 import de.jrpie.android.launcher.widgets.LauncherWidgetProvider
 import de.jrpie.android.launcher.widgets.WidgetPanel
-import de.jrpie.android.launcher.widgets.WidgetPosition
 import de.jrpie.android.launcher.widgets.bindAppWidgetOrRequestPermission
-import de.jrpie.android.launcher.widgets.generateInternalId
 import de.jrpie.android.launcher.widgets.getAppWidgetProviders
-import de.jrpie.android.launcher.widgets.updateWidget
 
 
 private const val REQUEST_WIDGET_PERMISSION = 29
@@ -59,17 +54,6 @@ class SelectWidgetActivity : UIObjectActivity() {
                     )
                     finish()
                 }
-            }
-
-            is LauncherClockWidgetProvider -> {
-                updateWidget(
-                    ClockWidget(
-                        generateInternalId(),
-                        WidgetPosition(0, 4, 12, 3),
-                        widgetPanelId
-                    )
-                )
-                finish()
             }
         }
     }

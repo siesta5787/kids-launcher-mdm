@@ -54,7 +54,7 @@ fun bindAppWidgetOrRequestPermission(
 
 
 fun getAppWidgetProviders(context: Context): List<LauncherWidgetProvider> {
-    val list = mutableListOf<LauncherWidgetProvider>(LauncherClockWidgetProvider(context))
+    val list = mutableListOf<LauncherWidgetProvider>()
     val appWidgetManager = context.getAppWidgetManager()
     val profiles =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

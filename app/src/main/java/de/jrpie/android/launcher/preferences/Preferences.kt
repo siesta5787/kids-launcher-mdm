@@ -18,9 +18,6 @@ import de.jrpie.android.launcher.sendCrashNotification
 import de.jrpie.android.launcher.ui.HomeActivity
 import de.jrpie.android.launcher.widgets.ClockWidget
 import de.jrpie.android.launcher.widgets.DebugInfoWidget
-import de.jrpie.android.launcher.widgets.WidgetPanel
-import de.jrpie.android.launcher.widgets.WidgetPosition
-import de.jrpie.android.launcher.widgets.generateInternalId
 import de.jrpie.android.launcher.widgets.getAppWidgetHost
 
 /* Current version of the structure of preferences.
@@ -33,13 +30,13 @@ private const val TAG = "Launcher - Preferences"
 
 
 /*
- * Removes any DebugInfoWidget left over from installs made before it was dropped from the
- * defaults - unconditional (not version-gated) so it's self-healing regardless of what
- * version a given install is coming from.
+ * Removes any DebugInfoWidget or ClockWidget left over from installs made before they were
+ * dropped from the defaults - unconditional (not version-gated) so it's self-healing
+ * regardless of what version a given install is coming from.
  */
-private fun removeStrayDebugInfoWidget() {
+private fun removeStrayWidgets() {
     val widgets = LauncherPreferences.widgets().widgets() ?: return
-    val cleaned = widgets.filterNot { it is DebugInfoWidget }
+    val cleaned = widgets.filterNot { it is DebugInfoWidget || it is ClockWidget }
     if (cleaned.size != widgets.size) {
         LauncherPreferences.widgets().widgets(cleaned.toSet())
     }
@@ -50,7 +47,7 @@ private fun removeStrayDebugInfoWidget() {
  * and migrate them to the current format.
  */
 fun migratePreferencesToNewVersion(context: Context) {
-    removeStrayDebugInfoWidget()
+    removeStrayWidgets()
     try {
         when (LauncherPreferences.internal().versionCode()) {
             // Check versions, make sure transitions between versions go well
@@ -113,15 +110,7 @@ fun resetPreferences(context: Context) {
     LauncherPreferences.internal().versionCode(PREFERENCE_VERSION)
     context.getAppWidgetHost().deleteHost()
 
-    LauncherPreferences.widgets().widgets(
-        setOf(
-            ClockWidget(
-                generateInternalId(),
-                WidgetPosition(1, 3, 10, 4),
-                WidgetPanel.HOME.id
-            )
-        )
-    )
+    LauncherPreferences.widgets().widgets(emptySet())
 
     val hidden: MutableSet<AbstractAppInfo> = mutableSetOf()
 

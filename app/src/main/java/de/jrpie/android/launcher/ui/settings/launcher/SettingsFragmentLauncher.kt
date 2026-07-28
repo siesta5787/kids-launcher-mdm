@@ -26,20 +26,12 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
 
     private var sharedPreferencesListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
-            if (prefKey?.startsWith("clock.") == true ||
-                prefKey == LauncherPreferences.general().keys().homeMode()
-            ) {
+            if (prefKey == LauncherPreferences.general().keys().homeMode()) {
                 updateVisibility()
             }
         }
 
     private fun updateVisibility() {
-        val showSeconds = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.clock().keys().showSeconds()
-        )
-        val timeVisible = LauncherPreferences.clock().timeVisible()
-        showSeconds?.isVisible = timeVisible
-
         val hidePausedApps = findPreference<androidx.preference.Preference>(
             LauncherPreferences.apps().keys().hidePausedApps()
         )
