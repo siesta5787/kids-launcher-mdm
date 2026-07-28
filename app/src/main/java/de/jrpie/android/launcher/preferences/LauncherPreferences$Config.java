@@ -8,7 +8,6 @@ import de.jrpie.android.launcher.actions.lock.LockMethod;
 import de.jrpie.android.launcher.preferences.list.ListLayout;
 import de.jrpie.android.launcher.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
-import de.jrpie.android.launcher.preferences.serialization.SetPinnedShortcutInfoPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetWidgetPanelSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetWidgetSerializer;
 import de.jrpie.android.launcher.preferences.theme.ColorTheme;
@@ -31,7 +30,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 @PreferenceGroup(name = "apps", prefix = "settings_apps_", suffix = "_key", value = {
                         @Preference(name = "favorites", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                         @Preference(name = "hidden", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
-                        @Preference(name = "pinned_shortcuts", type = Set.class, serializer = SetPinnedShortcutInfoPreferenceSerializer.class),
                         @Preference(name = "custom_names", type = HashMap.class, serializer = MapAbstractAppInfoStringPreferenceSerializer.class),
                         @Preference(name = "hide_bound_apps", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "hide_paused_apps", type = boolean.class, defaultValue = "false"),

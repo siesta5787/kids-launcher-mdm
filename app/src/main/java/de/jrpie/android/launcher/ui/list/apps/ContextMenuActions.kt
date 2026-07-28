@@ -17,7 +17,6 @@ import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.apps.AbstractAppInfo
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.apps.AppInfo
-import de.jrpie.android.launcher.apps.PinnedShortcutInfo
 import de.jrpie.android.launcher.getUserFromId
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 
@@ -47,11 +46,6 @@ fun AbstractAppInfo.uninstall(activity: Activity) {
             intent.putExtra(Intent.EXTRA_USER, user)
         }
         activity.startActivity(intent)
-
-    } else if (this is PinnedShortcutInfo) {
-        val pinned = LauncherPreferences.apps().pinnedShortcuts() ?: mutableSetOf()
-        pinned.remove(this)
-        LauncherPreferences.apps().pinnedShortcuts(pinned)
     }
 }
 

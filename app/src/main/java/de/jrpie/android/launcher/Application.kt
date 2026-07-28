@@ -97,8 +97,6 @@ class Application : android.app.Application() {
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, pref ->
         if (pref == getString(R.string.settings_apps_custom_names_key)) {
             customAppNames = LauncherPreferences.apps().customNames()
-        } else if (pref == LauncherPreferences.apps().keys().pinnedShortcuts()) {
-            loadApps()
         }
     }
 
@@ -157,9 +155,6 @@ class Application : android.app.Application() {
             )
         }
 
-        if (Build.VERSION.SDK_INT >= VERSION_CODES.N_MR1) {
-            removeUnusedShortcuts(this)
-        }
         loadApps()
 
         createNotificationChannels(this)

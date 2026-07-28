@@ -9,7 +9,7 @@ import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
- * This interface is implemented by [DetailedAppInfo] and [DetailedPinnedShortcutInfo]
+ * This interface is implemented by [DetailedAppInfo]
  */
 sealed interface AbstractDetailedAppInfo {
     fun getRawInfo(): AbstractAppInfo

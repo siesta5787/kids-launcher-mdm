@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * This interface is implemented by [AppInfo] and [PinnedShortcutInfo].
+ * This interface is implemented by [AppInfo].
  */
 @Serializable
 sealed interface AbstractAppInfo {

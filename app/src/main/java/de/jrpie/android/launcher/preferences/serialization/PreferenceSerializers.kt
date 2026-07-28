@@ -3,7 +3,6 @@
 package de.jrpie.android.launcher.preferences.serialization
 
 import de.jrpie.android.launcher.apps.AbstractAppInfo
-import de.jrpie.android.launcher.apps.PinnedShortcutInfo
 import de.jrpie.android.launcher.widgets.Widget
 import de.jrpie.android.launcher.widgets.WidgetPanel
 import eu.jonahbauer.android.preference.annotations.serializer.PreferenceSerializationException
@@ -58,24 +57,6 @@ class SetWidgetPanelSerializer :
     override fun deserialize(value: java.util.Set<java.lang.String>?): java.util.Set<WidgetPanel>? {
         return value?.map(java.lang.String::toString)?.map(WidgetPanel::deserialize)
             ?.toHashSet() as? java.util.Set<WidgetPanel>
-    }
-}
-
-
-@Suppress("UNCHECKED_CAST")
-class SetPinnedShortcutInfoPreferenceSerializer :
-    PreferenceSerializer<java.util.Set<PinnedShortcutInfo>?, java.util.Set<java.lang.String>?> {
-    @Throws(PreferenceSerializationException::class)
-    override fun serialize(value: java.util.Set<PinnedShortcutInfo>?): java.util.Set<java.lang.String> {
-        return value?.map { Json.encodeToString<PinnedShortcutInfo>(it) }
-            ?.toHashSet() as java.util.Set<java.lang.String>
-    }
-
-    @Throws(PreferenceSerializationException::class)
-    override fun deserialize(value: java.util.Set<java.lang.String>?): java.util.Set<PinnedShortcutInfo>? {
-        return value?.map(java.lang.String::toString)
-            ?.map { Json.decodeFromString<PinnedShortcutInfo>(it) }
-            ?.toHashSet() as? java.util.Set<PinnedShortcutInfo>
     }
 }
 

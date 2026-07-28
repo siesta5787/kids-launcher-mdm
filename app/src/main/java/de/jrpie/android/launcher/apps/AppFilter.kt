@@ -6,7 +6,6 @@ import android.os.Build
 import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.actions.AppAction
 import de.jrpie.android.launcher.actions.Gesture
-import de.jrpie.android.launcher.actions.ShortcutAction
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import java.util.Locale
 import kotlin.text.Regex.Companion.escape
@@ -40,7 +39,6 @@ class AppFilter(
                 .mapNotNull { g -> Action.forGesture(g) }
                 .mapNotNull {
                     (it as? AppAction)?.app
-                        ?: (it as? ShortcutAction)?.shortcut
                 }
                 .toSet()
             apps = apps.filterNot { info -> boundApps.contains(info.getRawInfo()) }

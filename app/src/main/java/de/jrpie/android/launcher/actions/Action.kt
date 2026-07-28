@@ -18,7 +18,7 @@ import kotlinx.serialization.json.Json
 
 /**
  * Represents an action that can be bound to a [Gesture].
- * There are four types of actions: [AppAction], [ShortcutAction], [LauncherAction] and [WidgetPanelAction]
+ * There are three types of actions: [AppAction], [LauncherAction] and [WidgetPanelAction]
  */
 @Serializable
 sealed interface Action {
