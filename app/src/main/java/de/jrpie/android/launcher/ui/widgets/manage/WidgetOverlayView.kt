@@ -16,7 +16,7 @@ import android.widget.PopupMenu
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.toRectF
 import de.jrpie.android.launcher.R
-import de.jrpie.android.launcher.preferences.LauncherPreferences
+import de.jrpie.android.launcher.preferences.theme.Font
 import de.jrpie.android.launcher.widgets.Widget
 import de.jrpie.android.launcher.widgets.updateWidget
 
@@ -73,7 +73,7 @@ class WidgetOverlayView : ViewGroup {
         interactionDisabledOverlayTextPaint.textSize = 60f
         interactionDisabledOverlayTextPaint.isAntiAlias = true
         interactionDisabledOverlayTextPaint.typeface =
-            LauncherPreferences.theme().font().getTypeface(context)
+            Font.SYSTEM_DEFAULT.getTypeface(context)
 
         paint.style = Paint.Style.STROKE
         paint.color = Color.WHITE

@@ -8,6 +8,7 @@ import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.databinding.ActivityWidgetPanelBinding
 import de.jrpie.android.launcher.preferences.LauncherPreferences
+import de.jrpie.android.launcher.preferences.theme.Font
 import de.jrpie.android.launcher.ui.UIObject
 import de.jrpie.android.launcher.ui.util.LauncherGestureActivity
 import de.jrpie.android.launcher.ui.widgets.manage.EXTRA_PANEL_ID
@@ -42,11 +43,8 @@ class WidgetPanelActivity : LauncherGestureActivity(), UIObject {
     override fun getTheme(): Resources.Theme {
         val mTheme = modifyTheme(super.getTheme())
         mTheme.applyStyle(R.style.backgroundWallpaper, true)
-        LauncherPreferences.clock().font().applyToTheme(mTheme)
-        LauncherPreferences.theme().colorTheme().applyToTheme(
-            mTheme,
-            LauncherPreferences.theme().textShadow()
-        )
+        Font.SYSTEM_DEFAULT.applyToTheme(mTheme)
+        LauncherPreferences.theme().colorTheme().applyToTheme(mTheme)
 
         return mTheme
     }

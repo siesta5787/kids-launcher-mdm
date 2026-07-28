@@ -92,19 +92,10 @@ sealed interface Action {
         ) {
             if (action != null && action.invoke(context)) {
                 if (context is Activity) {
-                    val (animationIn, animationOut) =
-                        if (LauncherPreferences.theme().animations()) {
-                            Pair(
-                                gesture?.animationIn ?: android.R.anim.fade_in,
-                                gesture?.animationOut ?: android.R.anim.fade_out
-                            )
-                        } else {
-                            Pair(0, 0)
-                        }
                     // There does not seem to be a good alternative to overridePendingTransition.
                     // Note that we can't use overrideActivityTransition here.
                     @Suppress("deprecation")
-                    context.overridePendingTransition(animationIn, animationOut)
+                    context.overridePendingTransition(0, 0)
                 }
             } else {
                 if (context is Activity && gesture != null) {

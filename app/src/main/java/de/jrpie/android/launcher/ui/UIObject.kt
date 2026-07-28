@@ -14,13 +14,14 @@ import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.preferences.theme.Background
+import de.jrpie.android.launcher.preferences.theme.Font
 
 /**
  * An interface implemented by every [Activity], Fragment etc. in Launcher.
  * It handles themes and window flags - a useful abstraction as it is the same everywhere.
  */
 @Suppress("deprecation") // FLAG_FULLSCREEN is required to support API level < 30
-fun setWindowFlags(window: Window, homeScreen: Boolean) {
+fun setWindowFlags(window: Window) {
     window.setFlags(0, 0) // clear flags
 
     // Display notification bar
@@ -38,12 +39,6 @@ fun setWindowFlags(window: Window, homeScreen: Boolean) {
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         )
     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-    if (!homeScreen) {
-        LauncherPreferences.theme().background().applyToWindow(window)
-
-    }
-
 }
 
 
@@ -52,7 +47,7 @@ interface UIObject {
         if (this !is Activity) {
             return
         }
-        setWindowFlags(window, isHomeScreen())
+        setWindowFlags(window)
 
         if (!LauncherPreferences.display().rotateScreen()) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_NOSENSOR
@@ -65,18 +60,15 @@ interface UIObject {
     }
 
     fun modifyTheme(theme: Resources.Theme): Resources.Theme {
-        LauncherPreferences.theme().colorTheme().applyToTheme(
-            theme,
-            LauncherPreferences.theme().textShadow()
-        )
+        LauncherPreferences.theme().colorTheme().applyToTheme(theme)
 
         if (isHomeScreen()) {
             Background.TRANSPARENT.applyToTheme(theme)
         } else {
-            LauncherPreferences.theme().background().applyToTheme(theme)
+            Background.SOLID.applyToTheme(theme)
         }
 
-        LauncherPreferences.theme().font().applyToTheme(theme)
+        Font.SYSTEM_DEFAULT.applyToTheme(theme)
 
         return theme
     }

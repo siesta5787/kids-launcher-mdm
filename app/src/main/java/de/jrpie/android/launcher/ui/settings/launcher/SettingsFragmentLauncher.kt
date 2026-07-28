@@ -40,12 +40,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         val timeVisible = LauncherPreferences.clock().timeVisible()
         showSeconds?.isVisible = timeVisible
 
-        val background = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.theme().keys().background()
-        )
-        val lightTheme = LauncherPreferences.theme().colorTheme() == ColorTheme.LIGHT
-        background?.isVisible = !lightTheme
-
         val hidePausedApps = findPreference<androidx.preference.Preference>(
             LauncherPreferences.apps().keys().hidePausedApps()
         )
@@ -84,17 +78,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
-        val selectWallpaper = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.theme().keys().wallpaper()
-        )
-        selectWallpaper?.setOnPreferenceClickListener {
-            // https://github.com/LineageOS/android_packages_apps_Trebuchet/blob/6caab89b21b2b91f0a439e1fd8c4510dcb255819/src/com/android/launcher3/views/OptionsPopupView.java#L271
-            val intent = Intent(Intent.ACTION_SET_WALLPAPER)
-                .putExtra("com.android.wallpaper.LAUNCH_SOURCE", "app_launched_launcher")
-                .putExtra("com.android.launcher3.WALLPAPER_FLAVOR", "focus_wallpaper")
-            startActivity(intent)
-            true
-        }
         val chooseHomeScreen = findPreference<androidx.preference.Preference>(
             LauncherPreferences.general().keys().chooseHomeScreen()
         )

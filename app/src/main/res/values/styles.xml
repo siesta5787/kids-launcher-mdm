@@ -93,18 +93,6 @@
         <item name="android:textColor">@color/material_dynamic_neutral_variant90</item>
     </style>
 
-    <style name="textShadow">
-        <item name="android:shadowColor">#000</item>
-        <item name="android:shadowDx">0</item>
-        <item name="android:shadowDy">0</item>
-        <item name="android:shadowRadius">2</item>
-    </style>
-
-    <style name="textShadowLight" parent="textShadow">
-        <item name="android:shadowColor">#aaa</item>
-    </style>
-
-
     <style name="backgroundWallpaper">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -119,28 +107,6 @@
     </style>
 
     <style name="fontSystemDefault">
-    </style>
-
-    <style name="fontHack">
-        <!-- API<26 does not support custom fonts in XML -->
-        <!-- Custom fonts work via AppCompat (but AppCompat is not used everywhere) -->
-        <item name="fontFamily">@font/hack</item>
-    </style>
-
-    <style name="fontMonospace">
-        <item name="fontFamily">monospace</item>
-    </style>
-
-    <style name="fontSerifMonospace">
-        <item name="fontFamily">serif-monospace</item>
-    </style>
-
-    <style name="fontSansSerif">
-        <item name="fontFamily">sans-serif</item>
-    </style>
-
-    <style name="fontSerif" tools:keep="@style/fontSerif">
-        <item name="fontFamily">serif</item>
     </style>
 
     <style name="PopupMenuCustom" parent="@android:style/Widget.PopupMenu" tools:keep="@style/PopupMenuCustom">

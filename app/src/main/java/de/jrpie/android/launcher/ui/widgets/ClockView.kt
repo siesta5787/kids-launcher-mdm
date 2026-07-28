@@ -11,6 +11,7 @@ import androidx.core.view.isVisible
 import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.databinding.WidgetClockBinding
 import de.jrpie.android.launcher.preferences.LauncherPreferences
+import de.jrpie.android.launcher.preferences.theme.Font
 import de.jrpie.android.launcher.widgets.WidgetPanel
 import java.util.Locale
 
@@ -100,7 +101,7 @@ class ClockView(
         binding.clockUpperView.setTextColor(LauncherPreferences.clock().color())
         binding.clockLowerView.setTextColor(LauncherPreferences.clock().color())
 
-        LauncherPreferences.clock().font().getTypeface(context)?.let {
+        Font.SYSTEM_DEFAULT.getTypeface(context)?.let {
             binding.clockUpperView.setTypeface(it)
             binding.clockLowerView.setTypeface(it)
         }

@@ -17,6 +17,7 @@ import de.jrpie.android.launcher.preferences.legacy.migratePreferencesFromVersio
 import de.jrpie.android.launcher.sendCrashNotification
 import de.jrpie.android.launcher.ui.HomeActivity
 import de.jrpie.android.launcher.widgets.ClockWidget
+import de.jrpie.android.launcher.widgets.DebugInfoWidget
 import de.jrpie.android.launcher.widgets.WidgetPanel
 import de.jrpie.android.launcher.widgets.WidgetPosition
 import de.jrpie.android.launcher.widgets.generateInternalId
@@ -32,10 +33,24 @@ private const val TAG = "Launcher - Preferences"
 
 
 /*
+ * Removes any DebugInfoWidget left over from installs made before it was dropped from the
+ * defaults - unconditional (not version-gated) so it's self-healing regardless of what
+ * version a given install is coming from.
+ */
+private fun removeStrayDebugInfoWidget() {
+    val widgets = LauncherPreferences.widgets().widgets() ?: return
+    val cleaned = widgets.filterNot { it is DebugInfoWidget }
+    if (cleaned.size != widgets.size) {
+        LauncherPreferences.widgets().widgets(cleaned.toSet())
+    }
+}
+
+/*
  * Tries to detect preferences written by older versions of the app
  * and migrate them to the current format.
  */
 fun migratePreferencesToNewVersion(context: Context) {
+    removeStrayDebugInfoWidget()
     try {
         when (LauncherPreferences.internal().versionCode()) {
             // Check versions, make sure transitions between versions go well

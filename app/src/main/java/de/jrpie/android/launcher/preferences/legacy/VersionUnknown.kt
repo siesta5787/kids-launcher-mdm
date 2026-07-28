@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.preferences.theme.Background
 import de.jrpie.android.launcher.preferences.theme.ColorTheme
 
 
@@ -380,13 +379,11 @@ fun migratePreferencesFromVersionUnknown(context: Context) {
         "finn" -> {
             LauncherPreferences.theme().colorTheme(ColorTheme.DEFAULT)
             LauncherPreferences.theme().monochromeIcons(false)
-            LauncherPreferences.theme().background(Background.DIM)
         }
 
         "dark" -> {
             LauncherPreferences.theme().colorTheme(ColorTheme.DARK)
             LauncherPreferences.theme().monochromeIcons(true)
-            LauncherPreferences.theme().background(Background.DIM)
         }
     }
     LauncherPreferences.internal().versionCode(1)

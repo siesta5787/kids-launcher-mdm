@@ -78,12 +78,9 @@ To every gesture you can bind one of the following actions:
 OCM Launcher is compatible with [work profile](https://www.android.com/enterprise/work-profile/),
 so apps like [Shelter](https://gitea.angry.im/PeterCxy/Shelter) can be used.
 
-By default the font is set to [Hack][hack-font], but other fonts can be selected.
-
 See [build.md](docs/build.md) for instructions how to build this project.
 
 ---
-  [hack-font]: https://sourcefoundry.org/hack/
   [original-repo]: https://github.com/finnmglas/Launcher
   [ulauncher-repo]: https://github.com/jrpie/launcher
 

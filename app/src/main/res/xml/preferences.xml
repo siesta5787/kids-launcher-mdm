@@ -10,9 +10,6 @@
     <PreferenceCategory
         app:allowDividerAbove="false"
         android:title="@string/settings_launcher_section_appearance">
-        <Preference
-            android:key="@string/settings_theme_wallpaper_key"
-            android:title="@string/settings_theme_wallpaper" />
         <DropDownPreference
             android:entries="@array/settings_theme_color_theme_items"
             android:entryValues="@array/settings_theme_color_theme_values"
@@ -21,47 +18,16 @@
             android:title="@string/settings_theme_color_theme"
             app:useSimpleSummaryProvider="true" />
 
-        <DropDownPreference
-            android:key="@string/settings_theme_font_key"
-            android:title="@string/settings_theme_font"
-            android:entryValues="@array/settings_theme_font_values"
-            android:entries="@array/settings_theme_font_items"
-            android:defaultValue="HACK"
-            app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreference
-            android:key="@string/settings_theme_text_shadow_key"
-            android:title="@string/settings_theme_text_shadow"
-            android:defaultValue="false" />
-
-        <DropDownPreference
-            android:key="@string/settings_theme_background_key"
-            android:title="@string/settings_theme_background"
-            android:entries="@array/settings_theme_background_items"
-            android:entryValues="@array/settings_theme_background_values"
-            android:defaultValue="DIM"
-            app:useSimpleSummaryProvider="true" />
         <SwitchPreference
             android:key="@string/settings_theme_monochrome_icons_key"
             android:title="@string/settings_theme_monochrome_icons"
             android:defaultValue="false" />
-        <SwitchPreference
-            android:key="@string/settings_theme_animations_key"
-            android:title="@string/settings_theme_animations"
-            android:defaultValue="true" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
         android:title="@string/settings_launcher_section_date_time"
         app:allowDividerAbove="false">
-        <DropDownPreference
-            android:key="@string/settings_clock_font_key"
-            android:title="@string/settings_theme_font"
-            android:entryValues="@array/settings_theme_font_values"
-            android:entries="@array/settings_theme_font_items"
-            android:defaultValue="HACK"
-            app:useSimpleSummaryProvider="true" />
         <de.jrpie.android.launcher.preferences.ColorPreference
             android:key="@string/settings_clock_color_key"
             android:title="@string/settings_clock_color" />

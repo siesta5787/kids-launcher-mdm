@@ -12,9 +12,7 @@ import de.jrpie.android.launcher.preferences.serialization.SetAbstractAppInfoPre
 import de.jrpie.android.launcher.preferences.serialization.SetPinnedShortcutInfoPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetWidgetPanelSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetWidgetSerializer;
-import de.jrpie.android.launcher.preferences.theme.Background;
 import de.jrpie.android.launcher.preferences.theme.ColorTheme;
-import de.jrpie.android.launcher.preferences.theme.Font;
 import eu.jonahbauer.android.preference.annotations.Preference;
 import eu.jonahbauer.android.preference.annotations.PreferenceGroup;
 import eu.jonahbauer.android.preference.annotations.Preferences;
@@ -52,16 +50,10 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "home_mode", type = HomeMode.class, defaultValue = "GESTURES"),
                 }),
                 @PreferenceGroup(name = "theme", prefix = "settings_theme_", suffix = "_key", value = {
-                        @Preference(name = "wallpaper", type = void.class),
                         @Preference(name = "color_theme", type = ColorTheme.class, defaultValue = "DEFAULT"),
-                        @Preference(name = "background", type = Background.class, defaultValue = "DIM"),
-                        @Preference(name = "font", type = Font.class, defaultValue = "HACK"),
-                        @Preference(name = "text_shadow", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "monochrome_icons", type = boolean.class, defaultValue = "false"),
-                        @Preference(name = "animations", type = boolean.class, defaultValue = "true"),
                 }),
                 @PreferenceGroup(name = "clock", prefix = "settings_clock_", suffix = "_key", value = {
-                        @Preference(name = "font", type = Font.class, defaultValue = "HACK"),
                         @Preference(name = "color", type = int.class, defaultValue = "0xffffffff"),
                         @Preference(name = "date_visible", type = boolean.class, defaultValue = "true"),
                         @Preference(name = "time_visible", type = boolean.class, defaultValue = "true"),
