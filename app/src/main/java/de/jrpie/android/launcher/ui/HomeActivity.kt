@@ -1,78 +1,88 @@
 package de.jrpie.android.launcher.ui
 
 import android.content.SharedPreferences
-import android.content.res.Resources
 import android.os.Bundle
-import android.view.View
+import android.view.GestureDetector
+import android.view.MotionEvent
+import androidx.activity.OnBackPressedCallback
 import androidx.recyclerview.widget.LinearLayoutManager
-import de.jrpie.android.launcher.actions.Action
-import de.jrpie.android.launcher.actions.Gesture
-import de.jrpie.android.launcher.actions.LauncherAction
 import de.jrpie.android.launcher.databinding.ActivityHomeBinding
-import de.jrpie.android.launcher.preferences.HomeMode
+import de.jrpie.android.launcher.openAppsList
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.requestNotificationPermission
 import de.jrpie.android.launcher.setDefaultHomeScreen
 import de.jrpie.android.launcher.ui.minimalist.MinimalistHomeAdapter
-import de.jrpie.android.launcher.ui.util.LauncherGestureActivity
+import kotlin.math.abs
 
+private const val SWIPE_UP_MIN_DISTANCE = 100
+private const val SWIPE_UP_MIN_VELOCITY = 100
 
 /**
  * [HomeActivity] is the actual application launcher.
- * It listens for gestures.
+ * It shows a fixed list of chosen apps; swiping up opens the full app drawer.
  */
-class HomeActivity : UIObject, LauncherGestureActivity() {
+class HomeActivity : UIObjectActivity() {
 
     private lateinit var binding: ActivityHomeBinding
     private lateinit var minimalistAdapter: MinimalistHomeAdapter
+    private lateinit var gestureDetector: GestureDetector
 
     private var sharedPreferencesListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
-            if ( prefKey?.startsWith("display.") == true ) {
+            if (prefKey?.startsWith("display.") == true) {
                 recreate()
-            } else if (prefKey?.startsWith("action.") == true) {
-                updateSettingsFallbackButtonVisibility()
-            } else if (prefKey?.startsWith("minimalist.") == true ||
-                prefKey == LauncherPreferences.general().keys().homeMode()
-            ) {
-                updateHomeMode()
+            } else if (prefKey?.startsWith("minimalist.") == true) {
+                minimalistAdapter.updateAppsList()
             }
-
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super<LauncherGestureActivity>.onCreate(savedInstanceState)
-        super<UIObject>.onCreate()
+        super.onCreate(savedInstanceState)
 
         // Initialise layout
         binding = ActivityHomeBinding.inflate(layoutInflater)
-
         setContentView(binding.root)
 
         minimalistAdapter = MinimalistHomeAdapter(this)
         binding.homeMinimalistList.layoutManager = LinearLayoutManager(this)
         binding.homeMinimalistList.adapter = minimalistAdapter
 
-        binding.buttonFallbackSettings.setOnClickListener {
-            LauncherAction.SETTINGS.invoke(this)
-        }
+        // Back does nothing on the home screen, same as stock Android launchers.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {}
+        })
+
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                if (e1 == null) return false
+                val diffY = e2.y - e1.y
+                val diffX = e2.x - e1.x
+                if (abs(diffY) > abs(diffX) &&
+                    -diffY > SWIPE_UP_MIN_DISTANCE &&
+                    abs(velocityY) > SWIPE_UP_MIN_VELOCITY
+                ) {
+                    openAppsList(this@HomeActivity)
+                    return true
+                }
+                return false
+            }
+        })
     }
 
-    private fun updateHomeMode() {
-        val mode = LauncherPreferences.general().homeMode()
-        binding.homeWidgetContainer.visibility = if (mode == HomeMode.GESTURES) View.VISIBLE else View.GONE
-        binding.homeMinimalistContainer.visibility = if (mode == HomeMode.MINIMAL) View.VISIBLE else View.GONE
-        when (mode) {
-            HomeMode.MINIMAL -> minimalistAdapter.updateAppsList()
-            HomeMode.GESTURES -> {}
-        }
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(event)
+        return true
     }
 
     override fun onStart() {
-        super<LauncherGestureActivity>.onStart()
-        super<UIObject>.onStart()
+        super.onStart()
 
-        // First launch: no tutorial, just mark it done and try to set the default home screen
+        // First launch: mark it done and try to set the default home screen
         if (!LauncherPreferences.internal().started()) {
             LauncherPreferences.internal().started(true)
             LauncherPreferences.internal().startedTime(System.currentTimeMillis() / 1000L)
@@ -82,47 +92,18 @@ class HomeActivity : UIObject, LauncherGestureActivity() {
 
         LauncherPreferences.getSharedPreferences()
             .registerOnSharedPreferenceChangeListener(sharedPreferencesListener)
-
-    }
-
-    private fun updateSettingsFallbackButtonVisibility() {
-        // If µLauncher settings can not be reached from any action bound to an enabled gesture,
-        // show the fallback button.
-        binding.buttonFallbackSettings.visibility = if (
-            !Gesture.entries.any { g ->
-                g.isEnabled() && Action.forGesture(g)?.canReachSettings() == true
-            }
-        ) {
-            View.VISIBLE
-        } else {
-            View.GONE
-        }
-    }
-
-    override fun getTheme(): Resources.Theme {
-        return modifyTheme(super.getTheme())
     }
 
     override fun onResume() {
         super.onResume()
-        updateSettingsFallbackButtonVisibility()
-        updateHomeMode()
+        minimalistAdapter.updateAppsList()
     }
-
 
     override fun onDestroy() {
         LauncherPreferences.getSharedPreferences()
             .unregisterOnSharedPreferenceChangeListener(sharedPreferencesListener)
         minimalistAdapter.destroy()
         super.onDestroy()
-    }
-
-    override fun handleBack() {
-        Gesture.BACK(this)
-    }
-
-    override fun getRootView(): View {
-        return binding.root
     }
 
     override fun isHomeScreen(): Boolean {

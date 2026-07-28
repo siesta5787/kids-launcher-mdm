@@ -4,18 +4,6 @@
     <PreferenceCategory
         android:title="@string/settings_launcher_section_home_mode"
         app:allowDividerAbove="false">
-        <DropDownPreference
-            android:key="@string/settings_general_home_mode_key"
-            android:title="@string/settings_general_home_mode"
-            android:entries="@array/settings_general_home_mode_items"
-            android:entryValues="@array/settings_general_home_mode_values"
-            android:defaultValue="GESTURES"
-            app:useSimpleSummaryProvider="true" />
-        <SwitchPreference
-            android:key="@string/settings_minimalist_allow_gestures_key"
-            android:defaultValue="false"
-            android:title="@string/settings_minimalist_allow_gestures"
-            android:summary="@string/settings_minimalist_allow_gestures_summary" />
         <Preference
             android:key="@string/settings_minimalist_apps_key"
             android:title="@string/settings_minimalist_apps"
@@ -65,48 +53,12 @@
             android:title="@string/settings_functionality_auto_close_keyboard" />
     </PreferenceCategory>
     <PreferenceCategory
-        app:allowDividerAbove="false"
-        android:title="@string/settings_launcher_section_gestures">
-        <SwitchPreference
-            android:key="@string/settings_enabled_gestures_double_swipe_key"
-            android:summary="@string/settings_enabled_gestures_double_swipe_summary"
-            android:defaultValue="true"
-            android:title="@string/settings_enabled_gestures_double_swipe" />
-        <SwitchPreference
-            android:key="@string/settings_enabled_gestures_edge_swipe_key"
-            android:defaultValue="true"
-            android:summary="@string/settings_enabled_gestures_edge_swipe_summary"
-            android:title="@string/settings_enabled_gestures_edge_swipe" />
-        <PreferenceCategory
-            android:dependency="@string/settings_enabled_gestures_edge_swipe_key"
-            app:allowDividerAbove="false">
-            <SeekBarPreference
-                android:key="@string/settings_enabled_gestures_edge_swipe_edge_width_key"
-                android:defaultValue="15"
-                app:min="5"
-                android:max="33"
-                android:title="@string/settings_enabled_gestures_edge_swipe_edge_width"
-                app:showSeekBarValue="true" />
-        </PreferenceCategory>
-        <SwitchPreference
-            android:key="@string/settings_enabled_gestures_diagonal_swipe_key"
-            android:defaultValue="false"
-            android:title="@string/settings_enabled_gestures_diagonal_swipe" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
         android:title="@string/settings_launcher_section_apps"
         app:allowDividerAbove="false">
 
         <Preference
             android:key="@string/settings_apps_hidden_key"
             android:title="@string/settings_apps_hidden" />
-
-        <SwitchPreference
-            android:key="@string/settings_apps_hide_bound_apps_key"
-            android:title="@string/settings_apps_hide_bound_apps"
-            android:defaultValue="false" />
 
         <SwitchPreference
             android:key="@string/settings_apps_hide_paused_apps_key"

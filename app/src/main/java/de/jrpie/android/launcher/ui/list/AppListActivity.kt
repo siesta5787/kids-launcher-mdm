@@ -7,13 +7,13 @@ import android.window.OnBackInvokedDispatcher
 import androidx.appcompat.content.res.AppCompatResources
 import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
-import de.jrpie.android.launcher.actions.LauncherAction
 import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.hidePrivateSpaceWhenLocked
 import de.jrpie.android.launcher.apps.isPrivateSpaceLocked
 import de.jrpie.android.launcher.apps.isPrivateSpaceSetUp
 import de.jrpie.android.launcher.apps.togglePrivateSpaceLock
 import de.jrpie.android.launcher.databinding.ActivityListBinding
+import de.jrpie.android.launcher.openSettings
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
@@ -76,7 +76,7 @@ class AppListActivity : AbstractListActivity() {
         setContentView(binding.root)
 
         binding.listSettings.setOnClickListener {
-            LauncherAction.SETTINGS.launch(this@AppListActivity)
+            openSettings(this@AppListActivity)
         }
 
         if (privateSpaceVisibility == AppFilter.Companion.AppSetVisibility.EXCLUSIVE) {

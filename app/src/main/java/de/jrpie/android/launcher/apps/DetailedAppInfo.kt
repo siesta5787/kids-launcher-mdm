@@ -5,7 +5,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.graphics.drawable.Drawable
 import android.os.UserHandle
-import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.actions.AppAction
 import de.jrpie.android.launcher.getUserFromId
 
@@ -58,7 +57,7 @@ class DetailedAppInfo(
         return removable
     }
 
-    override fun getAction(): Action {
+    override fun getAction(): AppAction {
         return AppAction(app)
     }
 

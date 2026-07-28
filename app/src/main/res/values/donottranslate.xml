@@ -11,25 +11,11 @@
     <string name="settings_internal_version_code_key" translatable="false">internal.version_code</string>
     <string name="settings_apps_hidden_key" translatable="false">apps.hidden</string>
     <string name="settings_apps_custom_names_key" translatable="false">apps.custom_names</string>
-    <string name="settings_apps_hide_bound_apps_key" translatable="false">apps.hide_bound_apps</string>
     <string name="settings_apps_hide_paused_apps_key" translatable="false">apps.hide_paused_apps</string>
     <string name="settings_apps_hide_private_space_apps_key" translatable="false">apps.hide_private_space_apps</string>
     <string name="settings_list_layout_key" translatable="false">list.layout</string>
     <string name="settings_general_choose_home_screen_key" translatable="false">general.select_launcher</string>
-    <string name="settings_general_home_mode_key" translatable="false">general.home_mode</string>
-    <string name="settings_minimalist_allow_gestures_key" translatable="false">minimalist.allow_gestures</string>
     <string name="settings_minimalist_apps_key" translatable="false">minimalist.apps</string>
-
-    <!-- values of de.jrpie.android.launcher.preferences.HomeMode -->
-    <string-array name="settings_general_home_mode_values" translatable="false">
-        <item>GESTURES</item>
-        <item>MINIMAL</item>
-    </string-array>
-
-    <string-array name="settings_general_home_mode_items" translatable="false">
-        <item>@string/settings_general_home_mode_item_gestures</item>
-        <item>@string/settings_general_home_mode_item_minimal</item>
-    </string-array>
 
     <!-- values of de.jrpie.android.launcher.preferences.list.ListLayout -->
     <string-array name="settings_list_layout_values" translatable="false">
@@ -45,32 +31,6 @@
         <item>@string/settings_list_layout_item_grid</item>
         <item>@string/settings_list_layout_item_grid_only_icons</item>
     </string-array>
-
-    <!--
-      -
-      - Settings : Gestures
-      -
-      -->
-    <string name="settings_gesture_up_key" translatable="false">Swipe Up</string>
-    <string name="settings_gesture_double_up_key" translatable="false">Double Up</string>
-    <string name="settings_gesture_down_key" translatable="false">Swipe Down</string>
-    <string name="settings_gesture_double_down_key" translatable="false">Double Down</string>
-    <string name="settings_gesture_left_key" translatable="false">Swipe Left</string>
-    <string name="settings_gesture_double_left_key" translatable="false">Double Left</string>
-    <string name="settings_gesture_right_key" translatable="false">Swipe Right</string>
-    <string name="settings_gesture_double_right_key" translatable="false">Double Right</string>
-    <string name="settings_gesture_right_top_edge_key" translatable="false">Swipe Right (Top)</string>
-    <string name="settings_gesture_right_bottom_edge_key" translatable="false">Swipe Right (Bottom)</string>
-    <string name="settings_gesture_left_bottom_edge_key" translatable="false">Swipe Left (Bottom)</string>
-    <string name="settings_gesture_left_top_edge_key" translatable="false">Swipe Left (Top)</string>
-    <string name="settings_gesture_up_left_edge_key" translatable="false">Swipe Up (Left Edge)</string>
-    <string name="settings_gesture_up_right_edge_key" translatable="false">Swipe Up (Right Edge)</string>
-    <string name="settings_gesture_down_left_edge_key" translatable="false">Swipe Down (Left Edge)</string>
-    <string name="settings_gesture_down_right_edge_key" translatable="false">Swipe Down (Right Edge)</string>
-    <string name="settings_gesture_vol_up_key" translatable="false">Volume Up</string>
-    <string name="settings_gesture_vol_down_key" translatable="false">Volume Down</string>
-    <string name="settings_gesture_double_click_key" translatable="false">Double Click</string>
-    <string name="settings_gesture_long_click_key" translatable="false">Long Click</string>
 
     <!--
       -
@@ -100,16 +60,9 @@
       -->
     <string name="settings_display_rotate_screen_key" translatable="false">display.rotate_screen</string>
 
-    <string name="settings_enabled_gestures_double_swipe_key" translatable="false">enabled_gestures.double_actions</string>
-    <string name="settings_enabled_gestures_edge_swipe_key" translatable="false">enabled_gestures.edge_actions</string>
-    <string name="settings_enabled_gestures_edge_swipe_edge_width_key" translatable="false">enabled_gestures.edge_actions.edge_width</string>
-    <string name="settings_enabled_gestures_diagonal_swipe_key" translatable="false">enabled_gestures.diagonal</string>
     <string name="settings_functionality_search_auto_launch_key" translatable="false">functionality.search_auto_launch</string>
     <string name="settings_functionality_search_auto_open_keyboard_key" translatable="false">functionality.search_auto_keyboard</string>
     <string name="settings_functionality_search_auto_close_keyboard_key" translatable="false">functionality.search_auto_close_keyboard</string>
-
-
-    <string name="settings_actions_lock_method_key" translatable="false">settings_action_lock_method</string>
 
 
     <!--

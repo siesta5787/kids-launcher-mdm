@@ -7,8 +7,6 @@
     <string name="alert_cant_open_title">Can\'t open app</string>
     <string name="alert_cant_open_message">Want to change its settings?</string>
 
-    <string name="toast_cant_open_message">Open settings to choose an action for this gesture</string>
-
     <!--
       -
       - Settings
@@ -18,89 +16,6 @@
 
     <string name="settings_tab_launcher">Launcher</string>
     <string name="settings_tab_meta">Meta</string>
-
-    <!--
-      -
-      - Settings : Apps
-      -
-      -->
-    <string name="settings_gesture_back">Back</string>
-    <string name="settings_gesture_description_back">Back button / back gesture</string>
-    <string name="settings_gesture_up">Up</string>
-    <string name="settings_gesture_description_up">Swipe up</string>
-    <string name="settings_gesture_tap_up">Tap + Up</string>
-    <string name="settings_gesture_description_tap_up">Tap and swipe up</string>
-    <string name="settings_gesture_double_up">Double Up</string>
-    <string name="settings_gesture_description_double_up">Swipe up with two fingers</string>
-    <string name="settings_gesture_down">Down</string>
-    <string name="settings_gesture_description_down">Swipe down</string>
-    <string name="settings_gesture_tap_down">Tap + Down</string>
-    <string name="settings_gesture_description_tap_down">Tap and swipe down</string>
-    <string name="settings_gesture_double_down">Double Down</string>
-    <string name="settings_gesture_description_double_down">Swipe down with two fingers</string>
-    <string name="settings_gesture_left">Left</string>
-    <string name="settings_gesture_description_left">Swipe left</string>
-    <string name="settings_gesture_tap_left">Tap + Left</string>
-    <string name="settings_gesture_description_tap_left">Tap and swipe left</string>
-    <string name="settings_gesture_double_left">Double Left</string>
-    <string name="settings_gesture_description_double_left">Swipe left with two fingers</string>
-    <string name="settings_gesture_right">Right</string>
-    <string name="settings_gesture_description_right">Swipe right</string>
-    <string name="settings_gesture_tap_right">Tap + Right</string>
-    <string name="settings_gesture_description_tap_right">Tap and swipe right</string>
-    <string name="settings_gesture_double_right">Double Right</string>
-    <string name="settings_gesture_description_double_right">Swipe right with two fingers</string>
-    <string name="settings_gesture_right_top_edge">Right (Top)</string>
-    <string name="settings_gesture_description_right_top_edge">Swipe right at the top of the screen</string>
-    <string name="settings_gesture_right_bottom_edge">Right (Bottom)</string>
-    <string name="settings_gesture_description_right_bottom_edge">Swipe right at the bottom of the screen</string>
-    <string name="settings_gesture_left_bottom_edge">Left (Bottom)</string>
-    <string name="settings_gesture_description_left_bottom_edge">Swipe left at the bottom of the screen</string>
-    <string name="settings_gesture_left_top_edge">Left (Top)</string>
-    <string name="settings_gesture_description_left_top_edge">Swipe left at the top of the screen</string>
-    <string name="settings_gesture_up_left_edge">Up (Left Edge)</string>
-    <string name="settings_gesture_description_up_left_edge">Swipe up at the left edge of the screen</string>
-    <string name="settings_gesture_up_right_edge">Up (Right Edge)</string>
-    <string name="settings_gesture_description_up_right_edge">Swipe up at the right edge of the screen</string>
-    <string name="settings_gesture_down_left_edge">Down (Left Edge)</string>
-    <string name="settings_gesture_description_down_left_edge">Swipe down at the left edge of the screen</string>
-    <string name="settings_gesture_down_right_edge">Down (Right Edge)</string>
-    <string name="settings_gesture_description_down_right_edge">Swipe down at the right edge of the screen</string>
-
-    <string name="settings_gesture_slash">/</string>
-    <string name="settings_gesture_description_slash">Top right -> bottom left</string>
-    <string name="settings_gesture_slash_reverse">/ (Reverse)</string>
-    <string name="settings_gesture_description_slash_reverse">Bottom left -> top right</string>
-    <string name="settings_gesture_backslash">\\</string>
-    <string name="settings_gesture_description_backslash">Top left -> bottom right</string>
-    <string name="settings_gesture_backslash_reverse">\\ (Reverse)</string>
-    <string name="settings_gesture_description_backslash_reverse">Bottom right -> top left</string>
-
-    <string name="settings_gesture_swipe_larger"><![CDATA[>]]></string>
-    <string name="settings_gesture_description_swipe_larger">Top left -> mid right -> bottom left</string>
-    <string name="settings_gesture_swipe_larger_reverse"><![CDATA[> (Reverse)]]></string>
-    <string name="settings_gesture_description_swipe_larger_reverse">Bottom left -> mid right -> top left</string>
-    <string name="settings_gesture_swipe_smaller"><![CDATA[<]]></string>
-    <string name="settings_gesture_description_swipe_smaller">Top right -> mid left -> bottom right</string>
-    <string name="settings_gesture_swipe_smaller_reverse"><![CDATA[< (Reverse)]]></string>
-    <string name="settings_gesture_description_swipe_smaller_reverse">Bottom right -> mid left -> top right</string>
-    <string name="settings_gesture_swipe_v">V</string>
-    <string name="settings_gesture_description_swipe_v">Top left -> bottom mid -> top right</string>
-    <string name="settings_gesture_swipe_v_reverse">V (Reverse)</string>
-    <string name="settings_gesture_description_swipe_v_reverse">Top right -> bottom mid -> top left</string>
-    <string name="settings_gesture_swipe_lambda">Λ</string>
-    <string name="settings_gesture_description_swipe_lambda">Bottom left -> top mid -> bottom right</string>
-    <string name="settings_gesture_swipe_lambda_reverse">Λ (Reverse)</string>
-    <string name="settings_gesture_description_swipe_lambda_reverse">Bottom right -> top mid -> bottom left</string>
-
-    <string name="settings_gesture_vol_up">Volume Up Key</string>
-    <string name="settings_gesture_description_vol_up">Press the volume up button</string>
-    <string name="settings_gesture_vol_down">Volume Down Key</string>
-    <string name="settings_gesture_description_vol_down">Press the volume down button</string>
-    <string name="settings_gesture_double_click">Double Click</string>
-    <string name="settings_gesture_description_double_click">Double click an empty area</string>
-    <string name="settings_gesture_long_click">Long Click</string>
-    <string name="settings_gesture_description_long_click">Long click an empty area</string>
 
     <!--
       -
@@ -126,24 +41,14 @@
 
     <string name="settings_launcher_section_functionality">Functionality</string>
 
-    <string name="settings_launcher_section_gestures">Gestures</string>
-    <string name="settings_enabled_gestures_double_swipe">Double swipe gestures</string>
-    <string name="settings_enabled_gestures_double_swipe_summary">Swipe with two fingers</string>
-    <string name="settings_enabled_gestures_edge_swipe">Edge swipe gestures</string>
-    <string name="settings_enabled_gestures_edge_swipe_summary">Swipe at the edge of the screen</string>
-    <string name="settings_enabled_gestures_edge_swipe_edge_width">Edge width</string>
-    <string name="settings_enabled_gestures_diagonal_swipe">Diagonal swipe gestures</string>
     <string name="settings_functionality_auto_launch">Launch search results</string>
     <string name="settings_functionality_auto_launch_summary">Press space to disable this feature temporarily.</string>
 
     <string name="settings_functionality_auto_keyboard">Start keyboard for search</string>
     <string name="settings_functionality_auto_close_keyboard">Close keyboard when scrolling</string>
 
-    <string name="settings_launcher_sensitivity">Sensitivity</string>
-
     <string name="settings_launcher_section_apps">Apps</string>
     <string name="settings_apps_hidden">Hidden apps</string>
-    <string name="settings_apps_hide_bound_apps">Don\'t show apps that are bound to a gesture in the app list</string>
     <string name="settings_apps_hide_paused_apps">Hide paused apps</string>
     <string name="settings_apps_hide_private_space_apps">Hide private space from app list</string>
     <string name="settings_list_layout">Layout of app list</string>
@@ -206,27 +111,12 @@
     <string name="list_apps_search_hint">Search</string>
     <string name="list_apps_search_hint_no_auto_launch">Search (no auto launch)</string>
 
-    <string name="list_other_settings">OCM Launcher Settings</string>
-    <string name="list_other_list">All Applications</string>
-    <string name="list_other_list_private_space">Private Space</string>
-    <string name="list_other_toggle_private_space_lock">Toggle Private Space Lock</string>
-    <string name="list_other_volume_up">Raise Volume</string>
-    <string name="list_other_volume_down">Lower Volume</string>
-    <string name="list_other_volume_adjust">Adjust Volume</string>
-    <string name="list_other_track_next">Music: Next</string>
-    <string name="list_other_track_previous">Music: Previous</string>
-    <string name="list_other_track_play_pause">Music: Play / Pause</string>
-    <string name="list_other_expand_notifications_panel">Expand Notifications Panel</string>
-    <string name="list_other_nop">Do Nothing</string>
-    <string name="list_other_launch_other_launcher">Launch Other Home Screen</string>
-
     <string name="settings">Settings</string>
     <string name="ic_menu_alt">More options</string>
     <string name="alert_cant_expand_status_bar_panel">Error: Can\'t expand status bar. This action is using functionality that is not part of the published Android API. Unfortunately, it does not seem to work on your device.</string>
     <string name="alert_requires_android_v">This functionality requires Android 15 or later.</string>
     <string name="snackbar_app_hidden">App hidden. You can make it visible again in settings.</string>
     <string name="undo">Undo</string>
-    <string name="list_other_expand_settings_panel">Quick Settings</string>
     <string name="toast_device_admin_not_enabled">OCM Launcher needs to be a device admin in order to lock the screen.</string>
     <string name="device_admin_explanation">This is required for the lock screen action.</string>
     <string name="device_admin_description">Enable the lock screen action</string>
@@ -250,11 +140,6 @@
 
     <string name="dialog_ok">Ok</string>
     <string name="settings_launcher_section_home_mode">Home Screen Mode</string>
-    <string name="settings_general_home_mode">Home screen mode</string>
-    <string name="settings_general_home_mode_item_gestures">Gestures</string>
-    <string name="settings_general_home_mode_item_minimal">Minimal</string>
-    <string name="settings_minimalist_allow_gestures">Allow gestures</string>
-    <string name="settings_minimalist_allow_gestures_summary">Let gestures work normally in Minimal mode, instead of disabling them. Long click will no longer be forced to open settings.</string>
     <string name="settings_minimalist_apps">Manage minimal list apps</string>
     <string name="settings_minimalist_apps_summary">Choose which apps show up on the minimal home screen (long-press an app in the list)</string>
     <string name="notification_crash_title">OCM Launcher crashed</string>
@@ -292,5 +177,4 @@
     <string name="content_description_navigate_next">Navigate next</string>
     <string name="content_description_lock">Lock</string>
     <string name="toast_cant_launch_app">Error: Can\'t launch app</string>
-    <string name="action_unknown">Invalid action (probably an uninstalled app)</string>
 </resources>

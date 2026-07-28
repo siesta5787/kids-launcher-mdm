@@ -3,7 +3,6 @@ package de.jrpie.android.launcher.preferences
 import android.content.Context
 import android.util.Log
 import de.jrpie.android.launcher.BuildConfig
-import de.jrpie.android.launcher.actions.Action
 import de.jrpie.android.launcher.apps.AbstractAppInfo
 import de.jrpie.android.launcher.apps.AbstractAppInfo.Companion.INVALID_USER
 import de.jrpie.android.launcher.apps.AppInfo
@@ -106,6 +105,4 @@ fun resetPreferences(context: Context) {
         Log.i(TAG, "Hiding ${launcher?.getRawInfo()}")
     }
     LauncherPreferences.apps().hidden(hidden)
-
-    Action.resetToDefaultActions(context)
 }

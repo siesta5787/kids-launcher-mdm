@@ -20,11 +20,15 @@ import android.widget.Toast
 import androidx.core.net.toUri
 import de.jrpie.android.launcher.apps.AbstractAppInfo.Companion.INVALID_USER
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
+import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.AppInfo
 import de.jrpie.android.launcher.apps.DetailedAppInfo
 import de.jrpie.android.launcher.apps.getPrivateSpaceUser
 import de.jrpie.android.launcher.apps.isPrivateSpaceSupported
 import de.jrpie.android.launcher.preferences.LauncherPreferences
+import de.jrpie.android.launcher.ui.list.AbstractListActivity
+import de.jrpie.android.launcher.ui.list.AppListActivity
+import de.jrpie.android.launcher.ui.settings.SettingsActivity
 
 
 const val LOG_TAG = "Launcher"
@@ -76,6 +80,38 @@ fun setDefaultHomeScreen(context: Context, checkDefault: Boolean = false) {
         Log.w(LOG_TAG, "Unable to set home screen using ACTION_HOME_SETTINGS.", e)
         Toast.makeText(context, R.string.alert_cant_choose_home_screen, Toast.LENGTH_LONG).show()
     }
+}
+
+fun openSettings(context: Context) {
+    context.startActivity(Intent(context, SettingsActivity::class.java))
+}
+
+fun openAppsList(
+    context: Context,
+    hidden: Boolean = false,
+    private: Boolean = false
+) {
+    val intent = Intent(context, AppListActivity::class.java)
+    intent.putExtra(
+        AbstractListActivity.KEY_HIDDEN_VISIBILITY,
+        if (hidden) {
+            AppFilter.Companion.AppSetVisibility.EXCLUSIVE
+        } else {
+            AppFilter.Companion.AppSetVisibility.HIDDEN
+        }
+    )
+    intent.putExtra(
+        AbstractListActivity.KEY_PRIVATE_SPACE_VISIBILITY,
+        if (private) {
+            AppFilter.Companion.AppSetVisibility.EXCLUSIVE
+        } else if (!hidden && LauncherPreferences.apps().hidePrivateSpaceApps()) {
+            AppFilter.Companion.AppSetVisibility.HIDDEN
+        } else {
+            AppFilter.Companion.AppSetVisibility.VISIBLE
+        }
+    )
+
+    context.startActivity(intent)
 }
 
 fun getUserFromId(userId: Int?, context: Context): UserHandle {

@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.os.UserHandle
 import android.util.Log
 import de.jrpie.android.launcher.Application
-import de.jrpie.android.launcher.actions.Action
+import de.jrpie.android.launcher.actions.AppAction
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
@@ -18,7 +18,7 @@ sealed interface AbstractDetailedAppInfo {
     fun getUser(context: Context): UserHandle
     fun isPrivate(): Boolean
     fun isRemovable(): Boolean
-    fun getAction(): Action
+    fun getAction(): AppAction
 
 
     fun getCustomLabel(context: Context): String {

@@ -3,9 +3,6 @@ package de.jrpie.android.launcher.apps
 import android.content.Context
 import android.icu.text.Normalizer2
 import android.os.Build
-import de.jrpie.android.launcher.actions.Action
-import de.jrpie.android.launcher.actions.AppAction
-import de.jrpie.android.launcher.actions.Gesture
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import java.util.Locale
 import kotlin.text.Regex.Companion.escape
@@ -28,17 +25,6 @@ class AppFilter(
         apps = apps.filter { info ->
             hiddenVisibility.predicate(hidden, info)
                     && privateSpaceVisibility.predicate(private, info)
-        }
-
-        if (LauncherPreferences.apps().hideBoundApps()) {
-            val boundApps = Gesture.entries
-                .filter(Gesture::isEnabled)
-                .mapNotNull { g -> Action.forGesture(g) }
-                .mapNotNull {
-                    (it as? AppAction)?.app
-                }
-                .toSet()
-            apps = apps.filterNot { info -> boundApps.contains(info.getRawInfo()) }
         }
 
         // normalize text for search
