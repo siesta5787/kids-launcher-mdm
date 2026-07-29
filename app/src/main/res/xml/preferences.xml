@@ -17,19 +17,6 @@
             android:title="@string/settings_general_choose_home_screen" />
     </PreferenceCategory>
     <PreferenceCategory
-        app:allowDividerAbove="false"
-        android:title="@string/settings_launcher_section_appearance">
-        <DropDownPreference
-            android:entries="@array/settings_theme_color_theme_items"
-            android:entryValues="@array/settings_theme_color_theme_values"
-            android:defaultValue="DEFAULT"
-            android:key="@string/settings_theme_color_theme_key"
-            android:title="@string/settings_theme_color_theme"
-            app:useSimpleSummaryProvider="true" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
         android:title="@string/settings_launcher_section_functionality"
         app:allowDividerAbove="false">
 

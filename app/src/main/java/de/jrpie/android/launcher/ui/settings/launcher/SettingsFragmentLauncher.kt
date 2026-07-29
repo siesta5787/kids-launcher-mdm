@@ -5,7 +5,6 @@ import androidx.preference.PreferenceFragmentCompat
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.openAppsList
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.preferences.theme.ColorTheme
 import de.jrpie.android.launcher.setDefaultHomeScreen
 
 
@@ -41,15 +40,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         minimalistApps?.setOnPreferenceClickListener {
             openAppsList(requireContext())
             true
-        }
-
-        findPreference<androidx.preference.DropDownPreference>(
-            LauncherPreferences.theme().keys().colorTheme()
-        )?.apply {
-            entries = ColorTheme.entries.filter { x -> x.isAvailable() }
-                .map { x -> x.getLabel(requireContext()) }.toTypedArray()
-            entryValues = ColorTheme.entries.filter { x -> x.isAvailable() }
-                .map { x -> x.name }.toTypedArray()
         }
     }
 }

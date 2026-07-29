@@ -20,18 +20,6 @@
       -
       -->
     <string name="settings_theme_color_theme_key" translatable="false">theme.color_theme</string>
-    <string-array name="settings_theme_color_theme_values" translatable="false">
-        <item>DEFAULT</item>
-        <item>DARK</item>
-        <item>LIGHT</item>
-        <item>DYNAMIC</item>
-    </string-array>
-    <string-array name="settings_theme_color_theme_items" translatable="false">
-        <item>@string/settings_theme_color_theme_item_default</item>
-        <item>@string/settings_theme_color_theme_item_dark</item>
-        <item>@string/settings_theme_color_theme_item_light</item>
-        <item>@string/settings_theme_color_theme_item_dynamic</item>
-    </string-array>
 
     <!--
       -
