@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
@@ -15,20 +14,15 @@ import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.apps.AppFilter
-import de.jrpie.android.launcher.apps.AppInfo
-import de.jrpie.android.launcher.apps.DetailedAppInfo
-import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
  * A [RecyclerView] (efficient scrollable list) containing all apps on the users device.
- * The apps details are represented by [AppInfo].
  *
  * @param activity - the activity this is in
  */
 @SuppressLint("NotifyDataSetChanged")
 class AppsRecyclerAdapter(
     val activity: Activity,
-    val root: View,
     private var appFilter: AppFilter = AppFilter(activity),
 ) :
     RecyclerView.Adapter<AppsRecyclerAdapter.ViewHolder>() {
@@ -72,77 +66,14 @@ class AppsRecyclerAdapter(
         viewHolder.textView.text = appLabel
 
         viewHolder.textView.setOnLongClickListener {
-            showOptionsPopup(
-                viewHolder,
-                appsListDisplayed[i]
-            )
+            showAppContextMenu(activity, viewHolder.img, appsListDisplayed[i]); true
         }
         viewHolder.img.setOnLongClickListener {
-            showOptionsPopup(
-                viewHolder,
-                appsListDisplayed[i]
-            )
+            showAppContextMenu(activity, viewHolder.img, appsListDisplayed[i]); true
         }
         // ensure onClicks are actually caught
         viewHolder.textView.setOnClickListener { viewHolder.onClick(viewHolder.textView) }
         viewHolder.img.setOnClickListener { viewHolder.onClick(viewHolder.img) }
-    }
-
-    @Suppress("SameReturnValue")
-    private fun showOptionsPopup(
-        viewHolder: ViewHolder,
-        appInfo: AbstractDetailedAppInfo
-    ): Boolean {
-        //create the popup menu
-
-        val popup = PopupMenu(activity, viewHolder.img)
-        popup.inflate(R.menu.menu_app)
-
-        if (!appInfo.isRemovable()) {
-            popup.menu.findItem(R.id.app_menu_delete).isVisible = false
-        }
-
-        if (appInfo !is DetailedAppInfo) {
-            popup.menu.findItem(R.id.app_menu_info).isVisible = false
-        }
-
-        if (LauncherPreferences.apps().hidden()?.contains(appInfo.getRawInfo()) == true) {
-            popup.menu.findItem(R.id.app_menu_hidden).setTitle(R.string.list_app_hidden_remove)
-        }
-
-        if (LauncherPreferences.minimalist().apps()?.contains(appInfo.getRawInfo()) == true) {
-            popup.menu.findItem(R.id.app_menu_minimalist).setTitle(R.string.list_app_minimalist_remove)
-        }
-
-
-        popup.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.app_menu_delete -> {
-                    appInfo.getRawInfo().uninstall(activity); true
-                }
-
-                R.id.app_menu_info -> {
-                    (appInfo.getRawInfo() as? AppInfo)?.openSettings(activity); true
-                }
-
-                R.id.app_menu_hidden -> {
-                    appInfo.getRawInfo().toggleHidden(root); true
-                }
-
-                R.id.app_menu_minimalist -> {
-                    appInfo.getRawInfo().toggleMinimalistApp(); true
-                }
-
-                R.id.app_menu_rename -> {
-                    appInfo.showRenameDialog(activity); true
-                }
-
-                else -> false
-            }
-        }
-
-        popup.show()
-        return true
     }
 
     override fun getItemCount(): Int {

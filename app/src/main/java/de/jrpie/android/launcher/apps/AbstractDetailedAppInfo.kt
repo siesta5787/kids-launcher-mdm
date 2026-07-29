@@ -16,7 +16,6 @@ sealed interface AbstractDetailedAppInfo {
     fun getLabel(): String
     fun getIcon(context: Context): Drawable
     fun getUser(context: Context): UserHandle
-    fun isRemovable(): Boolean
     fun getAction(): AppAction
 
 

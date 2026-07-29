@@ -1,7 +1,6 @@
 package de.jrpie.android.launcher.apps
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.graphics.drawable.Drawable
 import android.os.UserHandle
@@ -15,7 +14,6 @@ class DetailedAppInfo(
     private val app: AppInfo,
     private val label: CharSequence,
     private val icon: Drawable,
-    private val removable: Boolean = true,
 ) : AbstractDetailedAppInfo {
 
     constructor(activityInfo: LauncherActivityInfo) : this(
@@ -26,8 +24,6 @@ class DetailedAppInfo(
         ),
         activityInfo.label,
         activityInfo.getBadgedIcon(0),
-        // App can be uninstalled iff it is not a system app
-        activityInfo.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
     )
 
 
@@ -45,10 +41,6 @@ class DetailedAppInfo(
 
     override fun getUser(context: Context): UserHandle {
         return getUserFromId(app.user, context)
-    }
-
-    override fun isRemovable(): Boolean {
-        return removable
     }
 
     override fun getAction(): AppAction {

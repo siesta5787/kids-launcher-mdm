@@ -31,7 +31,10 @@ class HomeActivity : UIObjectActivity() {
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
             if (prefKey?.startsWith("display.") == true) {
                 recreate()
-            } else if (prefKey?.startsWith("minimalist.") == true) {
+            } else {
+                // covers minimalist. (added/removed), apps.hidden (hidden while shown here)
+                // and apps.custom_names (renamed) - all of which can change via the
+                // home screen's own long-press menu.
                 minimalistAdapter.updateAppsList()
             }
         }

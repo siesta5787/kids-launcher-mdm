@@ -58,7 +58,7 @@ class ListFragmentApps : Fragment(), UIObject {
 
         appsRecyclerAdapter =
             AppsRecyclerAdapter(
-                listActivity, binding.root,
+                listActivity,
                 appFilter = AppFilter(
                     requireContext(),
                     hiddenVisibility = listActivity.hiddenVisibility,

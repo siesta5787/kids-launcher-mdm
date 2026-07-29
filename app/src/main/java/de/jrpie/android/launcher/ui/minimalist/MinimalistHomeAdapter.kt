@@ -6,7 +6,6 @@ import android.graphics.Rect
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.RecyclerView
@@ -14,7 +13,7 @@ import de.jrpie.android.launcher.Application
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.ui.list.apps.toggleMinimalistApp
+import de.jrpie.android.launcher.ui.list.apps.showAppContextMenu
 
 /**
  * A minimal [RecyclerView.Adapter] showing a plain text list of the apps chosen for
@@ -55,19 +54,7 @@ class MinimalistHomeAdapter(private val activity: Activity) :
 
         private fun onLongClick(v: View): Boolean {
             val appInfo = appsListDisplayed.getOrNull(bindingAdapterPosition) ?: return false
-
-            val popup = PopupMenu(activity, v)
-            popup.inflate(R.menu.menu_home_minimalist)
-            popup.setOnMenuItemClickListener {
-                if (it.itemId == R.id.home_minimalist_menu_remove) {
-                    appInfo.getRawInfo().toggleMinimalistApp()
-                    updateAppsList()
-                    true
-                } else {
-                    false
-                }
-            }
-            popup.show()
+            showAppContextMenu(activity, v, appInfo)
             return true
         }
 

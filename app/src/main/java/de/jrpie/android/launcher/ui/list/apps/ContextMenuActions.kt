@@ -3,25 +3,29 @@ package de.jrpie.android.launcher.ui.list.apps
 import android.app.Activity
 import android.app.Service
 import android.content.Context
-import android.content.Intent
 import android.content.pm.LauncherApps
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.EditText
+import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.core.net.toUri
 import com.google.android.material.snackbar.Snackbar
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.apps.AbstractAppInfo
 import de.jrpie.android.launcher.apps.AbstractDetailedAppInfo
 import de.jrpie.android.launcher.apps.AppInfo
-import de.jrpie.android.launcher.getUserFromId
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 private const val LOG_TAG = "AppContextMenu"
+private const val MINIMALIST_APPS_LIMIT = 10
 
+/**
+ * Used by [de.jrpie.android.launcher.actions.AppAction] to let the user open an app's system
+ * settings page after a launch attempt fails.
+ */
 fun AppInfo.openSettings(
     context: Context,
     sourceBounds: Rect? = null,
@@ -33,23 +37,7 @@ fun AppInfo.openSettings(
     }
 }
 
-fun AbstractAppInfo.uninstall(activity: Activity) {
-    if (this is AppInfo) {
-        val packageName = this.packageName
-        val userId = this.user
-
-        Log.i(LOG_TAG, "uninstalling $this")
-
-        val intent = Intent(Intent.ACTION_DELETE)
-        intent.data = "package:$packageName".toUri()
-        getUserFromId(userId, activity).let { user ->
-            intent.putExtra(Intent.EXTRA_USER, user)
-        }
-        activity.startActivity(intent)
-    }
-}
-
-fun AbstractAppInfo.toggleMinimalistApp() {
+fun AbstractAppInfo.toggleMinimalistApp(context: Context) {
     val apps: MutableSet<AbstractAppInfo> =
         LauncherPreferences.minimalist().apps() ?: mutableSetOf()
 
@@ -57,6 +45,11 @@ fun AbstractAppInfo.toggleMinimalistApp() {
         apps.remove(this)
         Log.i(LOG_TAG, "Removing $this from minimalist app list.")
     } else {
+        if (apps.size >= MINIMALIST_APPS_LIMIT) {
+            Toast.makeText(context, R.string.toast_minimalist_limit_reached, Toast.LENGTH_LONG)
+                .show()
+            return
+        }
         Log.i(LOG_TAG, "Adding $this to minimalist app list.")
         apps.add(this)
     }
@@ -104,4 +97,40 @@ fun AbstractDetailedAppInfo.showRenameDialog(context: Context) {
     }
 }
 
+/**
+ * The long-press context menu shown for an app row, shared by the app drawer and the
+ * home screen's minimal list.
+ */
+fun showAppContextMenu(activity: Activity, anchor: View, appInfo: AbstractDetailedAppInfo) {
+    val popup = PopupMenu(activity, anchor)
+    popup.inflate(R.menu.menu_app)
+
+    if (LauncherPreferences.apps().hidden()?.contains(appInfo.getRawInfo()) == true) {
+        popup.menu.findItem(R.id.app_menu_hidden).setTitle(R.string.list_app_hidden_remove)
+    }
+
+    if (LauncherPreferences.minimalist().apps()?.contains(appInfo.getRawInfo()) == true) {
+        popup.menu.findItem(R.id.app_menu_minimalist).setTitle(R.string.list_app_minimalist_remove)
+    }
+
+    popup.setOnMenuItemClickListener {
+        when (it.itemId) {
+            R.id.app_menu_hidden -> {
+                appInfo.getRawInfo().toggleHidden(anchor); true
+            }
+
+            R.id.app_menu_minimalist -> {
+                appInfo.getRawInfo().toggleMinimalistApp(activity); true
+            }
+
+            R.id.app_menu_rename -> {
+                appInfo.showRenameDialog(activity); true
+            }
+
+            else -> false
+        }
+    }
+
+    popup.show()
+}
 
