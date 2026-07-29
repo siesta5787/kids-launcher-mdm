@@ -4,19 +4,22 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import com.kidslauncher.mdm.Application
 import com.kidslauncher.mdm.apps.AppInfo
 import com.kidslauncher.mdm.headwind.dto.KidModePolicy
+import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlinx.serialization.decodeFromString
 
 private const val LOG_TAG = "AppEnforcer"
 
 /**
  * Suspends/unsuspends installed apps to match [KidModePolicy.allowlistJson] (a JSON list of
- * package names; null/empty means no restriction - nothing suspended). Only acts when this app
- * is device owner - a no-op otherwise, so it's safe to ship before the phone is actually
- * re-provisioned.
+ * package names; null/empty means no restriction - nothing suspended), and - only when the user
+ * has explicitly enabled it via Settings ("Enable kiosk mode") - pins the device to the allowed
+ * packages via Android's Device Owner lock-task API. Only acts when this app is device owner - a
+ * no-op otherwise, so it's safe to ship before the phone is actually re-provisioned.
  */
 object AppEnforcer {
 
@@ -57,6 +60,35 @@ object AppEnforcer {
                     e
                 )
             }
+        }
+
+        applyKioskState(dpm, admin, ownPackage, allowedPackages)
+    }
+
+    /**
+     * Only engages lock-task/kiosk pinning when BOTH an allowlist is configured AND the user has
+     * explicitly opted in via "Enable kiosk mode" in Settings. Deliberately not tied to the
+     * allowlist alone: once pinned with every LOCK_TASK_FEATURE_* off there is no on-device way
+     * out, so it must never engage without a deliberate, separate user action.
+     */
+    private fun applyKioskState(
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        ownPackage: String,
+        allowedPackages: Set<String>?,
+    ) {
+        val mdm = LauncherPreferences.mdm()
+        val shouldEngageKiosk = allowedPackages != null && mdm.kioskModeEnabled()
+
+        if (shouldEngageKiosk) {
+            dpm.setLockTaskPackages(admin, (allowedPackages + ownPackage).toTypedArray())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
+            }
+            mdm.kioskEnabled(true)
+        } else {
+            dpm.setLockTaskPackages(admin, emptyArray())
+            mdm.kioskEnabled(false)
         }
     }
 

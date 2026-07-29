@@ -47,6 +47,14 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // Current lock decision, persisted so LockActivity/HomeActivity can react
                         // via the usual SharedPreferences-listener pattern instead of a broadcast.
                         @Preference(name = "lock_reason", type = LockReason.class, defaultValue = "NONE"),
+                        // User-facing toggle: gates whether AppEnforcer is even allowed to engage
+                        // lock-task/kiosk pinning, independent of whether an allowlist is configured.
+                        // Defaults off - see AppEnforcer.kt for why this isn't automatic.
+                        @Preference(name = "kiosk_mode_enabled", type = boolean.class, defaultValue = "false"),
+                        // Computed handoff flag: true once AppEnforcer has actually configured DPM
+                        // lock-task state. HomeActivity reads this (not the toggle above) to decide
+                        // whether to call startLockTask()/stopLockTask().
+                        @Preference(name = "kiosk_enabled", type = boolean.class, defaultValue = "false"),
                 }),
         })
 public final class LauncherPreferences$Config {

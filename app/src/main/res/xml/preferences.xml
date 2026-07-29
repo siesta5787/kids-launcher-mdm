@@ -30,4 +30,14 @@
         android:key="settings_mdm_enroll_now"
         android:title="@string/settings_mdm_enroll_now" />
 
+    <Preference
+        android:key="settings_mdm_sync_now"
+        android:title="@string/settings_mdm_sync_now" />
+
+    <SwitchPreference
+        android:key="@string/settings_mdm_kiosk_mode_enabled_key"
+        android:defaultValue="false"
+        android:title="@string/settings_mdm_kiosk_mode_enabled"
+        android:summary="@string/settings_mdm_kiosk_mode_enabled_summary" />
+
 </PreferenceScreen>

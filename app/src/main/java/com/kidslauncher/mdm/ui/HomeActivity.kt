@@ -1,6 +1,8 @@
 package com.kidslauncher.mdm.ui
 
+import android.app.ActivityManager
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -34,6 +36,8 @@ class HomeActivity : UIObjectActivity() {
                 recreate()
             } else if (prefKey == LauncherPreferences.mdm().keys().lockReason()) {
                 redirectToLockScreenIfLocked()
+            } else if (prefKey == LauncherPreferences.mdm().keys().kioskEnabled()) {
+                reconcileKioskMode()
             } else {
                 // covers minimalist. (added/removed), apps.hidden (hidden while shown here)
                 // and apps.custom_names (renamed) - all of which can change via the
@@ -102,6 +106,10 @@ class HomeActivity : UIObjectActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Must run before the lock-screen check below: while the bedtime/screen-time block is
+        // showing is exactly when kiosk pinning should also be engaged, so the kid can't use
+        // recents/home/notification-shade to route around LockActivity.
+        reconcileKioskMode()
         // Checked here (not just via the preference listener) so pressing Home while the lock
         // screen is showing can't be used to bounce back into the drawer/home list underneath it.
         if (redirectToLockScreenIfLocked()) return
@@ -115,6 +123,30 @@ class HomeActivity : UIObjectActivity() {
             return true
         }
         return false
+    }
+
+    /**
+     * Entering lock-task mode is never automatic on the OS side (only removing the pinned
+     * package from DevicePolicyManager.setLockTaskPackages() auto-exits it) - AppEnforcer only
+     * configures the DPM-side state from a background Worker, so an Activity has to actually
+     * call startLockTask()/stopLockTask() to enter/exit. Runs on every onResume() since neither
+     * the pinned state nor this check survives reboot/process death on their own.
+     */
+    private fun reconcileKioskMode() {
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val currentlyLocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            activityManager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+        } else {
+            @Suppress("DEPRECATION")
+            activityManager.isInLockTaskMode
+        }
+        val shouldBeLocked = LauncherPreferences.mdm().kioskEnabled()
+
+        if (shouldBeLocked && !currentlyLocked) {
+            startLockTask()
+        } else if (!shouldBeLocked && currentlyLocked) {
+            stopLockTask()
+        }
     }
 
     override fun onDestroy() {
