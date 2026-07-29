@@ -3,7 +3,9 @@ package com.kidslauncher.mdm.ui.settings.launcher
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.kidslauncher.mdm.BuildConfig
@@ -50,11 +52,68 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             true
         }
 
+        val mdm = LauncherPreferences.mdm()
+
+        val serverUrl = findPreference<Preference>(mdm.keys().serverUrl())
+        serverUrl?.summary = mdm.serverUrl().orNotSet()
+        serverUrl?.setOnPreferenceClickListener {
+            showEditTextDialog(
+                requireContext(),
+                getString(R.string.settings_mdm_server_url),
+                mdm.serverUrl()
+            ) { value ->
+                mdm.serverUrl(value)
+                serverUrl.summary = value.orNotSet()
+            }
+            true
+        }
+
+        val deviceNumber = findPreference<Preference>(mdm.keys().deviceNumber())
+        deviceNumber?.summary = mdm.deviceNumber().orNotSet()
+        deviceNumber?.setOnPreferenceClickListener {
+            showEditTextDialog(
+                requireContext(),
+                getString(R.string.settings_mdm_device_number),
+                mdm.deviceNumber()
+            ) { value ->
+                mdm.deviceNumber(value)
+                deviceNumber.summary = value.orNotSet()
+            }
+            true
+        }
+
         val enrollNow = findPreference<Preference>("settings_mdm_enroll_now")
         enrollNow?.setOnPreferenceClickListener {
             enrollWithHeadwindServer(requireContext())
             true
         }
+    }
+
+    private fun String?.orNotSet(): String = this?.takeIf { it.isNotBlank() }
+        ?: getString(R.string.settings_mdm_not_set)
+
+    /**
+     * [androidx.preference.EditTextPreference]'s built-in dialog doesn't pick up this app's
+     * custom (dark) theme - it renders with invisible text/buttons. Uses the same themed
+     * AlertDialog approach as the app-rename dialog instead.
+     */
+    private fun showEditTextDialog(
+        context: Context,
+        title: String,
+        currentValue: String?,
+        onSave: (String) -> Unit,
+    ) {
+        val dialog = AlertDialog.Builder(context, R.style.AlertDialogCustom).apply {
+            setTitle(title)
+            setView(R.layout.dialog_edit_text)
+            setNegativeButton(android.R.string.cancel) { d, _ -> d.cancel() }
+            setPositiveButton(android.R.string.ok) { d, _ ->
+                val input = (d as? AlertDialog)?.findViewById<EditText>(R.id.dialog_edit_text_input)
+                onSave(input?.text?.toString().orEmpty())
+            }
+        }.create()
+        dialog.show()
+        dialog.findViewById<EditText>(R.id.dialog_edit_text_input)?.setText(currentValue)
     }
 
     /**
