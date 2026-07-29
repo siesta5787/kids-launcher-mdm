@@ -1,12 +1,8 @@
 package de.jrpie.android.launcher.ui
 
-import android.app.Activity
-import android.content.Context
 import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
-import android.view.inputmethod.InputMethodManager
-import android.widget.ImageView
 
 // Taken from https://stackoverflow.com/questions/47293269
 fun View.blink(
@@ -23,19 +19,4 @@ fun View.blink(
         it.repeatMode = repeatMode
         it.repeatCount = times
     })
-}
-
-// Taken from https://stackoverflow.com/a/50743764
-fun View.openSoftKeyboard(context: Context) {
-    this.requestFocus()
-    (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-        .showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
-}
-
-// https://stackoverflow.com/a/17789187
-fun closeSoftKeyboard(activity: Activity) {
-    activity.currentFocus?.let { focus ->
-        (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .hideSoftInputFromWindow(focus.windowToken, 0)
-    }
 }

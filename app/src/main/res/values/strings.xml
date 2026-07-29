@@ -33,14 +33,6 @@
 
     <string name="settings_display_rotate_screen">Rotate screen</string>
 
-    <string name="settings_launcher_section_functionality">Functionality</string>
-
-    <string name="settings_functionality_auto_launch">Launch search results</string>
-    <string name="settings_functionality_auto_launch_summary">Press space to disable this feature temporarily.</string>
-
-    <string name="settings_functionality_auto_keyboard">Start keyboard for search</string>
-    <string name="settings_functionality_auto_close_keyboard">Close keyboard when scrolling</string>
-
     <string name="settings_launcher_section_apps">Apps</string>
     <string name="settings_apps_hidden">Hidden apps</string>
 
@@ -92,9 +84,6 @@
     <string name="list_app_minimalist_add">Add to minimal list</string>
     <string name="list_app_minimalist_remove">Remove from minimal list</string>
     <string name="list_app_rename">Rename</string>
-
-    <string name="list_apps_search_hint">Search</string>
-    <string name="list_apps_search_hint_no_auto_launch">Search (no auto launch)</string>
 
     <string name="settings">Settings</string>
     <string name="snackbar_app_hidden">App hidden. You can make it visible again in settings.</string>

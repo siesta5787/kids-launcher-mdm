@@ -23,15 +23,10 @@
 
     <!--
       -
-      - Settings : Functionality
+      - Settings : Display
       -
       -->
     <string name="settings_display_rotate_screen_key" translatable="false">display.rotate_screen</string>
-
-    <string name="settings_functionality_search_auto_launch_key" translatable="false">functionality.search_auto_launch</string>
-    <string name="settings_functionality_search_auto_open_keyboard_key" translatable="false">functionality.search_auto_keyboard</string>
-    <string name="settings_functionality_search_auto_close_keyboard_key" translatable="false">functionality.search_auto_close_keyboard</string>
-
 
     <!--
       -

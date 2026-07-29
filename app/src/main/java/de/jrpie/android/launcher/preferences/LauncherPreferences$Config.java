@@ -36,11 +36,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 @PreferenceGroup(name = "display", prefix = "settings_display_", suffix = "_key", value = {
                         @Preference(name = "rotate_screen", type = boolean.class, defaultValue = "true"),
                 }),
-                @PreferenceGroup(name = "functionality", prefix = "settings_functionality_", suffix = "_key", value = {
-                        @Preference(name = "search_auto_launch", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "search_auto_open_keyboard", type = boolean.class, defaultValue = "true"),
-                        @Preference(name = "search_auto_close_keyboard", type = boolean.class, defaultValue = "false"),
-                }),
                 @PreferenceGroup(name = "minimalist", prefix = "settings_minimalist_", suffix = "_key", value = {
                         @Preference(name = "apps", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                 }),

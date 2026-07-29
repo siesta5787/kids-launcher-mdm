@@ -81,20 +81,6 @@ fun migratePreferencesFromVersionUnknown(context: Context) {
             "display.use_full_screen",
             true
         )
-        migrateBooleanPreference(
-            oldPrefs,
-            this,
-            "searchAutoLaunch",
-            "functionality.search_auto_launch",
-            true
-        )
-        migrateBooleanPreference(
-            oldPrefs,
-            this,
-            "searchAutoKeyboard",
-            "functionality.search_auto_keyboard",
-            true
-        )
     }
 
     when (oldPrefs.getString("theme", "finn")) {

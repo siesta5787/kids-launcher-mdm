@@ -6,7 +6,6 @@ import android.graphics.Rect
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -30,16 +29,13 @@ import de.jrpie.android.launcher.preferences.LauncherPreferences
 class AppsRecyclerAdapter(
     val activity: Activity,
     val root: View,
-    private var appFilter: AppFilter = AppFilter(activity, ""),
+    private var appFilter: AppFilter = AppFilter(activity),
 ) :
     RecyclerView.Adapter<AppsRecyclerAdapter.ViewHolder>() {
 
 
     private val apps = (activity.applicationContext as Application).apps
     private val appsListDisplayed: MutableList<AbstractDetailedAppInfo> = mutableListOf()
-
-    // temporarily disable auto launch
-    var disableAutoLaunch: Boolean = false
 
     init {
         apps.observe(this.activity as AppCompatActivity) {
@@ -165,33 +161,11 @@ class AppsRecyclerAdapter(
         appInfo.getAction().invoke(activity, rect)
     }
 
-    fun updateAppsList(triggerAutoLaunch: Boolean = false) {
+    fun updateAppsList() {
         appsListDisplayed.clear()
         apps.value?.let { appsListDisplayed.addAll(appFilter(it)) }
 
-        if (triggerAutoLaunch &&
-            appsListDisplayed.size == 1
-            && !disableAutoLaunch
-            && LauncherPreferences.functionality().searchAutoLaunch()
-        ) {
-            val app = appsListDisplayed[0]
-            app.getAction().invoke(activity)
-
-            val inputMethodManager =
-                activity.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
-            inputMethodManager.hideSoftInputFromWindow(View(activity).windowToken, 0)
-        }
-
         notifyDataSetChanged()
-    }
-
-    /**
-     * The function [setSearchString] is used to search elements within this [RecyclerView].
-     */
-    fun setSearchString(search: String) {
-        appFilter.query = search
-        updateAppsList(true)
-
     }
 
 }
