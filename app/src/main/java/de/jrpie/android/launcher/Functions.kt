@@ -187,10 +187,9 @@ fun getApps(
     return loadList
 }
 
-// used for the bug report button
-fun getDeviceInfo(): String {
+fun getDeviceInfo(context: Context): String {
     return """
-        µLauncher version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})
+        ${context.getString(R.string.app_name)} version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})
         Commit ${BuildConfig.GIT_COMMIT.take(8)}
         Android version: ${Build.VERSION.RELEASE} (sdk ${Build.VERSION.SDK_INT})
         Model: ${Build.MODEL}

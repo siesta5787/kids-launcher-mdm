@@ -31,7 +31,7 @@ class ReportCrashActivity : AppCompatActivity() {
         binding.reportCrashButtonCopy.setOnClickListener {
             copyToClipboard(
                 this,
-                "Device Info:\n${getDeviceInfo()}\n\nCrash Log:\n${report}"
+                "Device Info:\n${getDeviceInfo(this)}\n\nCrash Log:\n${report}"
             )
         }
 

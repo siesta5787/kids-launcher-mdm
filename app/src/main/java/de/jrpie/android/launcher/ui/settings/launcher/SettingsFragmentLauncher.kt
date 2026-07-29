@@ -38,7 +38,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         val version = findPreference<Preference>("settings_meta_version")
         version?.summary = BuildConfig.VERSION_NAME
         version?.setOnPreferenceClickListener {
-            copyToClipboard(requireContext(), getDeviceInfo())
+            copyToClipboard(requireContext(), getDeviceInfo(requireContext()))
             true
         }
     }
