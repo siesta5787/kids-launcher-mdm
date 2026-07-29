@@ -9,6 +9,14 @@
 
     <!--
       -
+      - Kid Mode lock screen
+      -
+      -->
+    <string name="lock_reason_bedtime">It\'s bedtime. This phone is locked until morning.</string>
+    <string name="lock_reason_screen_time">Screen time is over for now.</string>
+
+    <!--
+      -
       - Settings
       -
       -->

@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import androidx.activity.OnBackPressedCallback
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kidslauncher.mdm.databinding.ActivityHomeBinding
+import com.kidslauncher.mdm.headwind.LockReason
 import com.kidslauncher.mdm.openAppsList
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.requestNotificationPermission
@@ -31,6 +32,8 @@ class HomeActivity : UIObjectActivity() {
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
             if (prefKey?.startsWith("display.") == true) {
                 recreate()
+            } else if (prefKey == LauncherPreferences.mdm().keys().lockReason()) {
+                redirectToLockScreenIfLocked()
             } else {
                 // covers minimalist. (added/removed), apps.hidden (hidden while shown here)
                 // and apps.custom_names (renamed) - all of which can change via the
@@ -99,7 +102,19 @@ class HomeActivity : UIObjectActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Checked here (not just via the preference listener) so pressing Home while the lock
+        // screen is showing can't be used to bounce back into the drawer/home list underneath it.
+        if (redirectToLockScreenIfLocked()) return
         minimalistAdapter.updateAppsList()
+    }
+
+    /** @return true if currently locked (and [LockActivity] was launched). */
+    private fun redirectToLockScreenIfLocked(): Boolean {
+        if (LauncherPreferences.mdm().lockReason() != LockReason.NONE) {
+            LockActivity.start(this)
+            return true
+        }
+        return false
     }
 
     override fun onDestroy() {

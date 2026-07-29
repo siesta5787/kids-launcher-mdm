@@ -59,6 +59,10 @@
         <activity
             android:name=".ui.ReportCrashActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.LockActivity"
+            android:excludeFromRecents="true"
+            android:exported="false" />
 
         <receiver
             android:name=".headwind.MdmDeviceAdminReceiver"
