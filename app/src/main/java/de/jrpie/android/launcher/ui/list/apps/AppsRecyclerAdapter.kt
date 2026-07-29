@@ -19,7 +19,6 @@ import de.jrpie.android.launcher.apps.AppFilter
 import de.jrpie.android.launcher.apps.AppInfo
 import de.jrpie.android.launcher.apps.DetailedAppInfo
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.preferences.list.ListLayout
 import de.jrpie.android.launcher.ui.transformMonochrome
 
 /**
@@ -33,7 +32,6 @@ class AppsRecyclerAdapter(
     val activity: Activity,
     val root: View,
     private var appFilter: AppFilter = AppFilter(activity, ""),
-    private val layout: ListLayout,
 ) :
     RecyclerView.Adapter<AppsRecyclerAdapter.ViewHolder>() {
 
@@ -162,7 +160,7 @@ class AppsRecyclerAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        val view: View = inflater.inflate(layout.layoutResource, parent, false)
+        val view: View = inflater.inflate(R.layout.list_apps_row_variant_text, parent, false)
         val viewHolder = ViewHolder(view)
         return viewHolder
     }

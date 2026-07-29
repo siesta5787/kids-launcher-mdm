@@ -49,12 +49,6 @@
 
     <string name="settings_launcher_section_apps">Apps</string>
     <string name="settings_apps_hidden">Hidden apps</string>
-    <string name="settings_list_layout">Layout of app list</string>
-
-    <string name="settings_list_layout_item_default">Default</string>
-    <string name="settings_list_layout_item_text">Text</string>
-    <string name="settings_list_layout_item_grid">Grid</string>
-    <string name="settings_list_layout_item_grid_only_icons">Grid (only icons)</string>
 
     <!--
       -

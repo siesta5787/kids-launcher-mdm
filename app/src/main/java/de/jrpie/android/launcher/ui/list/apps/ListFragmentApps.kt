@@ -1,12 +1,12 @@
 package de.jrpie.android.launcher.ui.list.apps
 
 import android.content.SharedPreferences
-import android.content.res.Configuration
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.apps.AppFilter
@@ -49,15 +49,6 @@ class ListFragmentApps : Fragment(), UIObject {
             .registerOnSharedPreferenceChangeListener(sharedPreferencesListener)
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-
-        binding.listAppsRview.layoutManager?.let {
-            LauncherPreferences.list().layout().updateLayoutManager(requireContext(), it)
-        }
-
-    }
-
     override fun onStop() {
         super.onStop()
         LauncherPreferences.getSharedPreferences()
@@ -78,8 +69,7 @@ class ListFragmentApps : Fragment(), UIObject {
                     "",
                     hiddenVisibility = listActivity.hiddenVisibility,
                     pinnedVisibility = listActivity.pinnedVisibility
-                ),
-                layout = LauncherPreferences.list().layout()
+                )
             )
 
 
@@ -87,7 +77,7 @@ class ListFragmentApps : Fragment(), UIObject {
         binding.listAppsRview.apply {
             // improve performance (since content changes don't change the layout size)
             setHasFixedSize(true)
-            layoutManager = LauncherPreferences.list().layout().layoutManager(context)
+            layoutManager = LinearLayoutManager(context)
             adapter = appsRecyclerAdapter
             if (LauncherPreferences.functionality().searchAutoCloseKeyboard()) {
                 addOnScrollListener(object : RecyclerView.OnScrollListener() {

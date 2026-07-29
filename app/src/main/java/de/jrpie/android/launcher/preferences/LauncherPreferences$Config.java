@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Set;
 
 import de.jrpie.android.launcher.R;
-import de.jrpie.android.launcher.preferences.list.ListLayout;
 import de.jrpie.android.launcher.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
 import de.jrpie.android.launcher.preferences.theme.ColorTheme;
@@ -27,9 +26,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 @PreferenceGroup(name = "apps", prefix = "settings_apps_", suffix = "_key", value = {
                         @Preference(name = "hidden", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                         @Preference(name = "custom_names", type = HashMap.class, serializer = MapAbstractAppInfoStringPreferenceSerializer.class),
-                }),
-                @PreferenceGroup(name = "list", prefix = "settings_list_", suffix = "_key", value = {
-                        @Preference(name = "layout", type = ListLayout.class, defaultValue = "DEFAULT"),
                 }),
                 @PreferenceGroup(name = "general", prefix = "settings_general_", suffix = "_key", value = {
                         @Preference(name = "choose_home_screen", type = void.class),

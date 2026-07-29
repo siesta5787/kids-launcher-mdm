@@ -60,14 +60,6 @@
             android:key="@string/settings_apps_hidden_key"
             android:title="@string/settings_apps_hidden" />
 
-        <DropDownPreference
-            android:key="@string/settings_list_layout_key"
-            android:title="@string/settings_list_layout"
-            android:entries="@array/settings_list_layout_items"
-            android:entryValues="@array/settings_list_layout_values"
-            android:defaultValue="DEFAULT"
-            app:useSimpleSummaryProvider="true" />
-
     </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/settings_launcher_section_display"
