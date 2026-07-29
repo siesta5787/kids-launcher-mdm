@@ -103,9 +103,6 @@
     <string name="toast_activity_not_found_browser">Can\'t open URL: no browser found.</string>
 
     <string name="dialog_ok">Ok</string>
-    <string name="settings_launcher_section_home_mode">Home Screen Mode</string>
-    <string name="settings_minimalist_apps">Manage minimal list apps</string>
-    <string name="settings_minimalist_apps_summary">Choose which apps show up on the minimal home screen (long-press an app in the list)</string>
     <string name="notification_crash_title">OCM Launcher crashed</string>
     <string name="notification_crash_explanation">Sorry! Click for more information.</string>
     <string name="crash_info"><![CDATA[

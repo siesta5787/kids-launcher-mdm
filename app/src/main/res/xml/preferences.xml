@@ -2,15 +2,6 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory
-        android:title="@string/settings_launcher_section_home_mode"
-        app:allowDividerAbove="false">
-        <Preference
-            android:key="@string/settings_minimalist_apps_key"
-            android:title="@string/settings_minimalist_apps"
-            android:summary="@string/settings_minimalist_apps_summary" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
         android:title="@string/settings_launcher_section_apps"
         app:allowDividerAbove="false">
 
