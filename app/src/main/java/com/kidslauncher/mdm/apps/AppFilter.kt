@@ -1,6 +1,7 @@
 package com.kidslauncher.mdm.apps
 
 import android.content.Context
+import android.content.pm.PackageManager
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import java.util.Locale
 
@@ -20,9 +21,25 @@ class AppFilter(
         apps = apps.filter { info ->
             hiddenVisibility.predicate(hidden, info)
                     && pinnedVisibility.predicate(pinned, info)
+                    && !isMdmSuspended(info)
         }
 
         return apps
+    }
+
+    /**
+     * Belt-and-suspenders check alongside [android.app.admin.DevicePolicyManager.setApplicationHidden]
+     * (which should already make MDM-blocked apps disappear from the underlying app enumeration):
+     * excludes anything currently OS-suspended, so a live-updating drawer/home list never shows an
+     * app the parent has blocked even if hiding doesn't fully take effect on a given Android version.
+     */
+    private fun isMdmSuspended(info: AbstractDetailedAppInfo): Boolean {
+        val packageName = (info.getRawInfo() as? AppInfo)?.packageName ?: return false
+        return try {
+            context.packageManager.isPackageSuspended(packageName)
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
     }
 
     companion object {
