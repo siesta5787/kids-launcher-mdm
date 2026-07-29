@@ -35,6 +35,13 @@
 
     <string name="settings_meta_version">Version</string>
 
+    <string name="settings_mdm_server_url">Server URL</string>
+    <string name="settings_mdm_device_number">Device number</string>
+    <string name="settings_mdm_enroll_now">Enroll now</string>
+    <string name="toast_mdm_enroll_missing_fields">Set both the server URL and device number first.</string>
+    <string name="toast_mdm_enroll_success">Enrolled as device %1$s.</string>
+    <string name="toast_mdm_enroll_failure">Enrollment failed: %1$s</string>
+
     <string name="alert_cant_choose_home_screen">Failed to open the home screen chooser. You need to choose a homescreen manually in Android Settings.</string>
 
     <!--

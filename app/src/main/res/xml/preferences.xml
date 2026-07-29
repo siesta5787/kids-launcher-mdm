@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <Preference
         android:key="@string/settings_apps_hidden_key"
@@ -17,5 +18,19 @@
     <Preference
         android:key="settings_meta_version"
         android:title="@string/settings_meta_version" />
+
+    <EditTextPreference
+        android:key="@string/settings_mdm_server_url_key"
+        android:title="@string/settings_mdm_server_url"
+        app:useSimpleSummaryProvider="true" />
+
+    <EditTextPreference
+        android:key="@string/settings_mdm_device_number_key"
+        android:title="@string/settings_mdm_device_number"
+        app:useSimpleSummaryProvider="true" />
+
+    <Preference
+        android:key="settings_mdm_enroll_now"
+        android:title="@string/settings_mdm_enroll_now" />
 
 </PreferenceScreen>
