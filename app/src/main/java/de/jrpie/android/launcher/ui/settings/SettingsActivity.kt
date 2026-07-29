@@ -4,22 +4,12 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.provider.Settings
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.google.android.material.tabs.TabLayoutMediator
-import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.databinding.SettingsBinding
 import de.jrpie.android.launcher.preferences.LauncherPreferences
 import de.jrpie.android.launcher.ui.UIObjectActivity
-import de.jrpie.android.launcher.ui.settings.launcher.SettingsFragmentLauncher
-import de.jrpie.android.launcher.ui.settings.meta.SettingsFragmentMeta
 
 /**
- * The [SettingsActivity] is a tabbed activity:
- *
- * | Theme      |   Select a theme / Customize              | [SettingsFragmentLauncher]   |
- * | Meta       |   About Launcher / Contact etc.           | [SettingsFragmentMeta]    |
+ * The [SettingsActivity] holds all of the app's settings on a single page.
  *
  * Settings are closed automatically if the activity goes `onPause` unexpectedly.
  */
@@ -41,16 +31,6 @@ class SettingsActivity : UIObjectActivity() {
         // Initialise layout
         binding = SettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // set up tabs and swiping in settings
-        val sectionsPagerAdapter = SettingsSectionsPagerAdapter(this)
-        binding.settingsViewpager.apply {
-            adapter = sectionsPagerAdapter
-            setCurrentItem(intent.getIntExtra(EXTRA_TAB, 0), false)
-        }
-        TabLayoutMediator(binding.settingsTabs, binding.settingsViewpager) { tab, position ->
-            tab.text = sectionsPagerAdapter.getPageTitle(position)
-        }.attach()
     }
 
     override fun onStart() {
@@ -72,34 +52,5 @@ class SettingsActivity : UIObjectActivity() {
         binding.settingsSystem.setOnClickListener {
             startActivity(Intent(Settings.ACTION_SETTINGS))
         }
-    }
-
-    companion object {
-        private const val EXTRA_TAB = "tab"
-    }
-}
-
-private val TAB_TITLES = arrayOf(
-    R.string.settings_tab_launcher,
-    R.string.settings_tab_meta
-)
-
-class SettingsSectionsPagerAdapter(private val activity: FragmentActivity) :
-    FragmentStateAdapter(activity) {
-
-    override fun createFragment(position: Int): Fragment {
-        return when (position) {
-            0 -> SettingsFragmentLauncher()
-            1 -> SettingsFragmentMeta()
-            else -> Fragment()
-        }
-    }
-
-    fun getPageTitle(position: Int): CharSequence {
-        return activity.resources.getString(TAB_TITLES[position])
-    }
-
-    override fun getItemCount(): Int {
-        return 2
     }
 }

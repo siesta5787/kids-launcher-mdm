@@ -1,23 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-    <PreferenceCategory
-        android:title="@string/settings_launcher_section_apps"
-        app:allowDividerAbove="false">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-        <Preference
-            android:key="@string/settings_apps_hidden_key"
-            android:title="@string/settings_apps_hidden" />
+    <Preference
+        android:key="@string/settings_apps_hidden_key"
+        android:title="@string/settings_apps_hidden" />
 
-    </PreferenceCategory>
-    <PreferenceCategory
-        android:title="@string/settings_launcher_section_display"
-        app:allowDividerAbove="false">
-        <SwitchPreference
-            android:key="@string/settings_display_rotate_screen_key"
-            android:defaultValue="true"
-            android:title="@string/settings_display_rotate_screen" />
+    <SwitchPreference
+        android:key="@string/settings_display_rotate_screen_key"
+        android:defaultValue="true"
+        android:title="@string/settings_display_rotate_screen" />
 
-    </PreferenceCategory>
+    <Preference
+        android:key="settings_meta_licenses"
+        android:title="@string/settings_meta_licenses" />
+
+    <Preference
+        android:key="settings_meta_version"
+        android:title="@string/settings_meta_version" />
 
 </PreferenceScreen>
