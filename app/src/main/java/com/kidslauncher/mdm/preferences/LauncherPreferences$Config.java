@@ -36,6 +36,12 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 @PreferenceGroup(name = "minimalist", prefix = "settings_minimalist_", suffix = "_key", value = {
                         @Preference(name = "apps", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                 }),
+                @PreferenceGroup(name = "mdm", prefix = "settings_mdm_", suffix = "_key", value = {
+                        @Preference(name = "server_url", type = String.class),
+                        @Preference(name = "device_number", type = int.class, defaultValue = "0"),
+                        @Preference(name = "enrolled", type = boolean.class, defaultValue = "false"),
+                        @Preference(name = "kid_mode_policy", type = String.class),
+                }),
         })
 public final class LauncherPreferences$Config {
 }

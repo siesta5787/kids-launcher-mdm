@@ -27,6 +27,16 @@
       -->
     <string name="settings_display_rotate_screen_key" translatable="false">display.rotate_screen</string>
 
+    <!--
+      -
+      - Settings : MDM
+      -
+      -->
+    <string name="settings_mdm_server_url_key" translatable="false">mdm.server_url</string>
+    <string name="settings_mdm_device_number_key" translatable="false">mdm.device_number</string>
+    <string name="settings_mdm_enrolled_key" translatable="false">mdm.enrolled</string>
+    <string name="settings_mdm_kid_mode_policy_key" translatable="false">mdm.kid_mode_policy</string>
+
     <!-- Legal -->
     <string name="legal_info_text"><![CDATA[
         <h2>μLauncher</h2>
