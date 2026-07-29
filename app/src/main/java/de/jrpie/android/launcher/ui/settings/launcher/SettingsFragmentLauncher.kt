@@ -9,8 +9,6 @@ import de.jrpie.android.launcher.preferences.LauncherPreferences
 
 /**
  * The [SettingsFragmentLauncher] is a used as a tab in the SettingsActivity.
- *
- * It is used to change themes, select wallpapers ... theme related stuff
  */
 class SettingsFragmentLauncher : PreferenceFragmentCompat() {
 
