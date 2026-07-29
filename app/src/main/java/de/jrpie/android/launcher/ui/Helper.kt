@@ -2,13 +2,11 @@ package de.jrpie.android.launcher.ui
 
 import android.app.Activity
 import android.content.Context
-import android.graphics.ColorMatrixColorFilter
 import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
-import de.jrpie.android.launcher.preferences.theme.ColorTheme
 
 // Taken from https://stackoverflow.com/questions/47293269
 fun View.blink(
@@ -26,16 +24,6 @@ fun View.blink(
         it.repeatCount = times
     })
 }
-
-// Taken from: https://stackoverflow.com/a/30340794/12787264
-fun ImageView.transformMonochrome(grayscale: Boolean, theme: ColorTheme) {
-    this.colorFilter = if (grayscale) {
-        ColorMatrixColorFilter(theme.monochromeMatrix)
-    } else {
-        null
-    }
-}
-
 
 // Taken from https://stackoverflow.com/a/50743764
 fun View.openSoftKeyboard(context: Context) {

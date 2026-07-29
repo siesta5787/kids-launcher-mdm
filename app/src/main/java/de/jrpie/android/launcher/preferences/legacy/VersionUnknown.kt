@@ -100,12 +100,10 @@ fun migratePreferencesFromVersionUnknown(context: Context) {
     when (oldPrefs.getString("theme", "finn")) {
         "finn" -> {
             LauncherPreferences.theme().colorTheme(ColorTheme.DEFAULT)
-            LauncherPreferences.theme().monochromeIcons(false)
         }
 
         "dark" -> {
             LauncherPreferences.theme().colorTheme(ColorTheme.DARK)
-            LauncherPreferences.theme().monochromeIcons(true)
         }
     }
     LauncherPreferences.internal().versionCode(1)

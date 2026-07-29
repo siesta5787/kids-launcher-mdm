@@ -27,11 +27,6 @@
             android:title="@string/settings_theme_color_theme"
             app:useSimpleSummaryProvider="true" />
 
-        <SwitchPreference
-            android:key="@string/settings_theme_monochrome_icons_key"
-            android:title="@string/settings_theme_monochrome_icons"
-            android:defaultValue="false" />
-
     </PreferenceCategory>
 
     <PreferenceCategory

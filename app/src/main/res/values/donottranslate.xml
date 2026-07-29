@@ -33,8 +33,6 @@
         <item>@string/settings_theme_color_theme_item_dynamic</item>
     </string-array>
 
-    <string name="settings_theme_monochrome_icons_key" translatable="false">theme.monochrome_icons</string>
-
     <!--
       -
       - Settings : Functionality

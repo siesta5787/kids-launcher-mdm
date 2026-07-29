@@ -32,7 +32,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 }),
                 @PreferenceGroup(name = "theme", prefix = "settings_theme_", suffix = "_key", value = {
                         @Preference(name = "color_theme", type = ColorTheme.class, defaultValue = "DEFAULT"),
-                        @Preference(name = "monochrome_icons", type = boolean.class, defaultValue = "false"),
                 }),
                 @PreferenceGroup(name = "display", prefix = "settings_display_", suffix = "_key", value = {
                         @Preference(name = "rotate_screen", type = boolean.class, defaultValue = "true"),

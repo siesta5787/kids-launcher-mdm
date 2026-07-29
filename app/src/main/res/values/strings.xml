@@ -33,8 +33,6 @@
     <string name="settings_theme_color_theme_item_amber">Amber</string>
     <string name="settings_theme_color_theme_item_dynamic">Dynamic</string>
 
-    <string name="settings_theme_monochrome_icons">Monochrome app icons</string>
-
     <string name="settings_launcher_section_display">Display</string>
 
     <string name="settings_display_rotate_screen">Rotate screen</string>
