@@ -30,7 +30,7 @@ val gitCommitProvider = providers.of(GitCommitValueSource::class) {}
 val gitCommit = gitCommitProvider.get()
 
 android {
-    namespace = "de.jrpie.android.launcher"
+    namespace = "com.kidslauncher.mdm"
     compileSdk = 36
 
     defaultConfig {

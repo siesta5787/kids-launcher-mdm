@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Launcher"
+rootProject.name = "kids-launcher-mdm"
 include(":app")
