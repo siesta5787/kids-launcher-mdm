@@ -5,7 +5,6 @@ import androidx.preference.PreferenceFragmentCompat
 import de.jrpie.android.launcher.R
 import de.jrpie.android.launcher.openAppsList
 import de.jrpie.android.launcher.preferences.LauncherPreferences
-import de.jrpie.android.launcher.setDefaultHomeScreen
 
 
 /**
@@ -17,14 +16,6 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
-
-        val chooseHomeScreen = findPreference<androidx.preference.Preference>(
-            LauncherPreferences.general().keys().chooseHomeScreen()
-        )
-        chooseHomeScreen?.setOnPreferenceClickListener {
-            setDefaultHomeScreen(requireContext(), checkDefault = false)
-            true
-        }
 
         val hiddenApps = findPreference<androidx.preference.Preference>(
             LauncherPreferences.apps().keys().hidden()

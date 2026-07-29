@@ -10,12 +10,6 @@
             android:summary="@string/settings_minimalist_apps_summary" />
     </PreferenceCategory>
 
-    <PreferenceCategory app:allowDividerAbove="false"> <!-- general -->
-
-        <Preference
-            android:key="@string/settings_general_choose_home_screen_key"
-            android:title="@string/settings_general_choose_home_screen" />
-    </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/settings_launcher_section_apps"
         app:allowDividerAbove="false">

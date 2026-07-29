@@ -27,9 +27,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         @Preference(name = "hidden", type = Set.class, serializer = SetAbstractAppInfoPreferenceSerializer.class),
                         @Preference(name = "custom_names", type = HashMap.class, serializer = MapAbstractAppInfoStringPreferenceSerializer.class),
                 }),
-                @PreferenceGroup(name = "general", prefix = "settings_general_", suffix = "_key", value = {
-                        @Preference(name = "choose_home_screen", type = void.class),
-                }),
                 @PreferenceGroup(name = "theme", prefix = "settings_theme_", suffix = "_key", value = {
                         @Preference(name = "color_theme", type = ColorTheme.class, defaultValue = "DEFAULT"),
                 }),
