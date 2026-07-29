@@ -13,6 +13,8 @@
         android:layout_margin="10dp"
         android:importantForAutofill="no"
         android:inputType="text"
+        android:textColor="#000000"
+        android:textColorHint="#80000000"
         tools:ignore="LabelFor" />
 
 </LinearLayout>
