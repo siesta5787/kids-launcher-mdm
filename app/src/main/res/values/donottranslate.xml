@@ -36,6 +36,7 @@
     <string name="settings_mdm_device_number_key" translatable="false">mdm.device_number</string>
     <string name="settings_mdm_enrolled_key" translatable="false">mdm.enrolled</string>
     <string name="settings_mdm_kid_mode_policy_key" translatable="false">mdm.kid_mode_policy</string>
+    <string name="settings_mdm_lock_reason_key" translatable="false">mdm.lock_reason</string>
 
     <!-- Legal -->
     <string name="legal_info_text"><![CDATA[

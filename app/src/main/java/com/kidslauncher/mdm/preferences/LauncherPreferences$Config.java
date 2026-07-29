@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 import com.kidslauncher.mdm.R;
+import com.kidslauncher.mdm.headwind.LockReason;
 import com.kidslauncher.mdm.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import com.kidslauncher.mdm.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
 import com.kidslauncher.mdm.preferences.theme.ColorTheme;
@@ -38,9 +39,14 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 }),
                 @PreferenceGroup(name = "mdm", prefix = "settings_mdm_", suffix = "_key", value = {
                         @Preference(name = "server_url", type = String.class),
-                        @Preference(name = "device_number", type = int.class, defaultValue = "0"),
+                        // Headwind's "device number" is an opaque string identifier (see
+                        // DeviceCreateOptions/SyncResponse.newNumber server-side), not necessarily numeric.
+                        @Preference(name = "device_number", type = String.class),
                         @Preference(name = "enrolled", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "kid_mode_policy", type = String.class),
+                        // Current lock decision, persisted so LockActivity/HomeActivity can react
+                        // via the usual SharedPreferences-listener pattern instead of a broadcast.
+                        @Preference(name = "lock_reason", type = LockReason.class, defaultValue = "NONE"),
                 }),
         })
 public final class LauncherPreferences$Config {
