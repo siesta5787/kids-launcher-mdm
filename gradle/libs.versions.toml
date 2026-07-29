@@ -14,10 +14,14 @@ kapt = "2.1.21"
 kotlin = "2.1.20"
 kotlinx-serialization-json = "1.9.0"
 material = "1.13.0"
+okhttp = "4.12.0"
 palette-ktx = "1.0.0"
 preference-ktx = "1.2.1"
 recyclerview = "1.4.0"
+retrofit = "2.11.0"
+retrofit-kotlinx-serialization-converter = "1.0.0"
 serialization = "1.8.10"
+work-runtime-ktx = "2.10.0"
 
 [libraries]
 # AndroidX dependencies
@@ -36,6 +40,14 @@ google-material = { group = "com.google.android.material", name = "material", ve
 
 # Kotlin and Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
+
+# Networking (Headwind MDM client)
+squareup-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+jakewharton-retrofit2-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "retrofit-kotlinx-serialization-converter" }
+squareup-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+
+# Background work (Headwind MDM client)
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work-runtime-ktx" }
 
 # Annotation Processors
 jonahbauer-android-preference-annotations = { group = "eu.jonahbauer", name = "android-preference-annotations", version.ref = "android-preference-annotations" }
