@@ -11,4 +11,5 @@ data class StatusReportRequest(
     val installedApps: List<InstalledApp>? = null,
     val appVersion: String? = null,
     val appVersionCode: Int? = null,
+    val offlineOverrideUsed: Boolean = false,
 )

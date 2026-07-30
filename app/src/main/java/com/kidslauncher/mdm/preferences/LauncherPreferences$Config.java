@@ -52,6 +52,26 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // there is no local toggle). HomeActivity reads this to decide whether to
                         // call startLockTask()/stopLockTask().
                         @Preference(name = "kiosk_enabled", type = boolean.class, defaultValue = "false"),
+                        // Cached from the last successful policy sync (PolicyResponse.overridePinHash/
+                        // Salt) so LockActivity can verify a locally-entered offline override PIN
+                        // with zero network at all. Null means no PIN is configured for this device.
+                        @Preference(name = "override_pin_hash", type = String.class),
+                        @Preference(name = "override_pin_salt", type = String.class),
+                        // Set locally by LockActivity the moment a correct offline override PIN is
+                        // entered; AppEnforcer.apply() treats the policy as fully open while this is
+                        // true and not yet expired. Cleared automatically on the next successful
+                        // sync (real server contact restored) or once offline_override_expires_at
+                        // has passed, whichever comes first - see AppEnforcer.isOfflineOverrideActive.
+                        @Preference(name = "offline_override_active", type = boolean.class, defaultValue = "false"),
+                        @Preference(name = "offline_override_expires_at", type = long.class, defaultValue = "0"),
+                        // Purely local brute-force throttling for the offline PIN entry dialog -
+                        // never synced to the server, since this must keep working with zero network.
+                        @Preference(name = "offline_override_failed_attempts", type = int.class, defaultValue = "0"),
+                        @Preference(name = "offline_override_locked_until", type = long.class, defaultValue = "0"),
+                        // Set by LockActivity when the offline override is used; reported once via
+                        // StatusReportRequest.offlineOverrideUsed on the next successful sync, then
+                        // cleared - so the parent notices even though the event itself was offline.
+                        @Preference(name = "offline_override_used_pending_report", type = boolean.class, defaultValue = "false"),
                 }),
         })
 public final class LauncherPreferences$Config {

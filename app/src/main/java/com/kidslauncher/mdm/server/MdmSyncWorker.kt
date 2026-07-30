@@ -39,9 +39,18 @@ suspend fun performMdmSync(context: Context) {
 
     val api = createMdmApi(serverUrl, deviceToken)
 
-    val policy = fetchPolicy(api) ?: mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
+    val freshPolicy = fetchPolicy(api)
+    if (freshPolicy != null) {
+        // Real server contact just succeeded - the offline override's whole job (bridging the gap
+        // until the device can hear from the server again) is done, so let real policy reassert
+        // immediately rather than waiting out the rest of its time window.
+        OfflineOverride.clear()
+    }
+    val policy = freshPolicy ?: mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
 
-    val reason = KidModeEnforcer.evaluate(policy, Calendar.getInstance())
+    val reason = if (OfflineOverride.isActive()) LockReason.NONE else {
+        KidModeEnforcer.evaluate(policy, Calendar.getInstance())
+    }
     mdm.lockReason(reason)
 
     AppEnforcer.apply(context, policy)
@@ -55,8 +64,12 @@ suspend fun performMdmSync(context: Context) {
                 installedApps = collectInstalledApps(context),
                 appVersion = BuildConfig.VERSION_NAME,
                 appVersionCode = BuildConfig.VERSION_CODE,
+                offlineOverrideUsed = mdm.offlineOverrideUsedPendingReport(),
             )
         )
+        // The report just landed, so this doesn't need to stay pending - if it was never used,
+        // this is a harmless false->false write.
+        mdm.offlineOverrideUsedPendingReport(false)
     } catch (e: Exception) {
         Log.w(LOG_TAG, "Status report failed", e)
     }
@@ -129,7 +142,9 @@ private fun decodeCachedPolicy(json: String): PolicyResponse? {
 fun reevaluateLockReasonFromCache() {
     val mdm = LauncherPreferences.mdm()
     val policy = mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
-    val reason = KidModeEnforcer.evaluate(policy, Calendar.getInstance())
+    val reason = if (OfflineOverride.isActive()) LockReason.NONE else {
+        KidModeEnforcer.evaluate(policy, Calendar.getInstance())
+    }
     if (mdm.lockReason() != reason) {
         mdm.lockReason(reason)
     }

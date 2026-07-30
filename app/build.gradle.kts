@@ -35,7 +35,7 @@ android {
 
     defaultConfig {
         applicationId = "com.kidslauncher.mdm"
-        minSdk = 21
+        minSdk = 34
         targetSdk = 36
         versionCode = 58
         versionName = "0.2.13"

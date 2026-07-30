@@ -14,4 +14,11 @@
         android:textSize="24sp"
         android:textStyle="bold" />
 
+    <Button
+        android:id="@+id/lock_unlock_code_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/lock_enter_unlock_code" />
+
 </LinearLayout>

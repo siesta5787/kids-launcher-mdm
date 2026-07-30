@@ -6,10 +6,14 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.widget.EditText
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.databinding.ActivityLockBinding
 import com.kidslauncher.mdm.server.LockReason
+import com.kidslauncher.mdm.server.OfflineOverride
 import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 
@@ -18,7 +22,9 @@ private const val LOCK_REASON_REFRESH_INTERVAL_MS = 60_000L
 /**
  * Full-screen block shown while [LockReason] (from [com.kidslauncher.mdm.server.MdmSyncWorker])
  * is anything other than [LockReason.NONE]. No way to dismiss it besides the lock actually
- * clearing - back is a no-op, there's no close button.
+ * clearing on its own, or the visible "Enter unlock code" button - a deliberately undisguised
+ * entry point for [OfflineOverride], since the PIN itself is the actual security boundary here,
+ * not the button being hard to find.
  */
 class LockActivity : UIObjectActivity() {
     private lateinit var binding: ActivityLockBinding
@@ -51,6 +57,43 @@ class LockActivity : UIObjectActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         })
+
+        binding.lockUnlockCodeButton.setOnClickListener { showUnlockCodeDialog() }
+    }
+
+    private fun showUnlockCodeDialog() {
+        if (!OfflineOverride.isConfigured()) {
+            Toast.makeText(this, R.string.lock_unlock_code_not_configured, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (OfflineOverride.isLockedOut()) {
+            Toast.makeText(this, R.string.lock_unlock_code_locked_out, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val dialog = AlertDialog.Builder(this, R.style.AlertDialogCustom).apply {
+            setTitle(R.string.lock_unlock_code_dialog_title)
+            setView(R.layout.dialog_offline_override_pin)
+            setNegativeButton(android.R.string.cancel) { d, _ -> d.cancel() }
+            setPositiveButton(android.R.string.ok, null)
+        }.create()
+        dialog.show()
+
+        // Overriding the positive button's listener after show() (rather than in the builder)
+        // keeps the dialog open on a wrong code instead of dismissing - the whole point of a
+        // failsafe is not making the parent re-open the dialog and re-type everything after one
+        // typo.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val input = dialog.findViewById<EditText>(R.id.dialog_offline_override_pin_input)
+            val pin = input?.text?.toString().orEmpty()
+            if (OfflineOverride.tryUnlock(this, pin)) {
+                dialog.dismiss()
+                finish()
+            } else {
+                Toast.makeText(this, R.string.lock_unlock_code_wrong, Toast.LENGTH_SHORT).show()
+                input?.text?.clear()
+            }
+        }
     }
 
     override fun onStart() {
