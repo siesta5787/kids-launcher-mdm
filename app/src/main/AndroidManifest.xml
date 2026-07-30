@@ -65,7 +65,7 @@
             android:exported="false" />
 
         <receiver
-            android:name=".headwind.MdmDeviceAdminReceiver"
+            android:name=".server.MdmDeviceAdminReceiver"
             android:exported="true"
             android:permission="android.permission.BIND_DEVICE_ADMIN">
             <meta-data

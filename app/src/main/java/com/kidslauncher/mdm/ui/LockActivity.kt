@@ -4,14 +4,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.OnBackPressedCallback
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.databinding.ActivityLockBinding
-import com.kidslauncher.mdm.headwind.LockReason
+import com.kidslauncher.mdm.server.LockReason
+import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 
+private const val LOCK_REASON_REFRESH_INTERVAL_MS = 60_000L
+
 /**
- * Full-screen block shown while [LockReason] (from [com.kidslauncher.mdm.headwind.MdmSyncWorker])
+ * Full-screen block shown while [LockReason] (from [com.kidslauncher.mdm.server.MdmSyncWorker])
  * is anything other than [LockReason.NONE]. No way to dismiss it besides the lock actually
  * clearing - back is a no-op, there's no close button.
  */
@@ -24,6 +29,18 @@ class LockActivity : UIObjectActivity() {
                 finishIfUnlocked()
             }
         }
+
+    private val refreshHandler = Handler(Looper.getMainLooper())
+
+    // Re-checks the schedule against the device's own clock every minute while this screen is
+    // showing - otherwise the lock would only ever clear whenever the next ~15-minute background
+    // sync happens to land, which could leave someone stuck well after their allowed time began.
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            reevaluateLockReasonFromCache()
+            refreshHandler.postDelayed(this, LOCK_REASON_REFRESH_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,10 +57,12 @@ class LockActivity : UIObjectActivity() {
         super.onStart()
         LauncherPreferences.getSharedPreferences()
             .registerOnSharedPreferenceChangeListener(sharedPreferencesListener)
+        refreshHandler.post(refreshRunnable)
         updateMessageOrFinish()
     }
 
     override fun onStop() {
+        refreshHandler.removeCallbacks(refreshRunnable)
         LauncherPreferences.getSharedPreferences()
             .unregisterOnSharedPreferenceChangeListener(sharedPreferencesListener)
         super.onStop()

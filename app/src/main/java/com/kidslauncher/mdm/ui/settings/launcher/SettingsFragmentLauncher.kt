@@ -9,14 +9,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.SwitchPreference
 import com.kidslauncher.mdm.BuildConfig
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.copyToClipboard
 import com.kidslauncher.mdm.getDeviceInfo
-import com.kidslauncher.mdm.headwind.createMdmApi
-import com.kidslauncher.mdm.headwind.dto.EnrollRequest
-import com.kidslauncher.mdm.headwind.performMdmSync
+import com.kidslauncher.mdm.server.createMdmApi
+import com.kidslauncher.mdm.server.dto.EnrollRequest
+import com.kidslauncher.mdm.server.performMdmSync
 import com.kidslauncher.mdm.openAppsList
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.LegalInfoActivity
@@ -73,55 +72,22 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             true
         }
 
-        val deviceNumber = findPreference<Preference>(mdm.keys().deviceNumber())
-        deviceNumber?.summary = mdm.deviceNumber().orNotSet()
-        deviceNumber?.setOnPreferenceClickListener {
-            showEditTextDialog(
-                requireContext(),
-                getString(R.string.settings_mdm_device_number),
-                mdm.deviceNumber()
-            ) { value ->
-                mdm.deviceNumber(value)
-                deviceNumber.summary = value.orNotSet()
-            }
-            true
-        }
-
         val enrollNow = findPreference<Preference>("settings_mdm_enroll_now")
         enrollNow?.setOnPreferenceClickListener {
-            enrollWithHeadwindServer(requireContext())
+            showEditTextDialog(
+                requireContext(),
+                getString(R.string.dialog_enrollment_code_title),
+                currentValue = null,
+            ) { code ->
+                enrollWithServer(requireContext(), code)
+            }
             true
         }
 
         val syncNow = findPreference<Preference>("settings_mdm_sync_now")
         syncNow?.setOnPreferenceClickListener {
-            syncNowWithHeadwindServer(requireContext())
+            syncNowWithServer(requireContext())
             true
-        }
-
-        val kioskModeEnabled = findPreference<SwitchPreference>(mdm.keys().kioskModeEnabled())
-        kioskModeEnabled?.setOnPreferenceChangeListener { preference, newValue ->
-            val enabling = newValue as? Boolean ?: false
-            if (!enabling) {
-                // Sync immediately so stopLockTask() runs right away instead of waiting for the
-                // next periodic sync - this is the emergency-unlock path, it can't be slow.
-                syncNowWithHeadwindServer(requireContext())
-                return@setOnPreferenceChangeListener true
-            }
-            // Confirm before ever letting this actually persist as enabled - once AppEnforcer next
-            // syncs with an allowlist configured, there is no on-device way out of kiosk mode.
-            AlertDialog.Builder(requireContext(), R.style.AlertDialogCustom)
-                .setTitle(R.string.settings_mdm_kiosk_mode_enabled)
-                .setMessage(R.string.dialog_kiosk_mode_confirm)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    (preference as? SwitchPreference)?.isChecked = true
-                    // Apply right away rather than leaving the device in a stale, unpinned state
-                    // for up to 15 minutes until the next periodic sync.
-                    syncNowWithHeadwindServer(requireContext())
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
-            false
         }
     }
 
@@ -153,28 +119,33 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
     }
 
     /**
-     * Dev-testing shortcut: enrolls directly against the server URL/device number typed into the
-     * two preference fields above, over the local network, without needing the full
-     * factory-reset -> scan-QR provisioning flow. Only touches Headwind's config/enroll endpoint -
-     * it doesn't grant Device Owner (that still needs `adb shell dpm set-device-owner` or real
-     * provisioning).
+     * Dev-testing shortcut: enrolls directly against the server URL typed into the preference
+     * field above and the one-shot code shown on the admin site, over the local network, without
+     * needing the full factory-reset -> scan-QR provisioning flow. Only touches the server's
+     * enroll endpoint - it doesn't grant Device Owner (that still needs
+     * `adb shell dpm set-device-owner` or real provisioning).
      */
-    private fun enrollWithHeadwindServer(context: Context) {
+    private fun enrollWithServer(context: Context, enrollmentCode: String) {
         val mdm = LauncherPreferences.mdm()
         val serverUrl = mdm.serverUrl()
-        val deviceNumber = mdm.deviceNumber()
 
-        if (serverUrl.isNullOrBlank() || deviceNumber.isNullOrBlank()) {
+        if (serverUrl.isNullOrBlank()) {
             Toast.makeText(context, R.string.toast_mdm_enroll_missing_fields, Toast.LENGTH_LONG)
+                .show()
+            return
+        }
+        if (enrollmentCode.isBlank()) {
+            Toast.makeText(context, R.string.toast_mdm_enroll_missing_code, Toast.LENGTH_LONG)
                 .show()
             return
         }
 
         CoroutineScope(Dispatchers.IO).launch {
             val outcome = try {
-                val response = createMdmApi(serverUrl).enroll(deviceNumber, EnrollRequest())
-                if (response.isSuccessful) {
-                    Result.success(Unit)
+                val response = createMdmApi(serverUrl).enroll(EnrollRequest(enrollmentCode))
+                val body = response.body()
+                if (response.isSuccessful && body != null) {
+                    Result.success(body)
                 } else {
                     Result.failure(Exception("HTTP ${response.code()}"))
                 }
@@ -183,13 +154,11 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             }
 
             withContext(Dispatchers.Main) {
-                outcome.onSuccess {
+                outcome.onSuccess { enrollResponse ->
+                    mdm.deviceToken(enrollResponse.deviceToken)
                     mdm.enrolled(true)
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.toast_mdm_enroll_success, deviceNumber),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(context, R.string.toast_mdm_enroll_success, Toast.LENGTH_LONG)
+                        .show()
                 }.onFailure { e ->
                     Toast.makeText(
                         context,
@@ -202,14 +171,14 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
     }
 
     /**
-     * Dev-testing shortcut: runs the same config/heartbeat + KidMode policy fetch + enforcement
-     * cycle [com.kidslauncher.mdm.headwind.MdmSyncWorker] runs every 15 minutes, immediately -
-     * avoids waiting a full cycle per test iteration (e.g. right after toggling kiosk mode, or
-     * after changing the allowlist server-side).
+     * Dev-testing shortcut: runs the same policy fetch + enforcement cycle
+     * [com.kidslauncher.mdm.server.MdmSyncWorker] runs every 15 minutes, immediately - avoids
+     * waiting a full cycle per test iteration (e.g. right after changing the allowlist or kiosk
+     * setting on the admin site).
      */
-    private fun syncNowWithHeadwindServer(context: Context) {
+    private fun syncNowWithServer(context: Context) {
         val mdm = LauncherPreferences.mdm()
-        if (mdm.serverUrl().isNullOrBlank() || mdm.deviceNumber().isNullOrBlank()) {
+        if (mdm.serverUrl().isNullOrBlank() || mdm.deviceToken().isNullOrBlank()) {
             Toast.makeText(context, R.string.toast_mdm_enroll_missing_fields, Toast.LENGTH_LONG)
                 .show()
             return

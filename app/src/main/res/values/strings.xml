@@ -36,19 +36,16 @@
     <string name="settings_meta_version">Version</string>
 
     <string name="settings_mdm_server_url">Server URL</string>
-    <string name="settings_mdm_device_number">Device number</string>
     <string name="settings_mdm_not_set">Not set</string>
     <string name="settings_mdm_enroll_now">Enroll now</string>
-    <string name="toast_mdm_enroll_missing_fields">Set both the server URL and device number first.</string>
-    <string name="toast_mdm_enroll_success">Enrolled as device %1$s.</string>
+    <string name="dialog_enrollment_code_title">Enter enrollment code</string>
+    <string name="toast_mdm_enroll_missing_fields">Set the server URL first.</string>
+    <string name="toast_mdm_enroll_missing_code">Enter the enrollment code shown on the admin site.</string>
+    <string name="toast_mdm_enroll_success">Enrolled successfully.</string>
     <string name="toast_mdm_enroll_failure">Enrollment failed: %1$s</string>
 
     <string name="settings_mdm_sync_now">Sync now</string>
     <string name="toast_mdm_sync_done">Sync complete.</string>
-
-    <string name="settings_mdm_kiosk_mode_enabled">Enable kiosk mode</string>
-    <string name="settings_mdm_kiosk_mode_enabled_summary">Pins the device to the allowed apps list - no way to leave except this switch or ADB. Test the allowed-apps list works first before turning this on.</string>
-    <string name="dialog_kiosk_mode_confirm">This pins the device to only the allowed apps once one is configured. There is no way to exit except this same switch or an ADB command from a computer. Make sure the allowed-apps list is already working correctly first. Continue?</string>
 
     <string name="alert_cant_choose_home_screen">Failed to open the home screen chooser. You need to choose a homescreen manually in Android Settings.</string>
     <string name="toast_system_settings_unavailable">System settings aren\'t available right now.</string>

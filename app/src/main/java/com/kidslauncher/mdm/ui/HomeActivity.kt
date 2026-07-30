@@ -4,12 +4,15 @@ import android.app.ActivityManager
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.activity.OnBackPressedCallback
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kidslauncher.mdm.databinding.ActivityHomeBinding
-import com.kidslauncher.mdm.headwind.LockReason
+import com.kidslauncher.mdm.server.LockReason
+import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.openAppsList
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.requestNotificationPermission
@@ -19,6 +22,7 @@ import kotlin.math.abs
 
 private const val SWIPE_UP_MIN_DISTANCE = 100
 private const val SWIPE_UP_MIN_VELOCITY = 100
+private const val LOCK_REASON_REFRESH_INTERVAL_MS = 60_000L
 
 /**
  * [HomeActivity] is the actual application launcher.
@@ -45,6 +49,18 @@ class HomeActivity : UIObjectActivity() {
                 minimalistAdapter.updateAppsList()
             }
         }
+
+    private val refreshHandler = Handler(Looper.getMainLooper())
+
+    // Re-checks the schedule against the device's own clock every minute while the home screen is
+    // visible, so a window closing while someone's just sitting idle on the home screen locks
+    // promptly instead of waiting for the next ~15-minute background sync.
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            reevaluateLockReasonFromCache()
+            refreshHandler.postDelayed(this, LOCK_REASON_REFRESH_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,10 +118,15 @@ class HomeActivity : UIObjectActivity() {
 
         LauncherPreferences.getSharedPreferences()
             .registerOnSharedPreferenceChangeListener(sharedPreferencesListener)
+        refreshHandler.post(refreshRunnable)
     }
 
     override fun onResume() {
         super.onResume()
+        // Fresh check against the clock every time the home screen comes to the foreground, not
+        // just on the 60-second timer - covers e.g. the device having been asleep since the last
+        // tick.
+        reevaluateLockReasonFromCache()
         // Must run before the lock-screen check below: while the bedtime/screen-time block is
         // showing is exactly when kiosk pinning should also be engaged, so the kid can't use
         // recents/home/notification-shade to route around LockActivity.
@@ -147,6 +168,11 @@ class HomeActivity : UIObjectActivity() {
         } else if (!shouldBeLocked && currentlyLocked) {
             stopLockTask()
         }
+    }
+
+    override fun onStop() {
+        refreshHandler.removeCallbacks(refreshRunnable)
+        super.onStop()
     }
 
     override fun onDestroy() {

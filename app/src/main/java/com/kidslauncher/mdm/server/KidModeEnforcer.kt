@@ -1,6 +1,6 @@
-package com.kidslauncher.mdm.headwind
+package com.kidslauncher.mdm.server
 
-import com.kidslauncher.mdm.headwind.dto.KidModePolicy
+import com.kidslauncher.mdm.server.dto.PolicyResponse
 import java.util.Calendar
 
 enum class LockReason {
@@ -14,8 +14,8 @@ enum class LockReason {
  */
 object KidModeEnforcer {
 
-    fun evaluate(policy: KidModePolicy?, now: Calendar): LockReason {
-        if (policy == null || !policy.enabled) return LockReason.NONE
+    fun evaluate(policy: PolicyResponse?, now: Calendar): LockReason {
+        if (policy == null) return LockReason.NONE
 
         val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
 

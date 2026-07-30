@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 import com.kidslauncher.mdm.R;
-import com.kidslauncher.mdm.headwind.LockReason;
+import com.kidslauncher.mdm.server.LockReason;
 import com.kidslauncher.mdm.preferences.serialization.MapAbstractAppInfoStringPreferenceSerializer;
 import com.kidslauncher.mdm.preferences.serialization.SetAbstractAppInfoPreferenceSerializer;
 import com.kidslauncher.mdm.preferences.theme.ColorTheme;
@@ -39,21 +39,18 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                 }),
                 @PreferenceGroup(name = "mdm", prefix = "settings_mdm_", suffix = "_key", value = {
                         @Preference(name = "server_url", type = String.class),
-                        // Headwind's "device number" is an opaque string identifier (see
-                        // DeviceCreateOptions/SyncResponse.newNumber server-side), not necessarily numeric.
-                        @Preference(name = "device_number", type = String.class),
+                        // Bearer credential returned by POST /api/devices/enroll - the one-shot
+                        // enrollment code used to get it is never itself persisted.
+                        @Preference(name = "device_token", type = String.class),
                         @Preference(name = "enrolled", type = boolean.class, defaultValue = "false"),
                         @Preference(name = "kid_mode_policy", type = String.class),
                         // Current lock decision, persisted so LockActivity/HomeActivity can react
                         // via the usual SharedPreferences-listener pattern instead of a broadcast.
                         @Preference(name = "lock_reason", type = LockReason.class, defaultValue = "NONE"),
-                        // User-facing toggle: gates whether AppEnforcer is even allowed to engage
-                        // lock-task/kiosk pinning, independent of whether an allowlist is configured.
-                        // Defaults off - see AppEnforcer.kt for why this isn't automatic.
-                        @Preference(name = "kiosk_mode_enabled", type = boolean.class, defaultValue = "false"),
                         // Computed handoff flag: true once AppEnforcer has actually configured DPM
-                        // lock-task state. HomeActivity reads this (not the toggle above) to decide
-                        // whether to call startLockTask()/stopLockTask().
+                        // lock-task state (server-authoritative via PolicyResponse.kioskDesired -
+                        // there is no local toggle). HomeActivity reads this to decide whether to
+                        // call startLockTask()/stopLockTask().
                         @Preference(name = "kiosk_enabled", type = boolean.class, defaultValue = "false"),
                 }),
         })
