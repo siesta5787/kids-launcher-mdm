@@ -40,7 +40,9 @@ jobs:
 
     - name: Delete Old Pre-Release
       if: github.ref == 'refs/heads/master'
-      run: gh release delete pre-release --cleanup-tag
+      # No-op (not a failure) the first time this ever runs on a fork/repo, since there's no
+      # existing "pre-release" tag yet to delete.
+      run: gh release delete pre-release --cleanup-tag || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Create Pre-Release
