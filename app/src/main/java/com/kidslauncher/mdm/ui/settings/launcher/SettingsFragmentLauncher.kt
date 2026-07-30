@@ -103,6 +103,9 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         kioskModeEnabled?.setOnPreferenceChangeListener { preference, newValue ->
             val enabling = newValue as? Boolean ?: false
             if (!enabling) {
+                // Sync immediately so stopLockTask() runs right away instead of waiting for the
+                // next periodic sync - this is the emergency-unlock path, it can't be slow.
+                syncNowWithHeadwindServer(requireContext())
                 return@setOnPreferenceChangeListener true
             }
             // Confirm before ever letting this actually persist as enabled - once AppEnforcer next
@@ -112,6 +115,9 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                 .setMessage(R.string.dialog_kiosk_mode_confirm)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     (preference as? SwitchPreference)?.isChecked = true
+                    // Apply right away rather than leaving the device in a stale, unpinned state
+                    // for up to 15 minutes until the next periodic sync.
+                    syncNowWithHeadwindServer(requireContext())
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()

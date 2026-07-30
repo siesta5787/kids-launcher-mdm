@@ -3,6 +3,8 @@ package com.kidslauncher.mdm.headwind
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -10,6 +12,7 @@ import com.kidslauncher.mdm.Application
 import com.kidslauncher.mdm.apps.AppInfo
 import com.kidslauncher.mdm.headwind.dto.KidModePolicy
 import com.kidslauncher.mdm.preferences.LauncherPreferences
+import com.kidslauncher.mdm.ui.HomeActivity
 import kotlinx.serialization.decodeFromString
 
 private const val LOG_TAG = "AppEnforcer"
@@ -29,6 +32,8 @@ object AppEnforcer {
             return
         }
         val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
+
+        enforceDefaultHome(dpm, admin, context)
 
         val allowedPackages = parseAllowlist(policy?.allowlistJson)
         val ownPackage = context.packageName
@@ -89,6 +94,26 @@ object AppEnforcer {
         } else {
             dpm.setLockTaskPackages(admin, emptyArray())
             mdm.kioskEnabled(false)
+        }
+    }
+
+    /**
+     * The regular "set as default launcher" flow ([com.kidslauncher.mdm.setDefaultHomeScreen]) is
+     * just a user-revocable preference - a reinstall/reboot race, or a kid holding down the home
+     * button, can fall back to another HOME-capable app (e.g. the OS's own stock launcher) if one
+     * is installed. As device owner we can pin this unconditionally instead.
+     */
+    private fun enforceDefaultHome(dpm: DevicePolicyManager, admin: ComponentName, context: Context) {
+        val filter = IntentFilter(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        try {
+            dpm.addPersistentPreferredActivity(
+                admin, filter, ComponentName(context, HomeActivity::class.java)
+            )
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to set persistent preferred HOME activity", e)
         }
     }
 

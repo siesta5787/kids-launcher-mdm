@@ -51,6 +51,7 @@
     <string name="dialog_kiosk_mode_confirm">This pins the device to only the allowed apps once one is configured. There is no way to exit except this same switch or an ADB command from a computer. Make sure the allowed-apps list is already working correctly first. Continue?</string>
 
     <string name="alert_cant_choose_home_screen">Failed to open the home screen chooser. You need to choose a homescreen manually in Android Settings.</string>
+    <string name="toast_system_settings_unavailable">System settings aren\'t available right now.</string>
 
     <!--
       -
