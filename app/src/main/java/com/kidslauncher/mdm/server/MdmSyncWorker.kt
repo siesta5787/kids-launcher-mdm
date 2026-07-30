@@ -16,6 +16,7 @@ import com.kidslauncher.mdm.server.dto.StatusReportRequest
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
+import java.io.File
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -53,10 +54,35 @@ suspend fun performMdmSync(context: Context) {
                 kioskEngaged = mdm.kioskEnabled(),
                 installedApps = collectInstalledApps(context),
                 appVersion = BuildConfig.VERSION_NAME,
+                appVersionCode = BuildConfig.VERSION_CODE,
             )
         )
     } catch (e: Exception) {
         Log.w(LOG_TAG, "Status report failed", e)
+    }
+
+    checkForLauncherUpdate(context, api)
+}
+
+/**
+ * Downloads and silently installs a newer launcher build if the server has one, via
+ * [LauncherUpdater]. Best-effort like the status report above - a failed check/download just
+ * tries again next cycle, it never affects anything else in this sync.
+ */
+private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
+    try {
+        val update = api.getLauncherUpdate().body() ?: return
+        if (update.versionCode <= BuildConfig.VERSION_CODE) return
+
+        val body = api.downloadLauncherUpdate().body() ?: return
+        val apkFile = File(context.cacheDir, "launcher_update.apk")
+        body.byteStream().use { input ->
+            apkFile.outputStream().use { output -> input.copyTo(output) }
+        }
+        Log.i(LOG_TAG, "Downloaded launcher update ${update.versionName} (code ${update.versionCode}), installing")
+        LauncherUpdater.installSilently(context, apkFile)
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Launcher update check failed", e)
     }
 }
 

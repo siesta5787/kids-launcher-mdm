@@ -10,4 +10,5 @@ data class StatusReportRequest(
     val kioskEngaged: Boolean,
     val installedApps: List<InstalledApp>? = null,
     val appVersion: String? = null,
+    val appVersionCode: Int? = null,
 )

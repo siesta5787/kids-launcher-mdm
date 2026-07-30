@@ -3,6 +3,7 @@ package com.kidslauncher.mdm.server
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.dto.EnrollResponse
+import com.kidslauncher.mdm.server.dto.LauncherUpdateResponse
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -10,11 +11,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Streaming
 import java.util.concurrent.TimeUnit
 
 /** Shared JSON config for both Retrofit and the cached-policy preference blob. The server's JSON
@@ -41,6 +44,15 @@ interface MdmApi {
 
     @POST("api/devices/status")
     suspend fun sendStatus(@Body report: StatusReportRequest): Response<Unit>
+
+    @GET("api/devices/launcher-update")
+    suspend fun getLauncherUpdate(): Response<LauncherUpdateResponse>
+
+    /** [Streaming] so Retrofit hands back the raw [ResponseBody] instead of buffering the whole
+     * APK into memory before this function even returns. */
+    @Streaming
+    @GET("api/devices/launcher-update/download")
+    suspend fun downloadLauncherUpdate(): Response<ResponseBody>
 }
 
 /** [token] is omitted for the enroll-only call (no token exists yet); pass it for every

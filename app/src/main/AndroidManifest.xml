@@ -75,5 +75,11 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
+
+        <!-- Not externally reachable - only ever triggered via the PendingIntent passed to
+             PackageInstaller.Session.commit() in LauncherUpdater.kt. -->
+        <receiver
+            android:name=".server.LauncherUpdateInstallReceiver"
+            android:exported="false" />
     </application>
 </manifest>
