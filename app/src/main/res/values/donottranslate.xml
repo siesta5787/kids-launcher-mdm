@@ -38,6 +38,13 @@
     <string name="settings_mdm_kid_mode_policy_key" translatable="false">mdm.kid_mode_policy</string>
     <string name="settings_mdm_lock_reason_key" translatable="false">mdm.lock_reason</string>
     <string name="settings_mdm_kiosk_enabled_key" translatable="false">mdm.kiosk_enabled</string>
+    <string name="settings_mdm_override_pin_hash_key" translatable="false">mdm.override_pin_hash</string>
+    <string name="settings_mdm_override_pin_salt_key" translatable="false">mdm.override_pin_salt</string>
+    <string name="settings_mdm_offline_override_active_key" translatable="false">mdm.offline_override_active</string>
+    <string name="settings_mdm_offline_override_expires_at_key" translatable="false">mdm.offline_override_expires_at</string>
+    <string name="settings_mdm_offline_override_failed_attempts_key" translatable="false">mdm.offline_override_failed_attempts</string>
+    <string name="settings_mdm_offline_override_locked_until_key" translatable="false">mdm.offline_override_locked_until</string>
+    <string name="settings_mdm_offline_override_used_pending_report_key" translatable="false">mdm.offline_override_used_pending_report</string>
 
     <!-- Legal -->
     <string name="legal_info_text"><![CDATA[
