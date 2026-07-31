@@ -10,8 +10,6 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.UserManager
 import android.util.Log
-import com.kidslauncher.mdm.Application
-import com.kidslauncher.mdm.apps.AppInfo
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.HomeActivity
@@ -47,10 +45,14 @@ object AppEnforcer {
         val ownPackage = context.packageName
         val pm = context.packageManager
 
-        val installedPackages = (context.applicationContext as Application).apps.value
-            ?.mapNotNull { (it.getRawInfo() as? AppInfo)?.packageName }
-            ?.distinct()
-            ?: return
+        // Deliberately NOT the launcher's own `Application.apps` list here: that's built from
+        // LauncherApps, which by design excludes apps this same enforcement loop has hidden via
+        // setApplicationHidden - iterating that list would mean a hidden app could never be
+        // found again to un-hide it, a permanent one-way lock regardless of later allowlist
+        // changes. A direct PackageManager query still sees hidden (not uninstalled) apps.
+        val installedPackages = pm.getInstalledApplications(0)
+            .map { it.packageName }
+            .distinct()
 
         for (packageName in installedPackages) {
             if (packageName == ownPackage) continue

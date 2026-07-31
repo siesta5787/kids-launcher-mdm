@@ -11,6 +11,7 @@ import java.io.File
 private const val LOG_TAG = "LauncherUpdater"
 const val LAUNCHER_UPDATE_INSTALL_ACTION = "com.kidslauncher.mdm.LAUNCHER_UPDATE_INSTALL_RESULT"
 const val LAUNCHER_UPDATE_APK_PATH_EXTRA = "apk_path"
+const val LAUNCHER_UPDATE_VERSION_CODE_EXTRA = "version_code"
 
 /**
  * Silently installs a downloaded launcher APK via Device Owner's [PackageInstaller] privilege -
@@ -20,7 +21,7 @@ const val LAUNCHER_UPDATE_APK_PATH_EXTRA = "apk_path"
  */
 object LauncherUpdater {
 
-    fun installSilently(context: Context, apkFile: File) {
+    fun installSilently(context: Context, apkFile: File, versionCode: Int) {
         val packageInstaller = context.packageManager.packageInstaller
         val params =
             PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -41,6 +42,7 @@ object LauncherUpdater {
                 val resultIntent = Intent(LAUNCHER_UPDATE_INSTALL_ACTION)
                     .setPackage(context.packageName)
                     .putExtra(LAUNCHER_UPDATE_APK_PATH_EXTRA, apkFile.absolutePath)
+                    .putExtra(LAUNCHER_UPDATE_VERSION_CODE_EXTRA, versionCode)
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         PendingIntent.FLAG_MUTABLE

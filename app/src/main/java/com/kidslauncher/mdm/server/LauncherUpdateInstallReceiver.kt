@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.util.Log
+import com.kidslauncher.mdm.preferences.LauncherPreferences
 import java.io.File
 
 private const val LOG_TAG = "LauncherUpdateInstallReceiver"
@@ -20,6 +21,7 @@ class LauncherUpdateInstallReceiver : BroadcastReceiver() {
             intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
         val apkPath = intent.getStringExtra(LAUNCHER_UPDATE_APK_PATH_EXTRA)
+        val versionCode = intent.getIntExtra(LAUNCHER_UPDATE_VERSION_CODE_EXTRA, 0)
 
         when (status) {
             PackageInstaller.STATUS_SUCCESS -> {
@@ -33,6 +35,13 @@ class LauncherUpdateInstallReceiver : BroadcastReceiver() {
             }
             else -> {
                 Log.w(LOG_TAG, "Launcher self-update install failed: status=$status message=$message")
+                // Remembering the failed version code stops checkForLauncherUpdate from
+                // re-attempting the exact same doomed install on every future sync (e.g. a
+                // signing-certificate mismatch will never resolve itself) - a genuinely newer
+                // version (different code) is still tried normally.
+                if (versionCode != 0) {
+                    LauncherPreferences.mdm().lastFailedUpdateVersionCode(versionCode)
+                }
             }
         }
 

@@ -7,9 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.kidslauncher.mdm.Application
 import com.kidslauncher.mdm.BuildConfig
-import com.kidslauncher.mdm.apps.AppInfo
 import com.kidslauncher.mdm.server.dto.InstalledApp
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
@@ -86,6 +84,12 @@ private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
     try {
         val update = api.getLauncherUpdate().body() ?: return
         if (update.versionCode <= BuildConfig.VERSION_CODE) return
+        if (update.versionCode == LauncherPreferences.mdm().lastFailedUpdateVersionCode()) {
+            // Already tried and failed (e.g. signing-certificate mismatch, which will never
+            // resolve itself) - don't turn a permanently-broken update into an infinite
+            // download+install loop every 2 minutes. A different (newer) version is still tried.
+            return
+        }
 
         val body = api.downloadLauncherUpdate().body() ?: return
         val apkFile = File(context.cacheDir, "launcher_update.apk")
@@ -93,22 +97,28 @@ private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
             apkFile.outputStream().use { output -> input.copyTo(output) }
         }
         Log.i(LOG_TAG, "Downloaded launcher update ${update.versionName} (code ${update.versionCode}), installing")
-        LauncherUpdater.installSilently(context, apkFile)
+        LauncherUpdater.installSilently(context, apkFile, update.versionCode)
     } catch (e: Exception) {
         Log.w(LOG_TAG, "Launcher update check failed", e)
     }
 }
 
-/** Reports {packageName, label} for every installed app, so the admin site's allowlist checkboxes
- * can show real apps instead of asking a parent to type package names. */
-private fun collectInstalledApps(context: Context): List<InstalledApp>? {
-    return (context.applicationContext as Application).apps.value
-        ?.mapNotNull { info ->
-            (info.getRawInfo() as? AppInfo)?.packageName?.let { pkg ->
-                InstalledApp(packageName = pkg, label = info.getLabel())
-            }
-        }
-        ?.distinctBy { it.packageName }
+/**
+ * Reports {packageName, label} for every installed app, so the admin site's allowlist checkboxes
+ * can show real apps instead of asking a parent to type package names.
+ *
+ * Deliberately a direct [PackageManager] query, not the launcher's own `Application.apps` list:
+ * that's built from LauncherApps, which excludes apps [AppEnforcer] has hidden via
+ * setApplicationHidden - reporting from that filtered list would mean a hidden app can never be
+ * seen by the admin site again to re-allow it, the same permanent lockout bug fixed in
+ * AppEnforcer's enforcement loop. This reports every installed package (not just launchable
+ * ones), which is noisier than the old list but can't develop this blind spot.
+ */
+private fun collectInstalledApps(context: Context): List<InstalledApp> {
+    val pm = context.packageManager
+    return pm.getInstalledApplications(0)
+        .map { info -> InstalledApp(packageName = info.packageName, label = pm.getApplicationLabel(info).toString()) }
+        .distinctBy { it.packageName }
 }
 
 private suspend fun fetchPolicy(api: MdmApi): PolicyResponse? {
