@@ -53,7 +53,7 @@ jobs:
         tag: "pre-release"
         name: "Debug (only for testing)"
         prerelease: true
-        body: "This debug build is updated automatically whenever there is a commit to master. It is signed with a debug certificate and uses the package name `de.jrpie.android.launcher.debug`. Furthermore, the app name is set to `µLauncher [debug]`. **Debug builds are not suited for everyday use.**"
+        body: "This debug build is updated automatically whenever there is a commit to master. It is signed with a debug certificate and uses the package name `com.kidslauncher.mdm.debug`. Furthermore, the app name is set to `Kids Launcher [debug]`. **Debug builds are not suited for everyday use.**"
         generateReleaseNotes: true
         removeArtifacts: true
         replacesArtifacts: true
