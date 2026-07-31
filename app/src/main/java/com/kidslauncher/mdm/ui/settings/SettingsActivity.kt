@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -44,6 +45,13 @@ class SettingsActivity : UIObjectActivity() {
         // Initialise layout
         binding = SettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Invisible (not gone - still needs to be measured/laid out for setOnClicks() to work
+        // once onStart() runs) until the PIN gate below passes, so a kid can't glimpse the
+        // settings list behind the dialog before entering the code.
+        if (OfflineOverride.isConfigured()) {
+            binding.root.visibility = View.INVISIBLE
+        }
     }
 
     override fun onStart() {
@@ -78,6 +86,7 @@ class SettingsActivity : UIObjectActivity() {
             val input = dialog.findViewById<EditText>(R.id.dialog_offline_override_pin_input)
             val pin = input?.text?.toString().orEmpty()
             if (OfflineOverride.verifyPin(pin)) {
+                binding.root.visibility = View.VISIBLE
                 dialog.dismiss()
             } else if (OfflineOverride.isLockedOut()) {
                 Toast.makeText(this, R.string.lock_unlock_code_locked_out, Toast.LENGTH_LONG).show()

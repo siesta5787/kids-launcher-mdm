@@ -130,7 +130,11 @@ private fun collectInstalledApps(context: Context): List<InstalledApp> {
         .filter { it != context.packageName }
         .mapNotNull { packageName ->
             try {
-                val info = pm.getApplicationInfo(packageName, 0)
+                // Same MATCH_UNINSTALLED_PACKAGES requirement as controllablePackages() - flags=0
+                // throws NameNotFoundException for a hidden package just like it gets silently
+                // excluded from getInstalledApplications(0), which would otherwise drop any
+                // currently-unchecked app right back out of this report.
+                val info = pm.getApplicationInfo(packageName, PackageManager.MATCH_UNINSTALLED_PACKAGES)
                 InstalledApp(packageName = packageName, label = pm.getApplicationLabel(info).toString())
             } catch (e: PackageManager.NameNotFoundException) {
                 null
@@ -160,6 +164,16 @@ private fun decodeCachedPolicy(json: String): PolicyResponse? {
         null
     }
 }
+
+/**
+ * The last policy fetched from the server, straight from the local cache - no network call.
+ * Lets a purely-local toggle (e.g. Settings' "pause all restrictions" switch) re-run
+ * [AppEnforcer.apply] immediately against the real policy instead of either waiting for the next
+ * sync or passing `null` (which [AppEnforcer.apply] would otherwise read as "no restrictions" -
+ * correct while the pause is being turned ON, but wrong the moment it's turned back OFF).
+ */
+fun cachedPolicy(): PolicyResponse? =
+    LauncherPreferences.mdm().kidModePolicy()?.let { decodeCachedPolicy(it) }
 
 /**
  * Re-checks the bedtime/screen-time lock decision against the last-cached policy and the

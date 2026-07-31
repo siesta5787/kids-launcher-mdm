@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.UserManager
 import android.util.Log
@@ -136,8 +135,7 @@ object AppEnforcer {
             lockTaskFeatures = effectivePolicy?.lockTaskFeatures ?: 0,
         )
 
-        val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        applyRadioRestrictions(dpm, admin, wifiManager, effectivePolicy)
+        applyRadioRestrictions(dpm, admin, effectivePolicy)
     }
 
     /**
@@ -177,30 +175,20 @@ object AppEnforcer {
     }
 
     /**
-     * WiFi/Bluetooth restriction levels ("open"/"restricted"/"disabled" - see
-     * [PolicyResponse.wifiMode]/[PolicyResponse.bluetoothMode]) via [UserManager] restrictions,
-     * device-owner-only APIs. "disabled" additionally force-toggles the WiFi radio itself, since
-     * unlike Bluetooth's DISALLOW_BLUETOOTH there's no single WiFi restriction that both disables
-     * the radio and blocks re-enabling - DISALLOW_CHANGE_WIFI_STATE (min API 34, already this
-     * app's floor) only blocks the *user* from changing it, so the radio still needs an explicit
-     * setWifiEnabled(false) call here (a device-owner-exempt API even on modern Android).
+     * WiFi/Bluetooth restriction levels via [UserManager] restrictions, device-owner-only APIs.
+     * WiFi only supports "open"/"restricted" (no "disabled") - a prior "disabled" WiFi mode that
+     * force-toggled the radio via `setWifiEnabled(false)` proved unreliable in testing and had no
+     * strong use case, so it was removed rather than fixed; anything other than "restricted"
+     * (including a stale "disabled" value in already-stored policy) falls through to "open".
+     * Bluetooth keeps its "disabled" option - DISALLOW_BLUETOOTH alone both disables the radio and
+     * blocks re-enabling, unlike WiFi where no single restriction does both.
      */
     private fun applyRadioRestrictions(
         dpm: DevicePolicyManager,
         admin: ComponentName,
-        wifiManager: WifiManager,
         policy: PolicyResponse?,
     ) {
         when (policy?.wifiMode ?: "open") {
-            "disabled" -> {
-                try {
-                    wifiManager.setWifiEnabled(false)
-                } catch (e: Exception) {
-                    Log.w(LOG_TAG, "Failed to disable WiFi", e)
-                }
-                setRestriction(dpm, admin, UserManager.DISALLOW_CHANGE_WIFI_STATE, true)
-                setRestriction(dpm, admin, UserManager.DISALLOW_ADD_WIFI_CONFIG, false)
-            }
             "restricted" -> {
                 setRestriction(dpm, admin, UserManager.DISALLOW_CHANGE_WIFI_STATE, false)
                 setRestriction(dpm, admin, UserManager.DISALLOW_ADD_WIFI_CONFIG, true)

@@ -13,9 +13,12 @@ import com.kidslauncher.mdm.BuildConfig
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.copyToClipboard
 import com.kidslauncher.mdm.getDeviceInfo
+import com.kidslauncher.mdm.server.AppEnforcer
+import com.kidslauncher.mdm.server.cachedPolicy
 import com.kidslauncher.mdm.server.createMdmApi
 import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.performMdmSync
+import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.openAppsList
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.LegalInfoActivity
@@ -87,6 +90,21 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         val syncNow = findPreference<Preference>("settings_mdm_sync_now")
         syncNow?.setOnPreferenceClickListener {
             syncNowWithServer(requireContext())
+            true
+        }
+
+        val restrictionsPaused = findPreference<Preference>(mdm.keys().restrictionsPaused())
+        restrictionsPaused?.setOnPreferenceChangeListener { _, _ ->
+            // The Preference framework persists the new value right after this listener returns
+            // true, synchronously within the same click - posting defers just past that write so
+            // AppEnforcer.apply()/reevaluateLockReasonFromCache() (which both re-read the
+            // preference themselves, rather than taking it as a parameter) see the new value.
+            // No network call: this is what makes the toggle take effect immediately instead of
+            // only on the next sync (which is what made it look broken while testing offline).
+            view?.post {
+                AppEnforcer.apply(requireContext(), cachedPolicy())
+                reevaluateLockReasonFromCache()
+            }
             true
         }
     }
