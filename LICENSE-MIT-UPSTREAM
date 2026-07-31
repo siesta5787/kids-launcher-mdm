@@ -1,8 +1,10 @@
-This project is a fork of Josia Pietsch's µLauncher (https://github.com/jrpie/launcher),
-itself a fork of Finn Glas's Launcher (https://github.com/finnmglas/Launcher). The code
-inherited from that lineage remains under the original MIT terms below, as required by
-those terms. New code added in this fork (the Device-Owner MDM/parental-control
-functionality) is licensed separately under the GNU GPLv3 - see LICENSE.
+This project's app-list/search screen (app/src/main/java/com/kidslauncher/mdm/ui/list/
+and app/src/main/java/com/kidslauncher/mdm/apps/) originated in Josia Pietsch's
+µLauncher (https://github.com/jrpie/launcher), itself descended from Finn Glas's
+Launcher (https://github.com/finnmglas/Launcher). That code remains under the original
+MIT terms below, as required by those terms. Everything else in this project - the
+Device-Owner MDM/parental-control system, the home screen, and the app generally - is
+original and licensed separately under the GNU GPLv3 - see LICENSE.
 
 MIT License
 

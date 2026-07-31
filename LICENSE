@@ -1,17 +1,17 @@
 This repository combines two kinds of code under two different licenses:
 
-  - Code inherited from this project's upstream lineage (Finn Glas's
-    Launcher, and Josia Pietsch's fork of it, µLauncher) remains under
-    the original MIT terms - see LICENSE-MIT-UPSTREAM.
-  - New code added in this fork (the Device-Owner MDM / parental-control
-    functionality: enrollment, policy enforcement, kiosk mode, offline
-    override, etc., primarily under app/src/main/java/com/kidslauncher/mdm)
-    is licensed under the GNU General Public License v3.0 (or later),
-    reproduced below.
+  - The app-list/search screen (app/src/main/java/com/kidslauncher/mdm/ui/list/
+    and app/src/main/java/com/kidslauncher/mdm/apps/) originated in Josia
+    Pietsch's µLauncher and, before that, Finn Glas's Launcher, and remains
+    under the original MIT terms - see LICENSE-MIT-UPSTREAM.
+  - Everything else - the Device-Owner MDM/parental-control system
+    (enrollment, policy enforcement, kiosk mode, offline override, etc.),
+    the home screen, and the app generally - is original and is licensed
+    under the GNU General Public License v3.0 (or later), reproduced below.
 
 The repository as a whole, as distributed, is licensed to you under the
 terms below; the MIT notice in LICENSE-MIT-UPSTREAM is preserved as
-required by its own terms for the portions it covers.
+required by its own terms for the portion it covers.
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
