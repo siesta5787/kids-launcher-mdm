@@ -1,6 +1,7 @@
 package com.kidslauncher.mdm.server
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -104,20 +105,23 @@ private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
 }
 
 /**
- * Reports {packageName, label} for every installed app, so the admin site's allowlist checkboxes
- * can show real apps instead of asking a parent to type package names.
- *
- * Deliberately a direct [PackageManager] query, not the launcher's own `Application.apps` list:
- * that's built from LauncherApps, which excludes apps [AppEnforcer] has hidden via
- * setApplicationHidden - reporting from that filtered list would mean a hidden app can never be
- * seen by the admin site again to re-allow it, the same permanent lockout bug fixed in
- * AppEnforcer's enforcement loop. This reports every installed package (not just launchable
- * ones), which is noisier than the old list but can't develop this blind spot.
+ * Reports {packageName, label} for every app [AppEnforcer] is actually willing to suspend/hide,
+ * so the admin site's allowlist checkboxes exactly match what checking one of them can affect -
+ * see [controllablePackages] for why this is neither the launcher's own `Application.apps` list
+ * (excludes already-hidden apps, a permanent lockout) nor a raw unfiltered PackageManager query
+ * (would include core OS packages unsafe to ever suspend).
  */
 private fun collectInstalledApps(context: Context): List<InstalledApp> {
     val pm = context.packageManager
-    return pm.getInstalledApplications(0)
-        .map { info -> InstalledApp(packageName = info.packageName, label = pm.getApplicationLabel(info).toString()) }
+    return controllablePackages(pm)
+        .mapNotNull { packageName ->
+            try {
+                val info = pm.getApplicationInfo(packageName, 0)
+                InstalledApp(packageName = packageName, label = pm.getApplicationLabel(info).toString())
+            } catch (e: PackageManager.NameNotFoundException) {
+                null
+            }
+        }
         .distinctBy { it.packageName }
 }
 

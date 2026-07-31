@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -15,6 +16,57 @@ import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.HomeActivity
 
 private const val LOG_TAG = "AppEnforcer"
+
+/**
+ * Common system apps with a real, user-facing UI that a parent might reasonably want to
+ * allow/restrict, despite being [android.content.pm.ApplicationInfo.FLAG_SYSTEM] (so the blanket
+ * "never touch system packages" safety filter below wouldn't otherwise include them at all).
+ * Deliberately a short, explicit, hand-picked list rather than any broader heuristic (e.g. "has a
+ * launcher intent") - suspending the wrong core OS package (SystemUI, telephony/package-manager
+ * internals, resource overlays, ...) can crash or boot-loop the device outright, so this errs
+ * firmly on the side of under-inclusion. Extend this list deliberately, one known-safe app at a
+ * time, never by loosening the FLAG_SYSTEM check itself.
+ */
+private val SAFE_SYSTEM_PACKAGES = setOf(
+    "com.android.settings",
+    "com.android.dialer",
+    "com.android.messaging",
+    "com.android.contacts",
+    "com.android.deskclock",
+    "com.android.calculator2",
+    "com.android.calendar",
+    "com.android.camera2",
+    "com.android.documentsui",
+    "com.android.gallery3d",
+    "app.grapheneos.camera",
+    "app.grapheneos.pdfviewer",
+    "app.vanadium.browser",
+)
+
+/**
+ * The set of packages [AppEnforcer] will ever consider suspending/hiding, and that
+ * [com.kidslauncher.mdm.server.MdmSyncWorker]'s status report offers the admin site as
+ * allow/restrict checkboxes - the two must stay in sync, or the admin could check a box for an
+ * app this loop then silently never acts on.
+ *
+ * A direct [PackageManager] query, not the launcher's own `Application.apps` (LauncherApps-based)
+ * list: that excludes apps already hidden via [android.app.admin.DevicePolicyManager.setApplicationHidden],
+ * so relying on it here would mean a hidden app could never be found again to un-hide it - a
+ * permanent one-way lock. But a raw, unfiltered [PackageManager.getInstalledApplications] is
+ * actively dangerous: it includes core OS/system packages that must never be suspended (doing so
+ * can crash or boot-loop the device - this is not hypothetical, it happened during development).
+ * So: third-party (non-system) apps are always included, and system apps only via the explicit
+ * [SAFE_SYSTEM_PACKAGES] allowlist above - never a broader "looks launchable" heuristic.
+ */
+internal fun controllablePackages(pm: PackageManager): List<String> {
+    return pm.getInstalledApplications(0)
+        .filter { info ->
+            (info.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
+                info.packageName in SAFE_SYSTEM_PACKAGES
+        }
+        .map { it.packageName }
+        .distinct()
+}
 
 /**
  * Suspends/unsuspends installed apps to match [PolicyResponse.allowlist] (null/empty means no
@@ -45,14 +97,7 @@ object AppEnforcer {
         val ownPackage = context.packageName
         val pm = context.packageManager
 
-        // Deliberately NOT the launcher's own `Application.apps` list here: that's built from
-        // LauncherApps, which by design excludes apps this same enforcement loop has hidden via
-        // setApplicationHidden - iterating that list would mean a hidden app could never be
-        // found again to un-hide it, a permanent one-way lock regardless of later allowlist
-        // changes. A direct PackageManager query still sees hidden (not uninstalled) apps.
-        val installedPackages = pm.getInstalledApplications(0)
-            .map { it.packageName }
-            .distinct()
+        val installedPackages = controllablePackages(pm)
 
         for (packageName in installedPackages) {
             if (packageName == ownPackage) continue
