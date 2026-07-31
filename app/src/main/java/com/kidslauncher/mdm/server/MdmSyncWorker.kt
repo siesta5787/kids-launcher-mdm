@@ -44,6 +44,11 @@ suspend fun performMdmSync(context: Context) {
         // until the device can hear from the server again) is done, so let real policy reassert
         // immediately rather than waiting out the rest of its time window.
         OfflineOverride.clear()
+        // Cache the hash+salt into their own preference slots (not just inside the serialized
+        // kid_mode_policy blob) - this is what lets OfflineOverride verify a locally-entered PIN
+        // with zero network at all, which is the entire point of the offline failsafe.
+        mdm.overridePinHash(freshPolicy.overridePinHash)
+        mdm.overridePinSalt(freshPolicy.overridePinSalt)
     }
     val policy = freshPolicy ?: mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
 
