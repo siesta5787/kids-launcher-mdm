@@ -185,13 +185,16 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         }
 
         CoroutineScope(Dispatchers.IO).launch {
-            try {
+            val reachedServer = try {
                 performMdmSync(context)
             } catch (e: Exception) {
                 Log.w(LOG_TAG, "Manual sync failed", e)
+                false
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, R.string.toast_mdm_sync_done, Toast.LENGTH_SHORT).show()
+                val messageRes =
+                    if (reachedServer) R.string.toast_mdm_sync_done else R.string.toast_mdm_sync_failed
+                Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show()
             }
         }
     }

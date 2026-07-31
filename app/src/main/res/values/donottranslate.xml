@@ -46,6 +46,7 @@
     <string name="settings_mdm_offline_override_locked_until_key" translatable="false">mdm.offline_override_locked_until</string>
     <string name="settings_mdm_offline_override_used_pending_report_key" translatable="false">mdm.offline_override_used_pending_report</string>
     <string name="settings_mdm_last_failed_update_version_code_key" translatable="false">mdm.last_failed_update_version_code</string>
+    <string name="settings_mdm_restrictions_paused_key" translatable="false">mdm.restrictions_paused</string>
 
     <!-- Legal -->
     <string name="legal_info_text"><![CDATA[

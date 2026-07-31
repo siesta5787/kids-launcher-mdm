@@ -27,13 +27,19 @@ private const val WORK_NAME = "mdm_sync"
  * Combined heartbeat + policy sync: policy fetch/cache/evaluate, app allowlist + kiosk
  * enforcement, best-effort status report. Shared by [MdmSyncWorker]'s periodic run and the
  * Settings screen's "Sync now" dev action, so both go through the exact same logic.
+ *
+ * Returns true only if the server was actually reached this cycle (a fresh policy fetch
+ * succeeded) - every sub-step below (status report, update check) already fails silently and
+ * falls back to cached state on its own, so this is the one signal that reflects whether real
+ * network contact happened, for callers like the "Sync now" button that want to tell the user
+ * the truth about whether it worked.
  */
-suspend fun performMdmSync(context: Context) {
+suspend fun performMdmSync(context: Context): Boolean {
     val mdm = LauncherPreferences.mdm()
     val serverUrl = mdm.serverUrl()
     val deviceToken = mdm.deviceToken()
     if (serverUrl.isNullOrBlank() || deviceToken.isNullOrBlank()) {
-        return
+        return false
     }
 
     val api = createMdmApi(serverUrl, deviceToken)
@@ -52,7 +58,7 @@ suspend fun performMdmSync(context: Context) {
     }
     val policy = freshPolicy ?: mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
 
-    val reason = if (OfflineOverride.isActive()) LockReason.NONE else {
+    val reason = if (OfflineOverride.isActive() || mdm.restrictionsPaused()) LockReason.NONE else {
         KidModeEnforcer.evaluate(policy, Calendar.getInstance())
     }
     mdm.lockReason(reason)
@@ -79,6 +85,8 @@ suspend fun performMdmSync(context: Context) {
     }
 
     checkForLauncherUpdate(context, api)
+
+    return freshPolicy != null
 }
 
 /**
@@ -119,6 +127,7 @@ private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
 private fun collectInstalledApps(context: Context): List<InstalledApp> {
     val pm = context.packageManager
     return controllablePackages(pm)
+        .filter { it != context.packageName }
         .mapNotNull { packageName ->
             try {
                 val info = pm.getApplicationInfo(packageName, 0)
@@ -161,7 +170,7 @@ private fun decodeCachedPolicy(json: String): PolicyResponse? {
 fun reevaluateLockReasonFromCache() {
     val mdm = LauncherPreferences.mdm()
     val policy = mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
-    val reason = if (OfflineOverride.isActive()) LockReason.NONE else {
+    val reason = if (OfflineOverride.isActive() || mdm.restrictionsPaused()) LockReason.NONE else {
         KidModeEnforcer.evaluate(policy, Calendar.getInstance())
     }
     if (mdm.lockReason() != reason) {

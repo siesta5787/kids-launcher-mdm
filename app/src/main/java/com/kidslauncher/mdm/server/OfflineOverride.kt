@@ -64,12 +64,15 @@ object OfflineOverride {
         System.currentTimeMillis() < LauncherPreferences.mdm().offlineOverrideLockedUntil()
 
     /**
-     * Returns true (and activates the override) on a match. Returns false otherwise, having
-     * recorded a failed attempt - and triggered a 15-minute local lockout once
-     * [MAX_FAILED_ATTEMPTS] is reached, mirroring the server's own admin-login lockout in
-     * security.rs, tracked purely locally since this must keep working with zero network.
+     * Returns true on a match, false otherwise - having recorded a failed attempt and triggered a
+     * 15-minute local lockout once [MAX_FAILED_ATTEMPTS] is reached, mirroring the server's own
+     * admin-login lockout in security.rs, tracked purely locally since this must keep working
+     * with zero network. Pure verification only - does NOT lift restrictions; callers that want
+     * the full "unlock the device" behavior must also call [activate] on success (see
+     * [com.kidslauncher.mdm.ui.LockActivity]). Kept separate so the Settings PIN-gate can reuse
+     * the same code+PIN without also triggering a 2-hour restrictions-off window.
      */
-    fun tryUnlock(context: Context, pin: String): Boolean {
+    fun verifyPin(pin: String): Boolean {
         val mdm = LauncherPreferences.mdm()
         val hashHex = mdm.overridePinHash()
         val saltHex = mdm.overridePinSalt()
@@ -91,7 +94,6 @@ object OfflineOverride {
 
         if (matches) {
             mdm.offlineOverrideFailedAttempts(0)
-            activate(context)
         } else {
             val attempts = mdm.offlineOverrideFailedAttempts() + 1
             if (attempts >= MAX_FAILED_ATTEMPTS) {
@@ -104,7 +106,8 @@ object OfflineOverride {
         return matches
     }
 
-    private fun activate(context: Context) {
+    /** Lifts all restrictions for [OVERRIDE_DURATION_MS] - call only after [verifyPin] succeeds. */
+    fun activate(context: Context) {
         val mdm = LauncherPreferences.mdm()
         mdm.offlineOverrideActive(true)
         mdm.offlineOverrideExpiresAt(System.currentTimeMillis() + OVERRIDE_DURATION_MS)

@@ -78,6 +78,13 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // permanently-broken update can't turn into an infinite retry loop every
                         // 2 minutes. A genuinely newer version (different code) is still tried.
                         @Preference(name = "last_failed_update_version_code", type = int.class, defaultValue = "0"),
+                        // Manual emergency kill-switch, gated behind the same Settings PIN as
+                        // enroll/sync - unlike offline_override_active this does NOT auto-clear on
+                        // the next successful sync or after any timer; it stays off until a parent
+                        // deliberately re-enables it, so it's a safe escape hatch if a policy or
+                        // build ever ships a breaking restriction. See AppEnforcer.apply and
+                        // MdmSyncWorker's lock-reason computation.
+                        @Preference(name = "restrictions_paused", type = boolean.class, defaultValue = "false"),
                 }),
         })
 public final class LauncherPreferences$Config {

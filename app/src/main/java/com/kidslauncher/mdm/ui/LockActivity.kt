@@ -86,7 +86,8 @@ class LockActivity : UIObjectActivity() {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val input = dialog.findViewById<EditText>(R.id.dialog_offline_override_pin_input)
             val pin = input?.text?.toString().orEmpty()
-            if (OfflineOverride.tryUnlock(this, pin)) {
+            if (OfflineOverride.verifyPin(pin)) {
+                OfflineOverride.activate(this)
                 dialog.dismiss()
                 finish()
             } else {

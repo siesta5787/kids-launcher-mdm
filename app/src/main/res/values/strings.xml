@@ -51,6 +51,12 @@
 
     <string name="settings_mdm_sync_now">Sync now</string>
     <string name="toast_mdm_sync_done">Sync complete.</string>
+    <string name="toast_mdm_sync_failed">Sync failed - couldn\'t reach the server.</string>
+
+    <string name="settings_mdm_restrictions_paused">Pause all restrictions</string>
+    <string name="settings_mdm_restrictions_paused_summary">Turns off kiosk mode, the schedule, and WiFi/Bluetooth restrictions until you turn this back on. Emergency use only, e.g. if an update causes a problem - stays off until you flip it back.</string>
+
+    <string name="settings_gate_dialog_title">Enter code to open settings</string>
 
     <string name="alert_cant_choose_home_screen">Failed to open the home screen chooser. You need to choose a homescreen manually in Android Settings.</string>
     <string name="toast_system_settings_unavailable">System settings aren\'t available right now.</string>

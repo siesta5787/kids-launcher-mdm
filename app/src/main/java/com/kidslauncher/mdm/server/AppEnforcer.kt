@@ -59,7 +59,12 @@ private val SAFE_SYSTEM_PACKAGES = setOf(
  * [SAFE_SYSTEM_PACKAGES] allowlist above - never a broader "looks launchable" heuristic.
  */
 internal fun controllablePackages(pm: PackageManager): List<String> {
-    return pm.getInstalledApplications(0)
+    // MATCH_UNINSTALLED_PACKAGES is required here, or this list silently drops any package this
+    // same enforcer has already hidden via setApplicationHidden - PackageManager excludes hidden
+    // packages from getInstalledApplications() by default. Without this flag, a hidden app can
+    // never be found again to un-hide it: a permanent one-way lock, and exactly the bug this
+    // function was written to avoid in the first place (see the class-level doc above).
+    return pm.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
         .filter { info ->
             (info.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
                 info.packageName in SAFE_SYSTEM_PACKAGES
@@ -85,11 +90,14 @@ object AppEnforcer {
         }
         val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
 
-        // While a locally-entered offline override is active, treat the device exactly as if
-        // the server sent no policy at all - every branch below already means "fully open" for
-        // a null policy (no allowlist, kiosk not desired, WiFi/Bluetooth "open"), so this reuses
-        // the same code path rather than duplicating an "unlock everything" special case.
-        val effectivePolicy = if (OfflineOverride.isActive()) null else policy
+        // While a locally-entered offline override is active, or a parent has flipped the manual
+        // "pause all restrictions" kill-switch in Settings, treat the device exactly as if the
+        // server sent no policy at all - every branch below already means "fully open" for a null
+        // policy (no allowlist, kiosk not desired, WiFi/Bluetooth "open"), so this reuses the same
+        // code path rather than duplicating an "unlock everything" special case.
+        val effectivePolicy =
+            if (OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()) null
+            else policy
 
         enforceDefaultHome(dpm, admin, context)
 
@@ -149,15 +157,22 @@ object AppEnforcer {
         val mdm = LauncherPreferences.mdm()
         val shouldEngageKiosk = allowedPackages != null && kioskDesired
 
-        if (shouldEngageKiosk) {
-            dpm.setLockTaskPackages(admin, (allowedPackages + ownPackage).toTypedArray())
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                dpm.setLockTaskFeatures(admin, lockTaskFeatures.toInt())
+        try {
+            if (shouldEngageKiosk) {
+                dpm.setLockTaskPackages(admin, (allowedPackages + ownPackage).toTypedArray())
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    dpm.setLockTaskFeatures(admin, lockTaskFeatures.toInt())
+                }
+                mdm.kioskEnabled(true)
+            } else {
+                dpm.setLockTaskPackages(admin, emptyArray())
+                mdm.kioskEnabled(false)
             }
-            mdm.kioskEnabled(true)
-        } else {
-            dpm.setLockTaskPackages(admin, emptyArray())
-            mdm.kioskEnabled(false)
+        } catch (e: Exception) {
+            // Unlike every DPM call above, this one previously wasn't guarded - letting it throw
+            // would kill the rest of apply() (and, since apply() itself isn't try/caught by its
+            // caller, the whole sync cycle including the status report) over one bad kiosk call.
+            Log.w(LOG_TAG, "Failed to apply kiosk state", e)
         }
     }
 
