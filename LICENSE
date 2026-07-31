@@ -1,6 +1,6 @@
 This repository combines two kinds of code under two different licenses:
 
-  - The app-list/search screen (app/src/main/java/com/kidslauncher/mdm/ui/list/
+  - The app-list screen (app/src/main/java/com/kidslauncher/mdm/ui/list/
     and app/src/main/java/com/kidslauncher/mdm/apps/) originated in Josia
     Pietsch's µLauncher and, before that, Finn Glas's Launcher, and remains
     under the original MIT terms - see LICENSE-MIT-UPSTREAM.

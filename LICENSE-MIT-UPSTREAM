@@ -1,4 +1,4 @@
-This project's app-list/search screen (app/src/main/java/com/kidslauncher/mdm/ui/list/
+This project's app-list screen (app/src/main/java/com/kidslauncher/mdm/ui/list/
 and app/src/main/java/com/kidslauncher/mdm/apps/) originated in Josia Pietsch's
 µLauncher (https://github.com/jrpie/launcher), itself descended from Finn Glas's
 Launcher (https://github.com/finnmglas/Launcher). That code remains under the original

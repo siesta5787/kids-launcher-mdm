@@ -11,7 +11,7 @@ mode, WiFi/Bluetooth restrictions, and an offline override PIN for when a phone 
 reach the server at all.
 
 The home screen itself is intentionally minimal: date, time, and a wallpaper. Swiping up
-opens a searchable list of allowed apps.
+opens a list of allowed apps.
 
 ## Features
 
@@ -33,14 +33,14 @@ opens a searchable list of allowed apps.
   hatch.
 - **Silent self-update** - the launcher can be updated by the server without any user
   interaction, via `PackageInstaller` (requires Device Owner).
-- **Searchable app list** for whatever's currently allowed, with an admin-configurable
+- **App list**, showing whatever's currently allowed, with an admin-configurable
   hidden-apps list.
 
 ## License
 
 Kids Launcher is licensed under the [GNU GPLv3 or later][license].
 
-Its app-list/search screen originated in [Josia Pietsch's µLauncher][ulauncher-repo]
+Its app-list screen originated in [Josia Pietsch's µLauncher][ulauncher-repo]
 (itself descended from [Finn Glas's Launcher][original-repo]); that code remains under
 its original [MIT terms][license-mit] as required. Everything else - the parental-control
 system, the home screen, and the overall app - is original to this project.
