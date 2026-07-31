@@ -85,6 +85,7 @@ suspend fun performMdmSync(context: Context): Boolean {
     }
 
     checkForLauncherUpdate(context, api)
+    checkForTrackedAppUpdates(context, api)
 
     return freshPolicy != null
 }
@@ -114,6 +115,41 @@ private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
         LauncherUpdater.installSilently(context, apkFile, update.versionCode)
     } catch (e: Exception) {
         Log.w(LOG_TAG, "Launcher update check failed", e)
+    }
+}
+
+/**
+ * Downloads and silently installs a newer release for every app tracked from a GitHub repo's
+ * Releases (see kid-phone-server's `handlers::tracked_apps`, e.g. Tailscale) - the generalized,
+ * multi-app counterpart to [checkForLauncherUpdate] above, via [AppInstaller] instead of
+ * [LauncherUpdater]. One app's failure never affects another's, or the rest of the sync.
+ */
+private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
+    val updates = try {
+        api.getTrackedAppUpdates().body() ?: return
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Tracked app update check failed", e)
+        return
+    }
+
+    val state = TrackedAppUpdateState.load()
+    for (update in updates) {
+        val known = state[update.packageName]
+        if (update.releaseTag == known?.lastInstalledTag || update.releaseTag == known?.lastFailedTag) {
+            continue
+        }
+
+        try {
+            val body = api.downloadTrackedApp(update.downloadUrl).body() ?: continue
+            val apkFile = File(context.cacheDir, "tracked_app_${update.packageName}.apk")
+            body.byteStream().use { input ->
+                apkFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag}, installing")
+            AppInstaller.installSilently(context, apkFile, update.packageName, update.releaseTag)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Update check failed for ${update.packageName}", e)
+        }
     }
 }
 

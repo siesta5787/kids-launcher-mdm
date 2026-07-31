@@ -6,6 +6,7 @@ import com.kidslauncher.mdm.server.dto.EnrollResponse
 import com.kidslauncher.mdm.server.dto.LauncherUpdateResponse
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
+import com.kidslauncher.mdm.server.dto.TrackedAppUpdate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
@@ -18,6 +19,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Streaming
+import retrofit2.http.Url
 import java.util.concurrent.TimeUnit
 
 /** Shared JSON config for both Retrofit and the cached-policy preference blob. The server's JSON
@@ -53,6 +55,17 @@ interface MdmApi {
     @Streaming
     @GET("api/devices/launcher-update/download")
     suspend fun downloadLauncherUpdate(): Response<ResponseBody>
+
+    @GET("api/devices/apps")
+    suspend fun getTrackedAppUpdates(): Response<List<TrackedAppUpdate>>
+
+    /** [url] is [TrackedAppUpdate.downloadUrl] as sent by the server (e.g.
+     * "/api/devices/apps/5/download") - a per-app path, unlike the launcher's single fixed
+     * download endpoint above, since there can be many tracked apps. [Url] resolves it against
+     * the same base URL/auth interceptor as every other call here. */
+    @Streaming
+    @GET
+    suspend fun downloadTrackedApp(@Url url: String): Response<ResponseBody>
 }
 
 /** [token] is omitted for the enroll-only call (no token exists yet); pass it for every

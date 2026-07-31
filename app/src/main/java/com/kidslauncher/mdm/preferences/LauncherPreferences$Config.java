@@ -85,6 +85,11 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // build ever ships a breaking restriction. See AppEnforcer.apply and
                         // MdmSyncWorker's lock-reason computation.
                         @Preference(name = "restrictions_paused", type = boolean.class, defaultValue = "false"),
+                        // JSON blob: per-package {lastInstalledTag, lastFailedTag} for apps
+                        // tracked from GitHub Releases (see server.TrackedAppUpdateState) - stops
+                        // an already-installed or already-failed release from being re-downloaded
+                        // and re-attempted every 2-minute sync forever.
+                        @Preference(name = "tracked_app_update_state", type = String.class),
                 }),
         })
 public final class LauncherPreferences$Config {
