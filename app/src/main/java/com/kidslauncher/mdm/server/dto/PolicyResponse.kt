@@ -13,6 +13,10 @@ import kotlinx.serialization.Serializable
  * [wifiMode]/[bluetoothMode] are one of "open" | "restricted" | "disabled".
  * [overridePinHash]/[overridePinSalt] back the offline override PIN (see [com.kidslauncher.mdm.ui.LockActivity])
  * - both null means no PIN is configured for this device.
+ * [requireTailscale]/[tailscaleExitNodeId] are pushed to the Tailscale app (`com.tailscale.ipn`)
+ * as Android managed-app-restrictions (`ForceEnabled`/`ExitNodeID`) - see
+ * [com.kidslauncher.mdm.server.AppEnforcer.applyVpnRestrictions]. A blank/null exit node ID means
+ * no exit node is enforced.
  */
 @Serializable
 data class PolicyResponse(
@@ -29,4 +33,6 @@ data class PolicyResponse(
     val bluetoothMode: String = "open",
     val overridePinHash: String? = null,
     val overridePinSalt: String? = null,
+    val requireTailscale: Boolean = false,
+    val tailscaleExitNodeId: String? = null,
 )

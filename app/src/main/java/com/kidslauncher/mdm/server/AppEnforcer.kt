@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.os.UserManager
 import android.util.Log
 import com.kidslauncher.mdm.server.dto.PolicyResponse
@@ -26,6 +27,8 @@ private const val LOG_TAG = "AppEnforcer"
  * firmly on the side of under-inclusion. Extend this list deliberately, one known-safe app at a
  * time, never by loosening the FLAG_SYSTEM check itself.
  */
+private const val TAILSCALE_PACKAGE = "com.tailscale.ipn"
+
 private val SAFE_SYSTEM_PACKAGES = setOf(
     "com.android.settings",
     "com.android.dialer",
@@ -105,9 +108,15 @@ object AppEnforcer {
         val pm = context.packageManager
 
         val installedPackages = controllablePackages(pm)
+        val requireTailscale = effectivePolicy?.requireTailscale == true
 
         for (packageName in installedPackages) {
             if (packageName == ownPackage) continue
+            // Tailscale providing the connectivity that requireTailscale itself depends on must
+            // never be suspendable by the same policy that requires it - an admin who forgets to
+            // check it in the allowlist would otherwise cut the phone off from ever reaching the
+            // server again. Mirrors the ownPackage skip above; see applyVpnRestrictions.
+            if (requireTailscale && packageName == TAILSCALE_PACKAGE) continue
 
             val shouldBeSuspended = allowedPackages != null && packageName !in allowedPackages
             val currentlySuspended = try {
@@ -136,6 +145,8 @@ object AppEnforcer {
         )
 
         applyRadioRestrictions(dpm, admin, effectivePolicy)
+
+        applyVpnRestrictions(dpm, admin, effectivePolicy)
     }
 
     /**
@@ -212,6 +223,38 @@ object AppEnforcer {
                 setRestriction(dpm, admin, UserManager.DISALLOW_BLUETOOTH, false)
                 setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_BLUETOOTH, false)
             }
+        }
+    }
+
+    /**
+     * Pushes [PolicyResponse.requireTailscale]/[PolicyResponse.tailscaleExitNodeId] to the
+     * Tailscale app as Android managed-app-restrictions (`ForceEnabled`/`ExitNodeID`) - the same
+     * `DevicePolicyManager.setApplicationRestrictions` mechanism used for any MDM-manageable app,
+     * confirmed against Tailscale's own `app_restrictions.xml`. `ForceEnabled` prevents the user
+     * from disconnecting Tailscale from within its own app; `ExitNodeID` forces routing through a
+     * specific exit node once one is configured (blank/null means none enforced yet). Always sets
+     * the full bundle explicitly, including the "off" case - otherwise a previously-pushed
+     * ForceEnabled=true would linger forever after a parent turns the toggle back off, since
+     * setApplicationRestrictions replaces the whole bundle rather than merging into it.
+     */
+    private fun applyVpnRestrictions(
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        policy: PolicyResponse?,
+    ) {
+        val bundle = Bundle().apply {
+            putBoolean("ForceEnabled", policy?.requireTailscale == true)
+            val exitNodeId = policy?.tailscaleExitNodeId?.trim()
+            if (!exitNodeId.isNullOrEmpty()) {
+                putString("ExitNodeID", exitNodeId)
+            }
+        }
+        try {
+            dpm.setApplicationRestrictions(admin, TAILSCALE_PACKAGE, bundle)
+        } catch (e: Exception) {
+            // Fails soft (e.g. Tailscale not installed yet) - never let this break the rest of a
+            // sync cycle, matching every other DPM call in this file.
+            Log.w(LOG_TAG, "Failed to apply Tailscale managed restrictions", e)
         }
     }
 
