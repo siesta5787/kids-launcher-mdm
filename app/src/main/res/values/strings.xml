@@ -18,6 +18,17 @@
     <string name="lock_unlock_code_dialog_title">Unlock code</string>
     <string name="lock_unlock_code_not_configured">No unlock code has been set up for this phone.</string>
     <string name="lock_unlock_code_wrong">That code didn\'t match. Try again.</string>
+
+    <!--
+      -
+      - Quick Controls (swipe-left screen)
+      -
+      -->
+    <string name="quick_controls_title">Quick Controls</string>
+    <string name="quick_controls_wifi">WiFi</string>
+    <string name="quick_controls_bluetooth">Bluetooth</string>
+    <string name="quick_controls_brightness">Screen brightness</string>
+    <string name="quick_controls_empty">Nothing has been turned on for this screen yet.</string>
     <string name="lock_unlock_code_locked_out">Too many wrong codes entered. Try again in 15 minutes.</string>
 
     <!--

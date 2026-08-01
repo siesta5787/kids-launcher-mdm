@@ -1,6 +1,7 @@
 package com.kidslauncher.mdm.ui
 
 import android.app.ActivityManager
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
@@ -18,10 +19,13 @@ import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.requestNotificationPermission
 import com.kidslauncher.mdm.setDefaultHomeScreen
 import com.kidslauncher.mdm.ui.minimalist.MinimalistHomeAdapter
+import com.kidslauncher.mdm.ui.quickcontrols.QuickControlsActivity
 import kotlin.math.abs
 
 private const val SWIPE_UP_MIN_DISTANCE = 100
 private const val SWIPE_UP_MIN_VELOCITY = 100
+private const val SWIPE_LEFT_MIN_DISTANCE = 100
+private const val SWIPE_LEFT_MIN_VELOCITY = 100
 private const val LOCK_REASON_REFRESH_INTERVAL_MS = 60_000L
 
 /**
@@ -93,6 +97,16 @@ class HomeActivity : UIObjectActivity() {
                     abs(velocityY) > SWIPE_UP_MIN_VELOCITY
                 ) {
                     openAppsList(this@HomeActivity, excludePinned = true)
+                    return true
+                }
+                // The kid-facing replacement for Android's Quick Settings shade - see
+                // QuickControlsActivity's doc comment for why this screen exists at all instead
+                // of just using the real one.
+                if (abs(diffX) > abs(diffY) &&
+                    -diffX > SWIPE_LEFT_MIN_DISTANCE &&
+                    abs(velocityX) > SWIPE_LEFT_MIN_VELOCITY
+                ) {
+                    startActivity(Intent(this@HomeActivity, QuickControlsActivity::class.java))
                     return true
                 }
                 return false

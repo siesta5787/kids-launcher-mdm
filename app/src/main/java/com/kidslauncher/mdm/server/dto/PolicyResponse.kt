@@ -17,6 +17,9 @@ import kotlinx.serialization.Serializable
  * as Android managed-app-restrictions (`ForceEnabled`/`ExitNodeID`) - see
  * [com.kidslauncher.mdm.server.AppEnforcer.applyVpnRestrictions]. A blank/null exit node ID means
  * no exit node is enforced.
+ * [quickControlsMask] is the raw bitmask for which switches show up on the launcher's
+ * swipe-left-from-home "Quick Controls" screen (1 = WiFi, 2 = Bluetooth, 4 = brightness) - see
+ * [com.kidslauncher.mdm.ui.quickcontrols.QuickControlsActivity].
  */
 @Serializable
 data class PolicyResponse(
@@ -35,4 +38,5 @@ data class PolicyResponse(
     val overridePinSalt: String? = null,
     val requireTailscale: Boolean = false,
     val tailscaleExitNodeId: String? = null,
+    val quickControlsMask: Long = 0,
 )

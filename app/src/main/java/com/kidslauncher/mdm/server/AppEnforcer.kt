@@ -236,6 +236,16 @@ object AppEnforcer {
      * the full bundle explicitly, including the "off" case - otherwise a previously-pushed
      * ForceEnabled=true would linger forever after a parent turns the toggle back off, since
      * setApplicationRestrictions replaces the whole bundle rather than merging into it.
+     *
+     * Also sets Android's always-on-VPN-with-lockdown requirement via
+     * [DevicePolicyManager.setAlwaysOnVpnPackage] - a separate, OS-level enforcement layer on top
+     * of the managed-config bundle above. `ForceEnabled` only binds Tailscale's own in-app UI; it
+     * turned out Tailscale's own Quick Settings tile doesn't check the same flag, so a kid could
+     * still disconnect from there. `setAlwaysOnVpnPackage` is enforced by the OS's connectivity
+     * stack directly, independent of the VPN app's own cooperation - the real fix, not a
+     * replacement for `ForceEnabled` (which is still useful for the in-app UI). Kept as its own
+     * try/catch so a failure here (e.g. Tailscale not yet fully registered as a VpnService on
+     * first run) can't block the managed-config push above, or vice versa.
      */
     private fun applyVpnRestrictions(
         dpm: DevicePolicyManager,
@@ -255,6 +265,16 @@ object AppEnforcer {
             // Fails soft (e.g. Tailscale not installed yet) - never let this break the rest of a
             // sync cycle, matching every other DPM call in this file.
             Log.w(LOG_TAG, "Failed to apply Tailscale managed restrictions", e)
+        }
+
+        try {
+            if (policy?.requireTailscale == true) {
+                dpm.setAlwaysOnVpnPackage(admin, TAILSCALE_PACKAGE, true)
+            } else {
+                dpm.setAlwaysOnVpnPackage(admin, null, false)
+            }
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to set always-on VPN", e)
         }
     }
 

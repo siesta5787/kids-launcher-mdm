@@ -7,6 +7,9 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Self-granted silently via DevicePolicyManager.setPermissionGrantState, required to call
+         BluetoothAdapter.enable()/disable() from the Quick Controls screen on Android 12+. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -62,6 +65,10 @@
         <activity
             android:name=".ui.LockActivity"
             android:excludeFromRecents="true"
+            android:exported="false" />
+        <activity
+            android:name=".ui.quickcontrols.QuickControlsActivity"
+            android:configChanges="orientation|screenSize"
             android:exported="false" />
 
         <receiver
