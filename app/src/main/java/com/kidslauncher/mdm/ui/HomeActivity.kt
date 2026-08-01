@@ -11,6 +11,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.activity.OnBackPressedCallback
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.kidslauncher.mdm.databinding.ActivityHomeBinding
 import com.kidslauncher.mdm.server.LockReason
 import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
@@ -111,6 +112,28 @@ class HomeActivity : UIObjectActivity() {
                 }
                 return false
             }
+        })
+
+        // The Activity-level onTouchEvent() below only ever sees touches nobody else claimed -
+        // it's a last resort, called only if the whole view hierarchy declines an event. The
+        // minimalist list's row items are match_parent-width and clickable, so a swipe starting
+        // on top of one (as opposed to the blank space above/below the short, wrap_content-height
+        // list - see activity_home.xml) gets consumed entirely by that row's own click handling
+        // and never reaches onTouchEvent() at all. RecyclerView.OnItemTouchListener is the
+        // official hook for exactly this: it's invoked for every event that flows through the
+        // RecyclerView, before it's dispatched to a child row. Always returning false here means
+        // it's purely observing (not stealing the gesture from clicks/scrolling) - a real drag
+        // already exceeds the framework's own touch-slop threshold, which independently cancels a
+        // pending click on the row without any help from this listener.
+        binding.homeMinimalistList.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                gestureDetector.onTouchEvent(e)
+                return false
+            }
+
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
     }
 
