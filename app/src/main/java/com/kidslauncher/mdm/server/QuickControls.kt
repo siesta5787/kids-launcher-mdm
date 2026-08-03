@@ -51,9 +51,14 @@ object QuickControls {
     }
 
     fun isWifiEnabled(context: Context): Boolean {
-        val wifiManager =
-            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        return wifiManager.isWifiEnabled
+        return try {
+            val wifiManager =
+                context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            wifiManager.isWifiEnabled
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to read WiFi enabled state", e)
+            false
+        }
     }
 
     /**

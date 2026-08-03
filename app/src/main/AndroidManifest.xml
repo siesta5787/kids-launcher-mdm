@@ -10,6 +10,11 @@
     <!-- Self-granted silently via DevicePolicyManager.setPermissionGrantState, required to call
          BluetoothAdapter.enable()/disable() from the Quick Controls screen on Android 12+. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Normal-level, auto-granted at install - required to read/toggle WiFi state from the
+         Quick Controls screen. Device Owner exempts us from the API 29+ restriction on WHO can
+         toggle WiFi, but these are still required regardless of Device Owner status. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
