@@ -84,45 +84,20 @@ suspend fun performMdmSync(context: Context): Boolean {
         Log.w(LOG_TAG, "Status report failed", e)
     }
 
-    checkForLauncherUpdate(context, api)
     checkForTrackedAppUpdates(context, api)
 
     return freshPolicy != null
 }
 
 /**
- * Downloads and silently installs a newer launcher build if the server has one, via
- * [LauncherUpdater]. Best-effort like the status report above - a failed check/download just
- * tries again next cycle, it never affects anything else in this sync.
- */
-private suspend fun checkForLauncherUpdate(context: Context, api: MdmApi) {
-    try {
-        val update = api.getLauncherUpdate().body() ?: return
-        if (update.versionCode <= BuildConfig.VERSION_CODE) return
-        if (update.versionCode == LauncherPreferences.mdm().lastFailedUpdateVersionCode()) {
-            // Already tried and failed (e.g. signing-certificate mismatch, which will never
-            // resolve itself) - don't turn a permanently-broken update into an infinite
-            // download+install loop every 2 minutes. A different (newer) version is still tried.
-            return
-        }
-
-        val body = api.downloadLauncherUpdate().body() ?: return
-        val apkFile = File(context.cacheDir, "launcher_update.apk")
-        body.byteStream().use { input ->
-            apkFile.outputStream().use { output -> input.copyTo(output) }
-        }
-        Log.i(LOG_TAG, "Downloaded launcher update ${update.versionName} (code ${update.versionCode}), installing")
-        LauncherUpdater.installSilently(context, apkFile, update.versionCode)
-    } catch (e: Exception) {
-        Log.w(LOG_TAG, "Launcher update check failed", e)
-    }
-}
-
-/**
- * Downloads and silently installs a newer release for every app tracked from a GitHub repo's
- * Releases (see kid-phone-server's `handlers::tracked_apps`, e.g. Tailscale) - the generalized,
- * multi-app counterpart to [checkForLauncherUpdate] above, via [AppInstaller] instead of
- * [LauncherUpdater]. One app's failure never affects another's, or the rest of the sync.
+ * Downloads and silently installs a newer release for every app tracked server-side (see
+ * kid-phone-server's `handlers::tracked_apps`) - either from a GitHub repo's Releases (e.g.
+ * Tailscale) or manually uploaded by an admin. The launcher's own self-update goes through this
+ * exact same path now too - it's just another tracked app server-side, package name
+ * [BuildConfig.APPLICATION_ID] - so there's no special-cased launcher-update code here at all.
+ * The one real place self-update still differs is [AppInstallReceiver] skipping its cache-file
+ * cleanup on success, since installing over yourself risks the process dying before that line
+ * runs. One app's failure never affects another's, or the rest of the sync.
  */
 private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
     val updates = try {

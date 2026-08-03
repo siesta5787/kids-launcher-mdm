@@ -10,12 +10,14 @@ import java.io.File
 private const val LOG_TAG = "AppInstallReceiver"
 
 /**
- * Receives the async result of [AppInstaller.installSilently]. Manifest-registered (not
- * dynamically) so delivery doesn't depend on this app's process still being alive when the
- * install actually completes - mirrors [LauncherUpdateInstallReceiver], but for a tracked
- * third-party app rather than the launcher itself, so (unlike that receiver) it's always safe to
- * delete the downloaded APK immediately regardless of outcome - this app's own process is never
- * the one being replaced.
+ * Receives the async result of [AppInstaller.installSilently], for every tracked app including
+ * the launcher's own self-update. Manifest-registered (not dynamically) so delivery doesn't
+ * depend on this app's process still being alive when the install actually completes - which
+ * matters most for self-update: installing an update over the currently-running app can kill/
+ * replace the process mid-flight, so on success this deliberately skips deleting the cache file
+ * when the installed package is this app itself, rather than risk racing that replacement. Any
+ * other package is always safe to clean up immediately regardless of outcome, since this app's
+ * own process is never the one being replaced.
  */
 class AppInstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -49,6 +51,13 @@ class AppInstallReceiver : BroadcastReceiver() {
             }
         }
 
-        apkPath?.let { File(it).delete() }
+        // Not deleted on success for a self-update (installed package == this app's own): the
+        // running process is about to be replaced anyway, and there's a real chance this callback
+        // never gets to finish running before that happens. Any other package's file is always
+        // safe to clean up immediately.
+        val isSelfUpdate = packageName == context.packageName
+        if (status != PackageInstaller.STATUS_SUCCESS || !isSelfUpdate) {
+            apkPath?.let { File(it).delete() }
+        }
     }
 }

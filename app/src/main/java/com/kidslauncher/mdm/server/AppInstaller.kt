@@ -15,11 +15,13 @@ const val APP_INSTALL_PACKAGE_NAME_EXTRA = "package_name"
 const val APP_INSTALL_RELEASE_TAG_EXTRA = "release_tag"
 
 /**
- * Silently installs a downloaded APK for a tracked third-party app (e.g. Tailscale) via Device
- * Owner's [PackageInstaller] privilege - the same no-prompt mechanism [LauncherUpdater] uses for
- * the launcher's own self-update. [PackageInstaller.SessionParams.MODE_FULL_INSTALL] determines
- * install-vs-update from the APK's own embedded package name, so unlike [LauncherUpdater] this
- * needs no self-replace-survival handling - the installed package is never this app itself.
+ * Silently installs a downloaded APK for any tracked app - a third-party app (e.g. Tailscale) or
+ * the launcher's own self-update, both go through this exact same function now - via Device
+ * Owner's [PackageInstaller] privilege. [PackageInstaller.SessionParams.MODE_FULL_INSTALL]
+ * determines install-vs-update purely from the APK's own embedded package name, so no special
+ * handling is needed either way at this layer; the one place self-update genuinely differs is
+ * [AppInstallReceiver] skipping its cache-file cleanup on success, since installing over yourself
+ * risks the process dying before that line gets to run.
  */
 object AppInstaller {
 

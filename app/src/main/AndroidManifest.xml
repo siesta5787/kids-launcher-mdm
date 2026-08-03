@@ -84,12 +84,8 @@
         </receiver>
 
         <!-- Not externally reachable - only ever triggered via the PendingIntent passed to
-             PackageInstaller.Session.commit() in LauncherUpdater.kt. -->
-        <receiver
-            android:name=".server.LauncherUpdateInstallReceiver"
-            android:exported="false" />
-
-        <!-- Same as above, but for AppInstaller.kt's tracked-third-party-app installs. -->
+             PackageInstaller.Session.commit() in AppInstaller.kt, for every tracked app's
+             install/update, including the launcher's own self-update. -->
         <receiver
             android:name=".server.AppInstallReceiver"
             android:exported="false" />

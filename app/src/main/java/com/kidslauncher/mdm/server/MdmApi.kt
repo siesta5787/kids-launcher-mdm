@@ -3,7 +3,6 @@ package com.kidslauncher.mdm.server
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.dto.EnrollResponse
-import com.kidslauncher.mdm.server.dto.LauncherUpdateResponse
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
 import com.kidslauncher.mdm.server.dto.TrackedAppUpdate
@@ -47,22 +46,13 @@ interface MdmApi {
     @POST("api/devices/status")
     suspend fun sendStatus(@Body report: StatusReportRequest): Response<Unit>
 
-    @GET("api/devices/launcher-update")
-    suspend fun getLauncherUpdate(): Response<LauncherUpdateResponse>
-
-    /** [Streaming] so Retrofit hands back the raw [ResponseBody] instead of buffering the whole
-     * APK into memory before this function even returns. */
-    @Streaming
-    @GET("api/devices/launcher-update/download")
-    suspend fun downloadLauncherUpdate(): Response<ResponseBody>
-
     @GET("api/devices/apps")
     suspend fun getTrackedAppUpdates(): Response<List<TrackedAppUpdate>>
 
     /** [url] is [TrackedAppUpdate.downloadUrl] as sent by the server (e.g.
-     * "/api/devices/apps/5/download") - a per-app path, unlike the launcher's single fixed
-     * download endpoint above, since there can be many tracked apps. [Url] resolves it against
-     * the same base URL/auth interceptor as every other call here. */
+     * "/api/devices/apps/5/download") - a per-app path, since there can be many tracked apps
+     * (including the launcher itself - it's just another tracked app server-side now). [Url]
+     * resolves it against the same base URL/auth interceptor as every other call here. */
     @Streaming
     @GET
     suspend fun downloadTrackedApp(@Url url: String): Response<ResponseBody>

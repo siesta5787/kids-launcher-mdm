@@ -72,12 +72,6 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // StatusReportRequest.offlineOverrideUsed on the next successful sync, then
                         // cleared - so the parent notices even though the event itself was offline.
                         @Preference(name = "offline_override_used_pending_report", type = boolean.class, defaultValue = "false"),
-                        // A launcher-update version code that already failed to silently install
-                        // (e.g. signing-certificate mismatch) - checkForLauncherUpdate skips
-                        // re-attempting this exact version on every subsequent sync, so a
-                        // permanently-broken update can't turn into an infinite retry loop every
-                        // 2 minutes. A genuinely newer version (different code) is still tried.
-                        @Preference(name = "last_failed_update_version_code", type = int.class, defaultValue = "0"),
                         // Manual emergency kill-switch, gated behind the same Settings PIN as
                         // enroll/sync - unlike offline_override_active this does NOT auto-clear on
                         // the next successful sync or after any timer; it stays off until a parent
