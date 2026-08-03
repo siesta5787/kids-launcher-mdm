@@ -246,6 +246,16 @@ object AppEnforcer {
      * replacement for `ForceEnabled` (which is still useful for the in-app UI). Kept as its own
      * try/catch so a failure here (e.g. Tailscale not yet fully registered as a VpnService on
      * first run) can't block the managed-config push above, or vice versa.
+     *
+     * Lockdown is only ever engaged when an exit node is also configured. Tailscale is a
+     * split-tunnel VPN by design - it only routes tailnet-destined traffic through its tunnel, not
+     * general internet traffic, unless an exit node is set. Lockdown forces *all* traffic through
+     * the VPN interface regardless; without an exit node, Tailscale's tunnel has nowhere to send
+     * non-tailnet packets, so they're just dropped - total loss of connectivity, confirmed live
+     * (this is Tailscale's own documented behavior, not a bug on our end - see
+     * github.com/tailscale/tailscale#12925 and #1568). An admin checking "Require Tailscale"
+     * without also setting an exit node must never be able to brick the phone's network - so
+     * lockdown only engages once both are present; `ForceEnabled` alone still applies regardless.
      */
     private fun applyVpnRestrictions(
         dpm: DevicePolicyManager,
@@ -268,7 +278,8 @@ object AppEnforcer {
         }
 
         try {
-            if (policy?.requireTailscale == true) {
+            val exitNodeConfigured = !policy?.tailscaleExitNodeId?.trim().isNullOrEmpty()
+            if (policy?.requireTailscale == true && exitNodeConfigured) {
                 dpm.setAlwaysOnVpnPackage(admin, TAILSCALE_PACKAGE, true)
             } else {
                 dpm.setAlwaysOnVpnPackage(admin, null, false)
