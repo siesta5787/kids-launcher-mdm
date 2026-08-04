@@ -189,6 +189,11 @@ object QuickControls {
         selfGrantPermission(context, dpm, admin, android.Manifest.permission.NEARBY_WIFI_DEVICES)
         val appContext = context.applicationContext
         val wm = wifiManager(appContext)
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            appContext,
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        Log.i(LOG_TAG, "scanWifiNetworks: NEARBY_WIFI_DEVICES granted=$granted")
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
@@ -217,6 +222,7 @@ object QuickControls {
             Log.w(LOG_TAG, "Failed to start WiFi scan", e)
             false
         }
+        Log.i(LOG_TAG, "scanWifiNetworks: startScan() returned $started")
         if (!started) {
             try {
                 appContext.unregisterReceiver(receiver)
@@ -249,8 +255,14 @@ object QuickControls {
         val results = try {
             wm.scanResults ?: emptyList()
         } catch (e: Exception) {
+            Log.w(LOG_TAG, "getScanResults() threw", e)
             emptyList()
         }
+        Log.i(
+            LOG_TAG,
+            "collectWifiNetworks: raw scanResults=${results.size} " +
+                "(ssids=${results.take(5).map { it.SSID }}), configuredNetworks=${saved.size}",
+        )
 
         return results
             .mapNotNull { result -> result.SSID?.takeIf { it.isNotBlank() }?.let { it to result } }
@@ -405,8 +417,20 @@ object QuickControls {
     ): BroadcastReceiver? {
         selfGrantPermission(context, dpm, admin, android.Manifest.permission.BLUETOOTH_SCAN)
         grantBluetoothConnectIfNeeded(context, dpm, admin)
-        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return null
+        val adapter = BluetoothAdapter.getDefaultAdapter()
+        if (adapter == null) {
+            Log.w(LOG_TAG, "scanBluetoothDevices: no default BluetoothAdapter")
+            return null
+        }
         val appContext = context.applicationContext
+        val scanGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            appContext,
+            android.Manifest.permission.BLUETOOTH_SCAN,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        Log.i(
+            LOG_TAG,
+            "scanBluetoothDevices: BLUETOOTH_SCAN granted=$scanGranted, adapter.isEnabled=${adapter.isEnabled}",
+        )
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
@@ -433,11 +457,13 @@ object QuickControls {
             Log.w(LOG_TAG, "Failed to register Bluetooth discovery receiver", e)
             return null
         }
-        try {
+        val discoveryStarted = try {
             adapter.startDiscovery()
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to start Bluetooth discovery", e)
+            false
         }
+        Log.i(LOG_TAG, "scanBluetoothDevices: startDiscovery() returned $discoveryStarted")
         return receiver
     }
 
