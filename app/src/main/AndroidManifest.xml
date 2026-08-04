@@ -10,11 +10,20 @@
     <!-- Self-granted silently via DevicePolicyManager.setPermissionGrantState, required to call
          BluetoothAdapter.enable()/disable() from the Quick Controls screen on Android 12+. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Same self-grant pattern, required for BluetoothAdapter.startDiscovery() on Android 12+,
+         used by the Quick Controls "manage devices" screen. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <!-- Normal-level, auto-granted at install - required to read/toggle WiFi state from the
          Quick Controls screen. Device Owner exempts us from the API 29+ restriction on WHO can
          toggle WiFi, but these are still required regardless of Device Owner status. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Self-granted, required for WifiManager.startScan()/getScanResults() on Android 13+ -
+         replaces the old ACCESS_FINE_LOCATION scanning requirement. neverForLocation since the
+         Quick Controls "manage networks" screen only needs SSIDs, never physical position. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -73,6 +82,15 @@
             android:exported="false" />
         <activity
             android:name=".ui.quickcontrols.QuickControlsActivity"
+            android:configChanges="orientation|screenSize"
+            android:exported="false" />
+        <activity
+            android:name=".ui.quickcontrols.WifiNetworksActivity"
+            android:configChanges="orientation|screenSize"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.quickcontrols.BluetoothDevicesActivity"
             android:configChanges="orientation|screenSize"
             android:exported="false" />
 

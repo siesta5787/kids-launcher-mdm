@@ -29,7 +29,45 @@
     <string name="quick_controls_bluetooth">Bluetooth</string>
     <string name="quick_controls_brightness">Screen brightness</string>
     <string name="quick_controls_empty">Nothing has been turned on for this screen yet.</string>
+    <string name="quick_controls_manage_networks">Manage networks</string>
+    <string name="quick_controls_manage_devices">Manage devices</string>
     <string name="lock_unlock_code_locked_out">Too many wrong codes entered. Try again in 15 minutes.</string>
+
+    <!--
+      -
+      - WiFi networks picker (Quick Controls "Manage networks")
+      -
+      -->
+    <string name="wifi_networks_title">WiFi networks</string>
+    <string name="wifi_networks_scanning">Scanning…</string>
+    <string name="wifi_networks_empty">No networks found. Tap Scan to try again.</string>
+    <string name="wifi_networks_scan">Scan</string>
+    <string name="wifi_networks_connected">Connected</string>
+    <string name="wifi_networks_saved">Saved</string>
+    <string name="wifi_networks_connecting">Connecting…</string>
+    <string name="wifi_networks_connect_failed">Couldn\'t connect. Check the password and try again.</string>
+    <string name="wifi_networks_password_title">Enter password</string>
+    <string name="wifi_networks_password_hint">Password</string>
+    <string name="wifi_networks_connect">Connect</string>
+    <string name="wifi_networks_forget">Forget</string>
+    <string name="wifi_networks_cancel">Cancel</string>
+
+    <!--
+      -
+      - Bluetooth devices picker (Quick Controls "Manage devices")
+      -
+      -->
+    <string name="bluetooth_devices_title">Bluetooth devices</string>
+    <string name="bluetooth_devices_scanning">Scanning…</string>
+    <string name="bluetooth_devices_empty">No devices found nearby. Tap Scan to try again.</string>
+    <string name="bluetooth_devices_scan">Scan</string>
+    <string name="bluetooth_devices_paired">Paired</string>
+    <string name="bluetooth_devices_connected">Connected</string>
+    <string name="bluetooth_devices_pairing">Pairing…</string>
+    <string name="bluetooth_devices_pair_failed">Couldn\'t pair with this device.</string>
+    <string name="bluetooth_devices_forget">Forget</string>
+    <string name="bluetooth_devices_connect">Connect</string>
+    <string name="bluetooth_devices_disconnect">Disconnect</string>
 
     <!--
       -

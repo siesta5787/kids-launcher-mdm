@@ -3,6 +3,7 @@ package com.kidslauncher.mdm.ui.quickcontrols
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import com.kidslauncher.mdm.R
@@ -53,18 +54,34 @@ class QuickControlsActivity : UIObjectActivity() {
         if (mask and QuickControlFeature.WIFI != 0L) {
             anyShown = true
             binding.quickControlsWifiRow.visibility = android.view.View.VISIBLE
-            binding.quickControlsWifiSwitch.isChecked = QuickControls.isWifiEnabled(this)
+            val wifiOn = QuickControls.isWifiEnabled(this)
+            binding.quickControlsWifiSwitch.isChecked = wifiOn
+            setManageRowEnabled(binding.quickControlsWifiManage, wifiOn)
             binding.quickControlsWifiSwitch.setOnCheckedChangeListener { _, checked ->
                 QuickControls.setWifiEnabled(this, checked)
+                setManageRowEnabled(binding.quickControlsWifiManage, checked)
+            }
+            binding.quickControlsWifiManage.setOnClickListener {
+                if (binding.quickControlsWifiManage.isEnabled) {
+                    startActivity(Intent(this, WifiNetworksActivity::class.java))
+                }
             }
         }
 
         if (mask and QuickControlFeature.BLUETOOTH != 0L) {
             anyShown = true
             binding.quickControlsBluetoothRow.visibility = android.view.View.VISIBLE
-            binding.quickControlsBluetoothSwitch.isChecked = QuickControls.isBluetoothEnabled()
+            val bluetoothOn = QuickControls.isBluetoothEnabled()
+            binding.quickControlsBluetoothSwitch.isChecked = bluetoothOn
+            setManageRowEnabled(binding.quickControlsBluetoothManage, bluetoothOn)
             binding.quickControlsBluetoothSwitch.setOnCheckedChangeListener { _, checked ->
                 QuickControls.setBluetoothEnabled(this, dpm, admin, checked)
+                setManageRowEnabled(binding.quickControlsBluetoothManage, checked)
+            }
+            binding.quickControlsBluetoothManage.setOnClickListener {
+                if (binding.quickControlsBluetoothManage.isEnabled) {
+                    startActivity(Intent(this, BluetoothDevicesActivity::class.java))
+                }
             }
         }
 
@@ -90,6 +107,13 @@ class QuickControlsActivity : UIObjectActivity() {
 
         binding.quickControlsEmptyMessage.visibility =
             if (anyShown) android.view.View.GONE else android.view.View.VISIBLE
+    }
+
+    /** [android.widget.TextView.isEnabled] alone doesn't change its look without a state-aware
+     * color, so this dims the "manage" affordance visibly when its radio is off. */
+    private fun setManageRowEnabled(view: android.widget.TextView, enabled: Boolean) {
+        view.isEnabled = enabled
+        view.alpha = if (enabled) 1.0f else 0.4f
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

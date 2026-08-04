@@ -2,8 +2,13 @@ package com.kidslauncher.mdm.server
 
 import android.app.admin.DevicePolicyManager
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
@@ -96,15 +101,29 @@ object QuickControls {
         admin: ComponentName,
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        selfGrantPermission(context, dpm, admin, android.Manifest.permission.BLUETOOTH_CONNECT)
+    }
+
+    /**
+     * Shared by every self-granted runtime permission this screen needs (BLUETOOTH_CONNECT above,
+     * plus BLUETOOTH_SCAN and NEARBY_WIFI_DEVICES below) - Device Owner can silently flip a normal
+     * runtime permission to granted with no dialog, the same mechanism used throughout this file.
+     */
+    private fun selfGrantPermission(
+        context: Context,
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        permission: String,
+    ) {
         try {
             dpm.setPermissionGrantState(
                 admin,
                 context.packageName,
-                android.Manifest.permission.BLUETOOTH_CONNECT,
+                permission,
                 DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
             )
         } catch (e: Exception) {
-            Log.w(LOG_TAG, "Failed to self-grant BLUETOOTH_CONNECT", e)
+            Log.w(LOG_TAG, "Failed to self-grant $permission", e)
         }
     }
 
@@ -134,6 +153,371 @@ object QuickControls {
             Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
         } catch (e: Exception) {
             128
+        }
+    }
+
+    private fun wifiManager(context: Context): WifiManager =
+        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+    /**
+     * `savedNetworkId` is non-null when this SSID is already in the on-device saved-network list
+     * (from [WifiManager.getPrivilegedConfiguredNetworks]) - lets the UI show "Saved"/"Connected"
+     * and skip the password prompt (reconnect via the existing saved config) instead of asking
+     * for a password again on a network already joined once.
+     */
+    data class WifiNetworkInfo(
+        val ssid: String,
+        val secured: Boolean,
+        val signalLevel: Int,
+        val savedNetworkId: Int?,
+        val isConnected: Boolean,
+    )
+
+    /**
+     * Kicks off a scan and delivers results once, via [WifiManager.SCAN_RESULTS_AVAILABLE_ACTION]
+     * - not a live/repeating callback. Self-grants `NEARBY_WIFI_DEVICES` first: on Android 13+
+     * that's what [WifiManager.startScan]/[WifiManager.scanResults] need instead of the old
+     * location-permission requirement, and Device Owner can flip it on with no dialog same as
+     * every other permission in this file.
+     */
+    fun scanWifiNetworks(
+        context: Context,
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        onResult: (List<WifiNetworkInfo>) -> Unit,
+    ) {
+        selfGrantPermission(context, dpm, admin, android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        val appContext = context.applicationContext
+        val wm = wifiManager(appContext)
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                try {
+                    appContext.unregisterReceiver(this)
+                } catch (e: Exception) {
+                    // Already unregistered - harmless.
+                }
+                onResult(collectWifiNetworks(wm))
+            }
+        }
+        try {
+            appContext.registerReceiver(
+                receiver,
+                IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+                Context.RECEIVER_NOT_EXPORTED,
+            )
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to register WiFi scan receiver", e)
+        }
+
+        val started = try {
+            @Suppress("DEPRECATION")
+            wm.startScan()
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to start WiFi scan", e)
+            false
+        }
+        if (!started) {
+            try {
+                appContext.unregisterReceiver(receiver)
+            } catch (e: Exception) {
+                // Already unregistered - harmless.
+            }
+            onResult(collectWifiNetworks(wm))
+        }
+    }
+
+    /**
+     * [WifiManager.getConfiguredNetworks] is deprecated and returns an empty list for regular
+     * apps targeting API 29+, but - like every other WiFi API in this file - still returns the
+     * real list for Device Owner apps. There is no non-deprecated equivalent with the same scope
+     * (the newer [WifiManager.getCallerConfiguredNetworks] only sees networks this app itself
+     * added, not ones already saved before this feature existed or added via Settings).
+     */
+    @Suppress("DEPRECATION")
+    private fun collectWifiNetworks(wm: WifiManager): List<WifiNetworkInfo> {
+        val saved = try {
+            wm.configuredNetworks ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val savedIdBySsid = saved.associate { it.SSID?.trim('"').orEmpty() to it.networkId }
+        val currentSsid = saved
+            .firstOrNull { it.status == WifiConfiguration.Status.CURRENT }
+            ?.SSID?.trim('"')
+
+        val results = try {
+            wm.scanResults ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        return results
+            .mapNotNull { result -> result.SSID?.takeIf { it.isNotBlank() }?.let { it to result } }
+            .distinctBy { it.first }
+            .map { (ssid, result) ->
+                WifiNetworkInfo(
+                    ssid = ssid,
+                    secured = listOf("WEP", "PSK", "EAP", "SAE").any { result.capabilities.contains(it) },
+                    signalLevel = wm.calculateSignalLevel(result.level),
+                    savedNetworkId = savedIdBySsid[ssid],
+                    isConnected = ssid == currentSsid,
+                )
+            }
+            .sortedWith(
+                compareByDescending<WifiNetworkInfo> { it.isConnected }
+                    .thenByDescending { it.signalLevel },
+            )
+    }
+
+    /**
+     * Connects to a network, saving it first if it isn't already ([savedNetworkId] null).
+     * [WifiManager.addNetworkPrivileged] (API 30+) is Device-Owner-privileged the same way
+     * [setWifiEnabled] is - the same tier of access Settings itself uses. Sets both WPA2 and WPA3
+     * key-management bits when a password is given (standard "transition mode" pattern) rather
+     * than trying to precisely tell WPA2 from WPA3 out of the scan result's capabilities string.
+     *
+     * There is no public callback-based connect API on this platform version (the documented
+     * `WifiManager.connect(int, ActionListener)` is a hidden/system-only overload, not present in
+     * the public SDK this app compiles against) - [WifiManager.enableNetwork] with
+     * `disableOthers = true` is the real public mechanism, and it only reports whether the
+     * request itself was accepted, not whether the device actually associates. The caller is
+     * expected to poll [scanWifiNetworks] afterwards and check [WifiNetworkInfo.isConnected] to
+     * learn the real outcome (see `WifiNetworksActivity.pollForConnection`) - a wrong password
+     * shows up as a silent connect/retry loop rather than a clean failure either way.
+     */
+    fun connectToWifiNetwork(
+        context: Context,
+        ssid: String,
+        password: String?,
+        secured: Boolean,
+        savedNetworkId: Int?,
+    ): Boolean {
+        val wm = wifiManager(context)
+        return try {
+            val networkId = savedNetworkId ?: run {
+                val config = WifiConfiguration().apply {
+                    SSID = "\"$ssid\""
+                    if (secured && !password.isNullOrEmpty()) {
+                        allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK)
+                        allowedKeyManagement.set(WifiConfiguration.KeyMgmt.SAE)
+                        preSharedKey = "\"$password\""
+                    } else {
+                        allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE)
+                    }
+                }
+                val result = wm.addNetworkPrivileged(config)
+                if (result.statusCode != WifiManager.AddNetworkResult.STATUS_SUCCESS) {
+                    Log.w(LOG_TAG, "addNetworkPrivileged failed for $ssid: ${result.statusCode}")
+                    return false
+                }
+                result.networkId
+            }
+            wm.enableNetwork(networkId, true)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to connect to WiFi network $ssid", e)
+            false
+        }
+    }
+
+    fun forgetWifiNetwork(context: Context, networkId: Int): Boolean {
+        return try {
+            wifiManager(context).removeNetwork(networkId)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to forget WiFi network id=$networkId", e)
+            false
+        }
+    }
+
+    data class BluetoothDeviceInfo(
+        val name: String,
+        val address: String,
+        val bonded: Boolean,
+        val connected: Boolean,
+    )
+
+    /**
+     * [BluetoothDevice.isConnected] has no public equivalent, same as [connectBluetoothDevice]
+     * below - reflects into the hidden method, fails soft to `false` on any error.
+     */
+    private fun BluetoothDevice.isConnectedReflective(): Boolean {
+        return try {
+            javaClass.getMethod("isConnected").invoke(this) as? Boolean ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    @Suppress("MissingPermission")
+    private fun BluetoothDevice.toInfo(): BluetoothDeviceInfo {
+        val deviceName = try {
+            name
+        } catch (e: Exception) {
+            null
+        } ?: address
+        val isCurrentlyConnected = isConnectedReflective()
+        return BluetoothDeviceInfo(
+            name = deviceName,
+            address = address,
+            bonded = bondState == BluetoothDevice.BOND_BONDED,
+            connected = isCurrentlyConnected,
+        )
+    }
+
+    @Suppress("MissingPermission")
+    fun bondedBluetoothDevices(): List<BluetoothDeviceInfo> {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return emptyList()
+        return try {
+            adapter.bondedDevices.map { it.toInfo() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Re-reads a single already-known device's bonded/connected state (e.g. after
+     * `ACTION_BOND_STATE_CHANGED`) without needing a full rescan.
+     */
+    @Suppress("MissingPermission")
+    fun bluetoothDeviceInfo(address: String): BluetoothDeviceInfo? {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return null
+        return try {
+            adapter.getRemoteDevice(address).toInfo()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Starts discovery and streams newly-found devices to [onDeviceFound] as they're seen
+     * (Android's own discovery mechanism is inherently incremental, unlike the one-shot WiFi scan
+     * above), then calls [onFinished] once discovery naturally ends (~12s). Returns the receiver
+     * so the caller can unregister it in `onStop`/`onDestroy` via [stopBluetoothScan] - unlike the
+     * WiFi scan helper, this one can't self-unregister after a single event.
+     */
+    @Suppress("MissingPermission")
+    fun scanBluetoothDevices(
+        context: Context,
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        onDeviceFound: (BluetoothDeviceInfo) -> Unit,
+        onFinished: () -> Unit,
+    ): BroadcastReceiver? {
+        selfGrantPermission(context, dpm, admin, android.Manifest.permission.BLUETOOTH_SCAN)
+        grantBluetoothConnectIfNeeded(context, dpm, admin)
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return null
+        val appContext = context.applicationContext
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    BluetoothDevice.ACTION_FOUND -> {
+                        val device = intent.getParcelableExtra(
+                            BluetoothDevice.EXTRA_DEVICE,
+                            BluetoothDevice::class.java,
+                        )
+                        device?.let { onDeviceFound(it.toInfo()) }
+                    }
+
+                    BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> onFinished()
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+        }
+        try {
+            appContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to register Bluetooth discovery receiver", e)
+            return null
+        }
+        try {
+            adapter.startDiscovery()
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to start Bluetooth discovery", e)
+        }
+        return receiver
+    }
+
+    fun stopBluetoothScan(context: Context, receiver: BroadcastReceiver?) {
+        receiver?.let {
+            try {
+                context.applicationContext.unregisterReceiver(it)
+            } catch (e: Exception) {
+                // Already unregistered - harmless.
+            }
+        }
+        try {
+            @Suppress("MissingPermission")
+            BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
+        } catch (e: Exception) {
+            // Ignore - best-effort cleanup.
+        }
+    }
+
+    @Suppress("MissingPermission")
+    fun pairBluetoothDevice(address: String): Boolean {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return false
+        return try {
+            adapter.getRemoteDevice(address).createBond()
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to pair with $address", e)
+            false
+        }
+    }
+
+    /**
+     * [BluetoothDevice.removeBond] has no public equivalent - there is simply no other way to
+     * unpair a device from app code, so this reflects into the hidden method, a long-standing,
+     * widely-used pattern for exactly this gap. Fails soft (logs, returns false) rather than
+     * crashing if some OS build ever removes/renames it.
+     */
+    @Suppress("MissingPermission")
+    fun forgetBluetoothDevice(address: String): Boolean {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return false
+        return try {
+            val device = adapter.getRemoteDevice(address)
+            val method = device.javaClass.getMethod("removeBond")
+            method.invoke(device) as? Boolean ?: false
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to forget Bluetooth device $address (hidden removeBond API)", e)
+            false
+        }
+    }
+
+    /**
+     * [BluetoothDevice.connect]/[disconnect] are hidden methods with no public replacement -
+     * Android's own Settings app calls these same methods internally (via reflection/internal
+     * access) to drive a paired device's "Connect"/"Disconnect" action generically across
+     * whichever profiles it supports, rather than wiring up every [android.bluetooth.BluetoothProfile]
+     * (A2DP, headset, ...) individually. Same fail-soft handling as [forgetBluetoothDevice] - if
+     * this breaks on some OS build, pairing/scanning/forgetting are unaffected.
+     */
+    @Suppress("MissingPermission")
+    fun connectBluetoothDevice(address: String): Boolean {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return false
+        return try {
+            val device = adapter.getRemoteDevice(address)
+            val method = device.javaClass.getMethod("connect")
+            method.invoke(device) as? Boolean ?: false
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to connect Bluetooth device $address (hidden connect API)", e)
+            false
+        }
+    }
+
+    @Suppress("MissingPermission")
+    fun disconnectBluetoothDevice(address: String): Boolean {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return false
+        return try {
+            val device = adapter.getRemoteDevice(address)
+            val method = device.javaClass.getMethod("disconnect")
+            method.invoke(device) as? Boolean ?: false
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to disconnect Bluetooth device $address (hidden disconnect API)", e)
+            false
         }
     }
 }
