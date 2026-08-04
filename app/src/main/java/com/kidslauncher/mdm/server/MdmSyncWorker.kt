@@ -104,11 +104,11 @@ suspend fun performMdmSync(context: Context): Boolean {
 }
 
 /**
- * Find My Device's remote-command dispatch - ring/lock/wipe, or `locate` (a no-op here; a location
- * reading is already attached to every status report regardless, via [currentLocationReport] below,
- * so `locate` exists purely as a way for the admin site to nudge an out-of-cycle report sooner, not
- * a distinct on-device action). No result is ever reported for `wipe` - the device is gone by the
- * time it would report back.
+ * Find My Device's remote-command dispatch - ring/stop_ring/lock/wipe, or `locate` (a no-op here;
+ * a location reading is already attached to every status report regardless, via
+ * [currentLocationReport] below, so `locate` exists purely as a way for the admin site to nudge an
+ * out-of-cycle report sooner, not a distinct on-device action). No result is ever reported for
+ * `wipe` - the device is gone by the time it would report back.
  */
 private suspend fun dispatchPendingCommand(
     context: Context,
@@ -123,6 +123,11 @@ private suspend fun dispatchPendingCommand(
         "ring" -> {
             LocateCommands.ring(context)
             reportCommandResult(api, pending.id, success = true, message = "ringing")
+        }
+
+        "stop_ring" -> {
+            LocateCommands.stopRingAndRestore(context)
+            reportCommandResult(api, pending.id, success = true, message = "stopped")
         }
 
         "lock" -> {
@@ -146,7 +151,7 @@ private suspend fun reportCommandResult(api: MdmApi, commandId: Long, success: B
     }
 }
 
-private fun currentLocationReport(
+private suspend fun currentLocationReport(
     context: Context,
     dpm: DevicePolicyManager,
     admin: ComponentName,

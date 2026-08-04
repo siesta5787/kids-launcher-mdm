@@ -110,6 +110,13 @@ object QuickControls {
      * runtime permission to granted with no dialog, the same mechanism used throughout this file.
      * `internal`, not `private`, so LocateCommands.kt can reuse it too - `private` on a member here
      * means private to this object, not merely file-scoped.
+     *
+     * Skips the DPM call entirely if already granted - confirmed live that re-issuing an
+     * already-granted permission still triggers GrapheneOS/Android's "your organization allows
+     * this app to access X" transparency notification every time, which turned into a real
+     * every-2-minutes-forever annoyance for ACCESS_BACKGROUND_LOCATION specifically, since
+     * [LocateCommands.currentLocation] (unlike the other self-grants here, which only run when a
+     * kid opens the relevant Quick Controls screen) calls this on every single sync cycle.
      */
     internal fun selfGrantPermission(
         context: Context,
@@ -117,6 +124,12 @@ object QuickControls {
         admin: ComponentName,
         permission: String,
     ) {
+        val alreadyGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            permission,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (alreadyGranted) return
+
         try {
             dpm.setPermissionGrantState(
                 admin,

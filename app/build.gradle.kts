@@ -37,8 +37,8 @@ android {
         applicationId = "com.kidslauncher.mdm"
         minSdk = 34
         targetSdk = 36
-        versionCode = 77
-        versionName = "0.7.0"
+        versionCode = 78
+        versionName = "0.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -115,6 +115,7 @@ dependencies {
     implementation(libs.squareup.retrofit)
     implementation(libs.jakewharton.retrofit2.kotlinx.serialization.converter)
     implementation(libs.squareup.okhttp)
+    implementation(libs.squareup.okhttp.sse)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.jonahbauer.android.preference.annotations)
     annotationProcessor(libs.jonahbauer.android.preference.annotations)

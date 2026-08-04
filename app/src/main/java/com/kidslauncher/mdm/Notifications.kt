@@ -19,18 +19,45 @@ import java.io.StringWriter
 import kotlin.random.Random
 
 private val NOTIFICATION_CHANNEL_CRASH = "launcher:crash"
+val NOTIFICATION_CHANNEL_RING = "launcher:ring"
+const val RING_NOTIFICATION_ID = 1001
+val NOTIFICATION_CHANNEL_LISTENER = "launcher:command_listener"
+const val COMMAND_LISTENER_NOTIFICATION_ID = 1002
 
 fun createNotificationChannels(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val notificationChannel = NotificationChannel(
-            NOTIFICATION_CHANNEL_CRASH,
-            context.getString(R.string.notification_channel_crash),
-            NotificationManager.IMPORTANCE_HIGH
-        )
-
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(notificationChannel)
+
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_CRASH,
+                context.getString(R.string.notification_channel_crash),
+                NotificationManager.IMPORTANCE_HIGH
+            )
+        )
+        // HIGH importance + own channel so this reliably heads-up/appears even over the lock
+        // screen while Find My Device's ring is playing - the whole point is to give the kid an
+        // obvious, immediate way to silence it once they unlock the device, not something that
+        // silently sits in the shade.
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_RING,
+                context.getString(R.string.notification_channel_ring),
+                NotificationManager.IMPORTANCE_HIGH
+            )
+        )
+        // MIN importance, silent - this is the mandatory persistent notification for
+        // CommandListenerService's foreground service (Android requires one for any foreground
+        // service, no way around it), not something meant to draw attention the way the ring
+        // channel above deliberately does.
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_LISTENER,
+                context.getString(R.string.notification_channel_listener),
+                NotificationManager.IMPORTANCE_MIN
+            )
+        )
     }
 }
 

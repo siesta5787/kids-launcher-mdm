@@ -143,6 +143,13 @@
     <string name="dialog_ok">Ok</string>
     <string name="notification_crash_title">App crashed</string>
     <string name="notification_crash_explanation">Sorry! Click for more information.</string>
+    <string name="notification_channel_ring">Find My Device ring</string>
+    <string name="notification_ring_title">Phone is ringing</string>
+    <string name="notification_ring_text">A parent triggered this from Find My Device.</string>
+    <string name="notification_ring_stop_action">Stop Ringing</string>
+    <string name="notification_channel_listener">Find My Device background connection</string>
+    <string name="notification_listener_title">Kids Device MDM</string>
+    <string name="notification_listener_text">Ready for parent commands (ring, lock, locate).</string>
     <string name="crash_info"><![CDATA[
         Looks like something went wrong, sorry about that!<br><br>
         For privacy reasons, crash logs are not collected automatically.<br>

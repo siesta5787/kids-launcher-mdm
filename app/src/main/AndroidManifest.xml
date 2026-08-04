@@ -40,6 +40,13 @@
          logging around it. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- CommandListenerService holds a long-lived SSE connection open so Find My Device's
+         ring/lock/stop-ring/wipe commands arrive in ~1s instead of waiting for the next 2-minute
+         poll, any time - screen on or off. Android mandates a specific foreground-service type +
+         matching permission as of API 34; "dataSync" (syncing/sending/receiving data) is the
+         correct fit for a long-lived server connection. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <application
@@ -127,5 +134,16 @@
         <receiver
             android:name=".server.AppInstallReceiver"
             android:exported="false" />
+
+        <!-- Not externally reachable - only ever triggered via the "Stop Ringing" action's own
+             PendingIntent on the notification LocateCommands.ring() shows. -->
+        <receiver
+            android:name=".server.StopRingReceiver"
+            android:exported="false" />
+
+        <service
+            android:name=".server.CommandListenerService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>
