@@ -43,6 +43,8 @@ private val SAFE_SYSTEM_PACKAGES = setOf(
     "app.grapheneos.camera",
     "app.grapheneos.pdfviewer",
     "app.vanadium.browser",
+    "app.attestation.auditor",
+    "app.grapheneos.info",
 )
 
 /**
