@@ -160,6 +160,30 @@ object QuickControls {
         context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
     /**
+     * WifiManager's scan/connect/configured-network APIs all hard-require system-wide Location to
+     * be on - confirmed live via `WifiService`'s own `SecurityException("Location mode is disabled
+     * for the device")`, thrown regardless of any app permission held (including
+     * NEARBY_WIFI_DEVICES with neverForLocation, which only covers the runtime-permission side of
+     * this, not this separate unconditional platform check). [WifiNetworksActivity] uses these to
+     * silently flip Location on for the duration of that screen only (via the dedicated
+     * Device-Owner API, no Settings/dialog involved) and restore whatever it was on exit - not a
+     * permanent change to the phone's Location setting.
+     */
+    fun isLocationEnabled(context: Context): Boolean {
+        val lm = context.applicationContext
+            .getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+        return lm.isLocationEnabled
+    }
+
+    fun setLocationEnabled(dpm: DevicePolicyManager, admin: ComponentName, enabled: Boolean) {
+        try {
+            dpm.setLocationEnabled(admin, enabled)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to set location enabled=$enabled", e)
+        }
+    }
+
+    /**
      * `savedNetworkId` is non-null when this SSID is already in the on-device saved-network list
      * (from [WifiManager.getPrivilegedConfiguredNetworks]) - lets the UI show "Saved"/"Connected"
      * and skip the password prompt (reconnect via the existing saved config) instead of asking

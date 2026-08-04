@@ -41,6 +41,10 @@ class WifiNetworksActivity : UIObjectActivity() {
     /** Non-null exactly while a connect attempt (including its poll loop) is in flight. */
     private var connectingSsid: String? = null
 
+    /** True only if this screen itself turned Location on - so onDestroy knows to turn it back
+     * off rather than clobbering a setting the parent already had on for their own reasons. */
+    private var locationEnabledByUs = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -54,6 +58,14 @@ class WifiNetworksActivity : UIObjectActivity() {
         dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         admin = ComponentName(this, MdmDeviceAdminReceiver::class.java)
 
+        // WifiManager's scan/config APIs hard-require Location to be on system-wide, independent
+        // of any app permission - see QuickControls.isLocationEnabled's doc comment. Silently
+        // enabled here (no Settings, no dialog) only for this screen's lifetime.
+        if (!QuickControls.isLocationEnabled(this)) {
+            QuickControls.setLocationEnabled(dpm, admin, true)
+            locationEnabledByUs = true
+        }
+
         adapter = WifiNetworkAdapter(onConnect = ::onNetworkTapped, onForget = ::onForgetTapped)
         binding.wifiNetworksList.layoutManager = LinearLayoutManager(this)
         binding.wifiNetworksList.adapter = adapter
@@ -64,6 +76,9 @@ class WifiNetworksActivity : UIObjectActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+        if (locationEnabledByUs) {
+            QuickControls.setLocationEnabled(dpm, admin, false)
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
