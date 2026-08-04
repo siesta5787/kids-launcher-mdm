@@ -20,6 +20,8 @@ import kotlinx.serialization.Serializable
  * [quickControlsMask] is the raw bitmask for which switches show up on the launcher's
  * swipe-left-from-home "Quick Controls" screen (1 = WiFi, 2 = Bluetooth, 4 = brightness) - see
  * [com.kidslauncher.mdm.ui.quickcontrols.QuickControlsActivity].
+ * [pendingCommand] is Find My Device's remote-command queue (ring/lock/wipe) - see
+ * [com.kidslauncher.mdm.server.LocateCommands] and [MdmSyncWorker]'s dispatch of it.
  */
 @Serializable
 data class PolicyResponse(
@@ -39,4 +41,5 @@ data class PolicyResponse(
     val requireTailscale: Boolean = false,
     val tailscaleExitNodeId: String? = null,
     val quickControlsMask: Long = 0,
+    val pendingCommand: PendingCommand? = null,
 )

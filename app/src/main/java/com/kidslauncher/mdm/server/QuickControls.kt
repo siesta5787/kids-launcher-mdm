@@ -108,8 +108,10 @@ object QuickControls {
      * Shared by every self-granted runtime permission this screen needs (BLUETOOTH_CONNECT above,
      * plus BLUETOOTH_SCAN and NEARBY_WIFI_DEVICES below) - Device Owner can silently flip a normal
      * runtime permission to granted with no dialog, the same mechanism used throughout this file.
+     * `internal`, not `private`, so LocateCommands.kt can reuse it too - `private` on a member here
+     * means private to this object, not merely file-scoped.
      */
-    private fun selfGrantPermission(
+    internal fun selfGrantPermission(
         context: Context,
         dpm: DevicePolicyManager,
         admin: ComponentName,

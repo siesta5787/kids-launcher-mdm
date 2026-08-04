@@ -12,4 +12,5 @@ data class StatusReportRequest(
     val appVersion: String? = null,
     val appVersionCode: Int? = null,
     val offlineOverrideUsed: Boolean = false,
+    val location: LocationReport? = null,
 )

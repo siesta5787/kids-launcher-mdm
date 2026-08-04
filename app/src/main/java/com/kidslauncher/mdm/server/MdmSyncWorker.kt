@@ -1,5 +1,7 @@
 package com.kidslauncher.mdm.server
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
@@ -9,13 +11,17 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.kidslauncher.mdm.BuildConfig
+import com.kidslauncher.mdm.server.dto.CommandResultRequest
 import com.kidslauncher.mdm.server.dto.InstalledApp
+import com.kidslauncher.mdm.server.dto.LocationReport
+import com.kidslauncher.mdm.server.dto.PendingCommand
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.io.File
+import java.time.Instant
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -43,6 +49,8 @@ suspend fun performMdmSync(context: Context): Boolean {
     }
 
     val api = createMdmApi(serverUrl, deviceToken)
+    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
 
     val freshPolicy = fetchPolicy(api)
     if (freshPolicy != null) {
@@ -55,6 +63,11 @@ suspend fun performMdmSync(context: Context): Boolean {
         // with zero network at all, which is the entire point of the offline failsafe.
         mdm.overridePinHash(freshPolicy.overridePinHash)
         mdm.overridePinSalt(freshPolicy.overridePinSalt)
+        // Only ever dispatched off a genuinely fresh fetch, never the cached fallback below - the
+        // cached policy blob can still hold a `pendingCommand` from a past cycle that's already
+        // been delivered and consumed server-side, and replaying it from cache while offline would
+        // re-run an old command (harmless for ring, not for lock/wipe).
+        dispatchPendingCommand(context, api, dpm, admin, freshPolicy.pendingCommand)
     }
     val policy = freshPolicy ?: mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
 
@@ -75,6 +88,7 @@ suspend fun performMdmSync(context: Context): Boolean {
                 appVersion = BuildConfig.VERSION_NAME,
                 appVersionCode = BuildConfig.VERSION_CODE,
                 offlineOverrideUsed = mdm.offlineOverrideUsedPendingReport(),
+                location = currentLocationReport(context, dpm, admin),
             )
         )
         // The report just landed, so this doesn't need to stay pending - if it was never used,
@@ -87,6 +101,64 @@ suspend fun performMdmSync(context: Context): Boolean {
     checkForTrackedAppUpdates(context, api)
 
     return freshPolicy != null
+}
+
+/**
+ * Find My Device's remote-command dispatch - ring/lock/wipe, or `locate` (a no-op here; a location
+ * reading is already attached to every status report regardless, via [currentLocationReport] below,
+ * so `locate` exists purely as a way for the admin site to nudge an out-of-cycle report sooner, not
+ * a distinct on-device action). No result is ever reported for `wipe` - the device is gone by the
+ * time it would report back.
+ */
+private suspend fun dispatchPendingCommand(
+    context: Context,
+    api: MdmApi,
+    dpm: DevicePolicyManager,
+    admin: ComponentName,
+    pending: PendingCommand?,
+) {
+    if (pending == null || !dpm.isDeviceOwnerApp(context.packageName)) return
+
+    when (pending.command) {
+        "ring" -> {
+            LocateCommands.ring(context)
+            reportCommandResult(api, pending.id, success = true, message = "ringing")
+        }
+
+        "lock" -> {
+            val ok = LocateCommands.lock(dpm, admin)
+            reportCommandResult(api, pending.id, ok, if (ok) "locked" else "failed to lock")
+        }
+
+        "wipe" -> LocateCommands.wipe(dpm, admin)
+
+        "locate" -> reportCommandResult(api, pending.id, success = true, message = "attached to next report")
+
+        else -> Log.w(LOG_TAG, "Unknown pending command: ${pending.command}")
+    }
+}
+
+private suspend fun reportCommandResult(api: MdmApi, commandId: Long, success: Boolean, message: String?) {
+    try {
+        api.sendCommandResult(CommandResultRequest(commandId, success, message))
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Failed to report command result for id=$commandId", e)
+    }
+}
+
+private fun currentLocationReport(
+    context: Context,
+    dpm: DevicePolicyManager,
+    admin: ComponentName,
+): LocationReport? {
+    if (!dpm.isDeviceOwnerApp(context.packageName)) return null
+    val location = LocateCommands.currentLocation(context, dpm, admin) ?: return null
+    return LocationReport(
+        latitude = location.latitude,
+        longitude = location.longitude,
+        accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
+        capturedAt = Instant.ofEpochMilli(location.time).toString(),
+    )
 }
 
 /**

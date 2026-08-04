@@ -31,6 +31,16 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Self-granted, for Find My Device's location trail (LocateCommands.kt). Plain
+         android.location.LocationManager, never FusedLocationProviderClient - this project has no
+         Google Play Services anywhere (GrapheneOS has none). ACCESS_BACKGROUND_LOCATION is needed
+         since the read happens from MdmSyncWorker, a background job, not direct foreground user
+         action - unconfirmed whether Device Owner can self-grant this one specifically, unlike
+         every other permission in this app; see QuickControls/MdmSyncWorker for the diagnostic
+         logging around it. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <application
         android:name=".Application"

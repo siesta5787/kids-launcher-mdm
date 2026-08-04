@@ -1,6 +1,7 @@
 package com.kidslauncher.mdm.server
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.kidslauncher.mdm.server.dto.CommandResultRequest
 import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.dto.EnrollResponse
 import com.kidslauncher.mdm.server.dto.PolicyResponse
@@ -45,6 +46,9 @@ interface MdmApi {
 
     @POST("api/devices/status")
     suspend fun sendStatus(@Body report: StatusReportRequest): Response<Unit>
+
+    @POST("api/devices/command-result")
+    suspend fun sendCommandResult(@Body request: CommandResultRequest): Response<Unit>
 
     @GET("api/devices/apps")
     suspend fun getTrackedAppUpdates(): Response<List<TrackedAppUpdate>>
