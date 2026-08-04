@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.text.InputType
 import android.view.Menu
 import android.view.MenuItem
@@ -32,7 +33,10 @@ class WifiNetworksActivity : UIObjectActivity() {
     private lateinit var dpm: DevicePolicyManager
     private lateinit var admin: ComponentName
     private lateinit var adapter: WifiNetworkAdapter
-    private val handler = Handler(mainLooper)
+    // Looper.getMainLooper() is a static call, unlike Activity.mainLooper (a Context method) -
+    // using the latter here would crash, since this property initializer runs in the Activity's
+    // constructor, before it's attached to a base Context.
+    private val handler = Handler(Looper.getMainLooper())
 
     /** Non-null exactly while a connect attempt (including its poll loop) is in flight. */
     private var connectingSsid: String? = null

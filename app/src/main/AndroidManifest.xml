@@ -11,8 +11,13 @@
          BluetoothAdapter.enable()/disable() from the Quick Controls screen on Android 12+. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Same self-grant pattern, required for BluetoothAdapter.startDiscovery() on Android 12+,
-         used by the Quick Controls "manage devices" screen. -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+         used by the Quick Controls "manage devices" screen. neverForLocation for the same reason
+         as NEARBY_WIFI_DEVICES below - we only need device identity, never physical position -
+         and without it Android additionally requires the phone's system-wide Location toggle to
+         be on before discovery returns any results at all, independent of this permission grant. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
     <!-- Normal-level, auto-granted at install - required to read/toggle WiFi state from the
          Quick Controls screen. Device Owner exempts us from the API 29+ restriction on WHO can
          toggle WiFi, but these are still required regardless of Device Owner status. -->
