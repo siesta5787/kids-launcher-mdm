@@ -26,7 +26,7 @@ import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 private const val LOG_TAG = "MdmSyncWorker"
-private const val SYNC_INTERVAL_MINUTES = 2L
+private const val SYNC_INTERVAL_MINUTES = 5L
 private const val WORK_NAME = "mdm_sync"
 
 /**
@@ -79,9 +79,10 @@ suspend fun performMdmSync(context: Context): Boolean {
     AppEnforcer.apply(context, policy)
 
     // A `ring`/`locate` command means the admin explicitly wants to know where the device is right
-    // now, worth the cost of an active GPS/network fix - every other sync (the 2-minute background
-    // chain, and manual "Sync now") just reads whatever's cached/throttled instead, so location
-    // isn't forcing an active fetch (visible location indicator, slower sync) on every single cycle.
+    // now, worth the cost of an active GPS/network fix - every other sync (the background chain,
+    // push-triggered syncs, and manual "Sync now") just reads whatever's cached/throttled instead,
+    // so location isn't forcing an active fetch (visible location indicator, slower sync) on every
+    // single cycle.
     val forceFreshLocation = freshPolicy?.pendingCommand?.command in setOf("ring", "locate")
 
     // Best-effort - a failed report must never affect the lock decision above.
@@ -288,12 +289,14 @@ fun reevaluateLockReasonFromCache() {
 }
 
 /**
- * Combined heartbeat + policy sync, every 2 minutes. WorkManager's [androidx.work.PeriodicWorkRequest]
- * has a hard 15-minute floor, too coarse for how quickly a parent expects a change made on the
- * admin site to reach the device - so this self-reschedules as a chain of one-time requests
- * instead, each one enqueuing the next with a 2-minute delay when it finishes. True server push
- * (e.g. UnifiedPush, since this project avoids Google/FCM) would remove the wait entirely and is
- * on the backlog - polling this much tighter is the interim fix.
+ * Combined heartbeat + policy sync, every 5 minutes. WorkManager's [androidx.work.PeriodicWorkRequest]
+ * has a hard 15-minute floor, so this self-reschedules as a chain of one-time requests instead,
+ * each one enqueuing the next with a 5-minute delay when it finishes. This is now a reliability
+ * backstop, not the primary delivery path for admin-site changes - [CommandListenerService]'s SSE
+ * connection nudges an immediate out-of-cycle sync the instant a device policy is saved or a Find
+ * My Device command is queued (see kid-phone-server's `AppState.command_notify`), so the interval
+ * here only matters if that push is ever missed (a dropped connection, the service getting killed,
+ * etc.) - it doesn't need to be as tight as when polling was the only delivery path.
  *
  * Deliberately has no [androidx.work.Constraints] - the lock decision must still evaluate on
  * schedule even offline ([KidModeEnforcer] falls back to the last-cached policy); only the
