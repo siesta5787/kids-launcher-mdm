@@ -17,35 +17,7 @@ import com.kidslauncher.mdm.ui.HomeActivity
 
 private const val LOG_TAG = "AppEnforcer"
 
-/**
- * Common system apps with a real, user-facing UI that a parent might reasonably want to
- * allow/restrict, despite being [android.content.pm.ApplicationInfo.FLAG_SYSTEM] (so the blanket
- * "never touch system packages" safety filter below wouldn't otherwise include them at all).
- * Deliberately a short, explicit, hand-picked list rather than any broader heuristic (e.g. "has a
- * launcher intent") - suspending the wrong core OS package (SystemUI, telephony/package-manager
- * internals, resource overlays, ...) can crash or boot-loop the device outright, so this errs
- * firmly on the side of under-inclusion. Extend this list deliberately, one known-safe app at a
- * time, never by loosening the FLAG_SYSTEM check itself.
- */
 private const val TAILSCALE_PACKAGE = "com.tailscale.ipn"
-
-private val SAFE_SYSTEM_PACKAGES = setOf(
-    "com.android.settings",
-    "com.android.dialer",
-    "com.android.messaging",
-    "com.android.contacts",
-    "com.android.deskclock",
-    "com.android.calculator2",
-    "com.android.calendar",
-    "com.android.camera2",
-    "com.android.documentsui",
-    "com.android.gallery3d",
-    "app.grapheneos.camera",
-    "app.grapheneos.pdfviewer",
-    "app.vanadium.browser",
-    "app.attestation.auditor",
-    "app.grapheneos.info",
-)
 
 /**
  * The set of packages [AppEnforcer] will ever consider suspending/hiding, and that
@@ -59,8 +31,9 @@ private val SAFE_SYSTEM_PACKAGES = setOf(
  * permanent one-way lock. But a raw, unfiltered [PackageManager.getInstalledApplications] is
  * actively dangerous: it includes core OS/system packages that must never be suspended (doing so
  * can crash or boot-loop the device - this is not hypothetical, it happened during development).
- * So: third-party (non-system) apps are always included, and system apps only via the explicit
- * [SAFE_SYSTEM_PACKAGES] allowlist above - never a broader "looks launchable" heuristic.
+ * So: third-party (non-system) apps are always included, and system apps only if they expose a
+ * launcher (home-screen) icon - see the function's own doc comment for why this replaced an
+ * earlier hand-maintained package-name allowlist.
  */
 internal fun controllablePackages(pm: PackageManager): List<String> {
     // MATCH_UNINSTALLED_PACKAGES is required here, or this list silently drops any package this
@@ -68,10 +41,27 @@ internal fun controllablePackages(pm: PackageManager): List<String> {
     // packages from getInstalledApplications() by default. Without this flag, a hidden app can
     // never be found again to un-hide it: a permanent one-way lock, and exactly the bug this
     // function was written to avoid in the first place (see the class-level doc above).
+    //
+    // System apps are included only if they expose a launcher (home-screen) icon - a real,
+    // user-facing app a kid could actually open - rather than via a hand-maintained package-name
+    // allowlist. The allowlist approach (this file's history) worked for the GrapheneOS test
+    // device but left a GMS/OEM device (Chrome, Play Store, Gmail, YouTube, Maps, the
+    // manufacturer's own Camera/Gallery/Messages, ...) with almost nothing controllable, since
+    // none of those package names were in the list. A launcher-intent check is device-agnostic:
+    // it naturally includes exactly the apps a kid can tap open, and naturally excludes headless
+    // system services/components (SystemUI, telephony internals, resource overlays, ...) since
+    // those don't expose a launcher activity in the first place - without needing to enumerate
+    // every OEM's package names by hand. MATCH_UNINSTALLED_PACKAGES on this query too, for the
+    // same already-hidden-app reason as above.
+    val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+    val launchablePackages = pm.queryIntentActivities(launcherIntent, PackageManager.MATCH_UNINSTALLED_PACKAGES)
+        .mapNotNull { it.activityInfo?.packageName }
+        .toSet()
+
     return pm.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
         .filter { info ->
             (info.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
-                info.packageName in SAFE_SYSTEM_PACKAGES
+                info.packageName in launchablePackages
         }
         .map { it.packageName }
         .distinct()
