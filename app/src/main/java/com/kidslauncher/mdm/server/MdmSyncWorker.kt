@@ -5,11 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequest
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
 import com.kidslauncher.mdm.BuildConfig
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
 import com.kidslauncher.mdm.server.dto.InstalledApp
@@ -23,16 +18,14 @@ import kotlinx.serialization.encodeToString
 import java.io.File
 import java.time.Instant
 import java.util.Calendar
-import java.util.concurrent.TimeUnit
 
 private const val LOG_TAG = "MdmSyncWorker"
-private const val SYNC_INTERVAL_MINUTES = 5L
-private const val WORK_NAME = "mdm_sync"
 
 /**
  * Combined heartbeat + policy sync: policy fetch/cache/evaluate, app allowlist + kiosk
- * enforcement, best-effort status report. Shared by [MdmSyncWorker]'s periodic run and the
- * Settings screen's "Sync now" dev action, so both go through the exact same logic.
+ * enforcement, best-effort status report. Shared by [CommandListenerService]'s periodic timer
+ * and push-nudge handling, and the Settings screen's "Sync now" dev action, so all three go
+ * through the exact same logic.
  *
  * Returns true only if the server was actually reached this cycle (a fresh policy fetch
  * succeeded) - every sub-step below (status report, update check) already fails silently and
@@ -288,48 +281,11 @@ fun reevaluateLockReasonFromCache() {
     }
 }
 
-/**
- * Combined heartbeat + policy sync, every 5 minutes. WorkManager's [androidx.work.PeriodicWorkRequest]
- * has a hard 15-minute floor, so this self-reschedules as a chain of one-time requests instead,
- * each one enqueuing the next with a 5-minute delay when it finishes. This is now a reliability
- * backstop, not the primary delivery path for admin-site changes - [CommandListenerService]'s SSE
- * connection nudges an immediate out-of-cycle sync the instant a device policy is saved or a Find
- * My Device command is queued (see kid-phone-server's `AppState.command_notify`), so the interval
- * here only matters if that push is ever missed (a dropped connection, the service getting killed,
- * etc.) - it doesn't need to be as tight as when polling was the only delivery path.
- *
- * Deliberately has no [androidx.work.Constraints] - the lock decision must still evaluate on
- * schedule even offline ([KidModeEnforcer] falls back to the last-cached policy); only the
- * network calls inside should fail gracefully.
- */
-class MdmSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-
-    override suspend fun doWork(): Result {
-        try {
-            performMdmSync(applicationContext)
-        } finally {
-            // In a finally block so the chain can never silently die even if performMdmSync
-            // somehow throws unexpectedly - a broken chain would otherwise stop all future syncs
-            // until the app next restarts.
-            scheduleNext(applicationContext)
-        }
-        return Result.success()
-    }
-
-    companion object {
-        /** Call once at app startup - a no-op if the chain is already running. */
-        fun schedule(context: Context) {
-            val request = OneTimeWorkRequest.Builder(MdmSyncWorker::class.java).build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
-        }
-
-        private fun scheduleNext(context: Context) {
-            val request = OneTimeWorkRequest.Builder(MdmSyncWorker::class.java)
-                .setInitialDelay(SYNC_INTERVAL_MINUTES, TimeUnit.MINUTES)
-                .build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
-        }
-    }
-}
+// The periodic backstop sync used to be driven by a WorkManager OneTimeWorkRequest chain (each
+// run rescheduling the next with a 5-minute delay) - confirmed live that this could go
+// unexpectedly quiet for hours on an idle phone with the screen off, most likely Android's Doze/
+// battery-optimization deferring the underlying JobScheduler dispatch, which WorkManager itself
+// isn't exempt from. CommandListenerService already pays the cost of an always-on foreground
+// service (exempt from Doze by design, that's the entire point of a foreground service) to hold
+// its SSE connection open - it now also drives this periodic sync directly off its own timer
+// instead, so there's no second, Doze-vulnerable scheduling mechanism to keep reliable.

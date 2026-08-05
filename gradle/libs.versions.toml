@@ -21,7 +21,6 @@ recyclerview = "1.4.0"
 retrofit = "2.11.0"
 retrofit-kotlinx-serialization-converter = "1.0.0"
 serialization = "1.8.10"
-work-runtime-ktx = "2.10.0"
 
 [libraries]
 # AndroidX dependencies
@@ -46,9 +45,6 @@ squareup-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", versi
 jakewharton-retrofit2-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "retrofit-kotlinx-serialization-converter" }
 squareup-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 squareup-okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
-
-# Background work (Headwind MDM client)
-androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work-runtime-ktx" }
 
 # Annotation Processors
 jonahbauer-android-preference-annotations = { group = "eu.jonahbauer", name = "android-preference-annotations", version.ref = "android-preference-annotations" }

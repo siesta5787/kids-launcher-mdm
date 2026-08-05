@@ -31,15 +31,23 @@ private const val LOG_TAG = "CommandListenerService"
 private const val INITIAL_RECONNECT_DELAY_MS = 5_000L
 private const val MAX_RECONNECT_DELAY_MS = 60_000L
 private const val NOT_ENROLLED_RETRY_DELAY_MS = 30_000L
+private const val PERIODIC_SYNC_INTERVAL_MS = 5 * 60 * 1000L
 
 /**
  * Holds a long-lived SSE connection open to `/api/devices/commands/stream` so Find My Device's
- * ring/lock/stop-ring/wipe arrive in ~1s instead of waiting for [MdmSyncWorker]'s regular
- * 2-minute poll - a supplement to that poll, not a replacement for it: every event received here
- * is a content-free nudge, not the command payload itself, and just triggers an immediate
- * [performMdmSync] early, reusing the exact same policy-fetch/dispatch logic as a normal
- * scheduled sync (see `handlers::device_api::commands_stream` on the server for the matching
- * half of this).
+ * ring/lock/stop-ring/wipe arrive in ~1s instead of waiting for the periodic sync below - a
+ * supplement to it, not a replacement: every event received here is a content-free nudge, not the
+ * command payload itself, and just triggers an immediate [performMdmSync] early, reusing the
+ * exact same policy-fetch/dispatch logic as a normal scheduled sync (see
+ * `handlers::device_api::commands_stream` on the server for the matching half of this).
+ *
+ * Also drives the periodic backstop sync directly, via its own timer - this used to be a separate
+ * WorkManager `OneTimeWorkRequest` chain, but confirmed live that it could go quiet for hours on
+ * an idle phone with the screen off, most likely Android's Doze/battery-optimization deferring
+ * the underlying JobScheduler dispatch (WorkManager isn't exempt from that on its own). This
+ * service already pays the cost of an always-on foreground service - exempt from Doze by design,
+ * that's the entire point of a foreground service - to hold the SSE connection open, so there's no
+ * reason to run a second, less-reliable scheduling mechanism alongside it for the periodic case.
  *
  * A foreground service, not a plain background connection - Android would otherwise throttle or
  * kill a long-lived socket once the app isn't in the foreground, which would defeat the entire
@@ -73,6 +81,7 @@ class CommandListenerService : Service() {
         // retrying rather than needing this to wait for that state first.
         startForeground(COMMAND_LISTENER_NOTIFICATION_ID, buildNotification())
         connect()
+        schedulePeriodicSync()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -138,6 +147,17 @@ class CommandListenerService : Service() {
                     scheduleReconnect()
                 }
             },
+        )
+    }
+
+    private fun schedulePeriodicSync() {
+        if (stopped) return
+        handler.postDelayed(
+            {
+                scope.launch { performMdmSync(applicationContext) }
+                schedulePeriodicSync()
+            },
+            PERIODIC_SYNC_INTERVAL_MS,
         )
     }
 

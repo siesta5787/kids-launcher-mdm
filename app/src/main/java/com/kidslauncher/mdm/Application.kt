@@ -16,7 +16,6 @@ import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.apps.AbstractAppInfo
 import com.kidslauncher.mdm.apps.AbstractDetailedAppInfo
 import com.kidslauncher.mdm.server.CommandListenerService
-import com.kidslauncher.mdm.server.MdmSyncWorker
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.preferences.migratePreferencesToNewVersion
 import com.kidslauncher.mdm.preferences.resetPreferences
@@ -142,7 +141,9 @@ class Application : android.app.Application() {
 
         createNotificationChannels(this)
 
-        MdmSyncWorker.schedule(this)
+        // CommandListenerService both holds the SSE connection and drives the periodic backstop
+        // sync directly off its own timer - see that class's doc comment for why this replaced a
+        // separate WorkManager-based schedule() call here.
         CommandListenerService.start(this)
     }
 

@@ -190,7 +190,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
 
     /**
      * Dev-testing shortcut: runs the same policy fetch + enforcement cycle
-     * [com.kidslauncher.mdm.server.MdmSyncWorker] runs every 15 minutes, immediately - avoids
+     * [com.kidslauncher.mdm.server.CommandListenerService] runs periodically, immediately - avoids
      * waiting a full cycle per test iteration (e.g. right after changing the allowlist or kiosk
      * setting on the admin site).
      */
