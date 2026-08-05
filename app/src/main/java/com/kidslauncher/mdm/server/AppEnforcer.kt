@@ -119,8 +119,21 @@ object AppEnforcer {
             if (shouldBeSuspended == currentlySuspended) continue
 
             try {
-                dpm.setPackagesSuspended(admin, arrayOf(packageName), shouldBeSuspended)
-                dpm.setApplicationHidden(admin, packageName, shouldBeSuspended)
+                // Both calls can fail *without* throwing - setPackagesSuspended returns the
+                // subset of package names it couldn't act on (some privileged/protected system
+                // packages silently refuse suspension by platform policy) and
+                // setApplicationHidden returns a plain boolean. Discarding these previously made
+                // that failure mode invisible - confirmed live with a carrier-privileged /product-
+                // partition system app that stayed reachable despite being correctly excluded
+                // from the allowlist, with nothing in logs to explain why.
+                val notSuspended = dpm.setPackagesSuspended(admin, arrayOf(packageName), shouldBeSuspended)
+                if (!notSuspended.isNullOrEmpty()) {
+                    Log.w(LOG_TAG, "Platform refused to ${if (shouldBeSuspended) "suspend" else "unsuspend"} $packageName (setPackagesSuspended)")
+                }
+                val hiddenOk = dpm.setApplicationHidden(admin, packageName, shouldBeSuspended)
+                if (!hiddenOk) {
+                    Log.w(LOG_TAG, "Platform refused to ${if (shouldBeSuspended) "hide" else "unhide"} $packageName (setApplicationHidden)")
+                }
             } catch (e: Exception) {
                 Log.w(
                     LOG_TAG,
