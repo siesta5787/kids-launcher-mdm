@@ -19,6 +19,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.NOTIFICATION_CHANNEL_RING
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.RING_NOTIFICATION_ID
@@ -132,8 +133,11 @@ object LocateCommands {
         // due/forced cycle (a `ring`/`locate` command, the throttle window elapsing, or no cache
         // yet at all) - confirmed live that doing either on every single sync visibly slowed it
         // down and showed the location-in-use indicator every time, which isn't needed for a trail
-        // that's meant to update periodically, not continuously.
-        mdm.lastActiveLocationFetchAtMs(System.currentTimeMillis())
+        // that's meant to update periodically, not continuously. Written synchronously (commit(),
+        // not the generated setter's apply()) for the same reason as TrackedAppUpdateState.save -
+        // a due cycle often runs right before checkForTrackedAppUpdates triggers a self-update,
+        // which SIGKILLs this process, and an async write can lose the race against that kill.
+        saveLastActiveFetchAt(context, System.currentTimeMillis())
         val fresh = requestFreshFix(context, lm) ?: try {
             val providers = mutableListOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -154,7 +158,7 @@ object LocateCommands {
         }
 
         if (fresh != null) {
-            saveCachedFix(fresh)
+            saveCachedFix(context, fresh)
         }
         return fresh ?: loadCachedFix()
     }
@@ -175,14 +179,29 @@ object LocateCommands {
         }
     }
 
-    private fun saveCachedFix(location: Location) {
+    // Both writes below commit() synchronously rather than going through the generated
+    // apply()-based setters - see the call site's comment on why an async write here can lose the
+    // race against a same-cycle self-update's SIGKILL.
+    private fun saveCachedFix(context: Context, location: Location) {
         val cached = CachedFix(
             latitude = location.latitude,
             longitude = location.longitude,
             accuracy = if (location.hasAccuracy()) location.accuracy else null,
             timeMs = location.time,
         )
-        LauncherPreferences.mdm().cachedLocationJson(ServerJson.encodeToString(cached))
+        val key = LauncherPreferences.mdm().keys().cachedLocationJson()
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(key, ServerJson.encodeToString(cached))
+            .commit()
+    }
+
+    private fun saveLastActiveFetchAt(context: Context, timeMs: Long) {
+        val key = LauncherPreferences.mdm().keys().lastActiveLocationFetchAtMs()
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putLong(key, timeMs)
+            .commit()
     }
 
     /**
