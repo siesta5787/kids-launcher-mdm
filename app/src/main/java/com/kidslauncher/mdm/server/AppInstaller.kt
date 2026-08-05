@@ -43,8 +43,16 @@ object AppInstaller {
                     }
                 }
 
-                val resultIntent = Intent(APP_INSTALL_ACTION)
-                    .setPackage(context.packageName)
+                // Explicit component, not an implicit action + setPackage() - AppInstallReceiver's
+                // manifest entry declares no <intent-filter> (it's app-internal only, never meant
+                // to be triggered by anything outside this PendingIntent), and Android has nothing
+                // to match an implicit broadcast against without one. Confirmed live: the broadcast
+                // was being silently dropped every time, so recordInstalled/recordFailed never once
+                // fired - this, not the apply()-vs-commit() write timing, was the actual reason the
+                // self-update loop never stopped. setAction() is kept only for readability/logging;
+                // resolution here is entirely by component.
+                val resultIntent = Intent(context, AppInstallReceiver::class.java)
+                    .setAction(APP_INSTALL_ACTION)
                     .putExtra(APP_INSTALL_APK_PATH_EXTRA, apkFile.absolutePath)
                     .putExtra(APP_INSTALL_PACKAGE_NAME_EXTRA, packageName)
                     .putExtra(APP_INSTALL_RELEASE_TAG_EXTRA, releaseTag)
