@@ -26,6 +26,7 @@ import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
 
 private const val LOG_TAG = "LocateCommands"
 private const val RING_DURATION_MS = 30_000L
@@ -38,6 +39,20 @@ private const val FRESH_LOCATION_TIMEOUT_MS = 15_000L
 // per this interval, except when a `ring`/`locate` command explicitly asks for a fresh fix right
 // now (see MdmSyncWorker.currentLocationReport's forceFresh argument).
 private const val ACTIVE_LOCATION_FETCH_THROTTLE_MS = 10 * 60 * 1000L
+private const val CACHED_LOCATION_PROVIDER = "kid_phone_cached"
+
+// Android's location-in-use indicator fires on *any* LocationManager query that returns a fix -
+// confirmed live, the passive getLastKnownLocation() fallback below was still triggering it (and
+// still touching LocationManager) on every throttled-skip sync, even after gating the active fetch
+// alone. This app now keeps its own copy of the last fix it obtained instead, so a skipped cycle
+// can hand that back without calling into LocationManager at all.
+@Serializable
+private data class CachedFix(
+    val latitude: Double,
+    val longitude: Double,
+    val accuracy: Float?,
+    val timeMs: Long,
+)
 
 /**
  * Find My Device: locate/ring/lock/wipe, dispatched from [MdmSyncWorker] whenever the server's
@@ -96,28 +111,30 @@ object LocateCommands {
             QuickControls.setLocationEnabled(dpm, admin, true)
         }
 
+        val mdm = LauncherPreferences.mdm()
+        val throttleElapsed =
+            System.currentTimeMillis() - mdm.lastActiveLocationFetchAtMs() >= ACTIVE_LOCATION_FETCH_THROTTLE_MS
+
+        // A skipped cycle (not forced, throttle window still open) hands back our own last-cached
+        // fix directly - no LocationManager call at all, so no location-in-use indicator and no
+        // sync slowdown. Only a due/forced cycle below touches LocationManager.
+        if (!forceFresh && !throttleElapsed) {
+            loadCachedFix()?.let { return it }
+        }
+
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         // getLastKnownLocation is purely passive - it only ever returns a location if something
         // else on the device already requested a fresh fix recently. Confirmed live: with
         // permission granted and Location on, every provider still returned null forever because
         // nothing had actively triggered GPS/network on this device. requestFreshFix() below
-        // actively asks for one, but only when forced (a `ring`/`locate` command) or the throttle
-        // window has elapsed - every sync doing an active fetch was confirmed live to visibly slow
-        // the sync down and show Android's location-in-use indicator every single time, which isn't
-        // needed for a trail that's meant to update periodically, not continuously.
-        val mdm = LauncherPreferences.mdm()
-        val throttleElapsed =
-            System.currentTimeMillis() - mdm.lastActiveLocationFetchAtMs() >= ACTIVE_LOCATION_FETCH_THROTTLE_MS
-        if (forceFresh || throttleElapsed) {
-            // Recorded regardless of outcome - a missed fix (e.g. deep indoors) shouldn't retry on
-            // every single sync until the next window, or this defeats the point of throttling.
-            mdm.lastActiveLocationFetchAtMs(System.currentTimeMillis())
-            val fresh = requestFreshFix(context, lm)
-            if (fresh != null) return fresh
-        }
-
-        return try {
+        // actively asks for one; both this and the passive fallback below are only reached on a
+        // due/forced cycle (a `ring`/`locate` command, the throttle window elapsing, or no cache
+        // yet at all) - confirmed live that doing either on every single sync visibly slowed it
+        // down and showed the location-in-use indicator every time, which isn't needed for a trail
+        // that's meant to update periodically, not continuously.
+        mdm.lastActiveLocationFetchAtMs(System.currentTimeMillis())
+        val fresh = requestFreshFix(context, lm) ?: try {
             val providers = mutableListOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 providers.add(LocationManager.FUSED_PROVIDER)
@@ -135,6 +152,37 @@ object LocateCommands {
             Log.w(LOG_TAG, "Failed to read cached location", e)
             null
         }
+
+        if (fresh != null) {
+            saveCachedFix(fresh)
+        }
+        return fresh ?: loadCachedFix()
+    }
+
+    private fun loadCachedFix(): Location? {
+        val raw = LauncherPreferences.mdm().cachedLocationJson() ?: return null
+        return try {
+            val cached: CachedFix = ServerJson.decodeFromString(raw)
+            Location(CACHED_LOCATION_PROVIDER).apply {
+                latitude = cached.latitude
+                longitude = cached.longitude
+                cached.accuracy?.let { accuracy = it }
+                time = cached.timeMs
+            }
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to decode cached location fix", e)
+            null
+        }
+    }
+
+    private fun saveCachedFix(location: Location) {
+        val cached = CachedFix(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            accuracy = if (location.hasAccuracy()) location.accuracy else null,
+            timeMs = location.time,
+        )
+        LauncherPreferences.mdm().cachedLocationJson(ServerJson.encodeToString(cached))
     }
 
     /**

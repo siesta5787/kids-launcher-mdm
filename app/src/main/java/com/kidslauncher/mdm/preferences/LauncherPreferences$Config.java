@@ -89,6 +89,11 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // the sync it runs in, so it shouldn't fire on every single 2-minute/manual
                         // sync. 0 means "never fetched", always due.
                         @Preference(name = "last_active_location_fetch_at_ms", type = long.class, defaultValue = "0"),
+                        // The actual last fix obtained (see server.LocateCommands), so a throttled-
+                        // skip sync can hand this back without touching LocationManager at all -
+                        // even the passive getLastKnownLocation() read triggers the location-in-use
+                        // indicator, not just an active fetch.
+                        @Preference(name = "cached_location_json", type = String.class),
                 }),
         })
 public final class LauncherPreferences$Config {
