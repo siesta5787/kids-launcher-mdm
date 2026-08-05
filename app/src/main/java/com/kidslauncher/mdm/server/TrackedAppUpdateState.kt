@@ -1,6 +1,8 @@
 package com.kidslauncher.mdm.server
 
+import android.content.Context
 import android.util.Log
+import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlinx.serialization.Serializable
 
@@ -32,20 +34,31 @@ object TrackedAppUpdateState {
         }
     }
 
-    private fun save(state: Map<String, TrackedAppState>) {
-        LauncherPreferences.mdm().trackedAppUpdateState(ServerJson.encodeToString(state))
+    // Writes synchronously (commit(), not the generated preference setter's apply()) because a
+    // successful self-update record is written from AppInstallReceiver right as Android is about
+    // to SIGKILL this process to replace it with the new APK - an async apply() write frequently
+    // never reached disk before that kill, so the launcher kept re-downloading and reinstalling
+    // the exact same release forever (confirmed live: same asset_id installed twice ~25s apart,
+    // killing CommandListenerService's SSE connection each time). recordFailed shares this path
+    // for consistency, though it isn't itself racing a process kill.
+    private fun save(context: Context, state: Map<String, TrackedAppState>) {
+        val key = LauncherPreferences.mdm().keys().trackedAppUpdateState()
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(key, ServerJson.encodeToString(state))
+            .commit()
     }
 
-    fun recordInstalled(packageName: String, releaseTag: String) {
+    fun recordInstalled(context: Context, packageName: String, releaseTag: String) {
         val state = load().toMutableMap()
         state[packageName] = TrackedAppState(lastInstalledTag = releaseTag)
-        save(state)
+        save(context, state)
     }
 
-    fun recordFailed(packageName: String, releaseTag: String) {
+    fun recordFailed(context: Context, packageName: String, releaseTag: String) {
         val state = load().toMutableMap()
         val lastInstalledTag = state[packageName]?.lastInstalledTag
         state[packageName] = TrackedAppState(lastInstalledTag, lastFailedTag = releaseTag)
-        save(state)
+        save(context, state)
     }
 }

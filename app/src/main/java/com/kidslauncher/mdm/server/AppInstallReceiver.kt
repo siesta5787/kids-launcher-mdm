@@ -32,7 +32,7 @@ class AppInstallReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_SUCCESS -> {
                 Log.i(LOG_TAG, "Installed $packageName successfully ($releaseTag)")
                 if (packageName != null && releaseTag != null) {
-                    TrackedAppUpdateState.recordInstalled(packageName, releaseTag)
+                    TrackedAppUpdateState.recordInstalled(context, packageName, releaseTag)
                 }
             }
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -46,7 +46,7 @@ class AppInstallReceiver : BroadcastReceiver() {
                 // Remembering the failed tag stops the next sync from re-attempting the exact
                 // same doomed install every 2 minutes forever.
                 if (packageName != null && releaseTag != null) {
-                    TrackedAppUpdateState.recordFailed(packageName, releaseTag)
+                    TrackedAppUpdateState.recordFailed(context, packageName, releaseTag)
                 }
             }
         }
