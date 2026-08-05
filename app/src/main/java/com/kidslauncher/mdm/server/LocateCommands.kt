@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import com.kidslauncher.mdm.NOTIFICATION_CHANNEL_RING
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.RING_NOTIFICATION_ID
+import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -29,6 +30,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 private const val LOG_TAG = "LocateCommands"
 private const val RING_DURATION_MS = 30_000L
 private const val FRESH_LOCATION_TIMEOUT_MS = 15_000L
+
+// An active fetch (requestFreshFix) shows Android's location-in-use indicator and visibly slows
+// down the sync it runs in - confirmed live, reported as "Sync now takes longer and the green
+// location dot shows up every time." Doing that on every single 2-minute/manual sync is overkill
+// for a trail that's meant to update every so often, not continuously - so it's throttled to once
+// per this interval, except when a `ring`/`locate` command explicitly asks for a fresh fix right
+// now (see MdmSyncWorker.currentLocationReport's forceFresh argument).
+private const val ACTIVE_LOCATION_FETCH_THROTTLE_MS = 10 * 60 * 1000L
 
 /**
  * Find My Device: locate/ring/lock/wipe, dispatched from [MdmSyncWorker] whenever the server's
@@ -52,6 +61,7 @@ object LocateCommands {
         context: Context,
         dpm: DevicePolicyManager,
         admin: ComponentName,
+        forceFresh: Boolean = false,
     ): Location? {
         QuickControls.selfGrantPermission(
             context,
@@ -92,10 +102,20 @@ object LocateCommands {
         // else on the device already requested a fresh fix recently. Confirmed live: with
         // permission granted and Location on, every provider still returned null forever because
         // nothing had actively triggered GPS/network on this device. requestFreshFix() below
-        // actively asks for one; this is only a fallback in case that times out but something else
-        // happens to have populated the cache in the meantime.
-        val fresh = requestFreshFix(context, lm)
-        if (fresh != null) return fresh
+        // actively asks for one, but only when forced (a `ring`/`locate` command) or the throttle
+        // window has elapsed - every sync doing an active fetch was confirmed live to visibly slow
+        // the sync down and show Android's location-in-use indicator every single time, which isn't
+        // needed for a trail that's meant to update periodically, not continuously.
+        val mdm = LauncherPreferences.mdm()
+        val throttleElapsed =
+            System.currentTimeMillis() - mdm.lastActiveLocationFetchAtMs() >= ACTIVE_LOCATION_FETCH_THROTTLE_MS
+        if (forceFresh || throttleElapsed) {
+            // Recorded regardless of outcome - a missed fix (e.g. deep indoors) shouldn't retry on
+            // every single sync until the next window, or this defeats the point of throttling.
+            mdm.lastActiveLocationFetchAtMs(System.currentTimeMillis())
+            val fresh = requestFreshFix(context, lm)
+            if (fresh != null) return fresh
+        }
 
         return try {
             val providers = mutableListOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)

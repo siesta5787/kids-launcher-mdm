@@ -78,6 +78,12 @@ suspend fun performMdmSync(context: Context): Boolean {
 
     AppEnforcer.apply(context, policy)
 
+    // A `ring`/`locate` command means the admin explicitly wants to know where the device is right
+    // now, worth the cost of an active GPS/network fix - every other sync (the 2-minute background
+    // chain, and manual "Sync now") just reads whatever's cached/throttled instead, so location
+    // isn't forcing an active fetch (visible location indicator, slower sync) on every single cycle.
+    val forceFreshLocation = freshPolicy?.pendingCommand?.command in setOf("ring", "locate")
+
     // Best-effort - a failed report must never affect the lock decision above.
     try {
         api.sendStatus(
@@ -88,7 +94,7 @@ suspend fun performMdmSync(context: Context): Boolean {
                 appVersion = BuildConfig.VERSION_NAME,
                 appVersionCode = BuildConfig.VERSION_CODE,
                 offlineOverrideUsed = mdm.offlineOverrideUsedPendingReport(),
-                location = currentLocationReport(context, dpm, admin),
+                location = currentLocationReport(context, dpm, admin, forceFreshLocation),
             )
         )
         // The report just landed, so this doesn't need to stay pending - if it was never used,
@@ -155,9 +161,10 @@ private suspend fun currentLocationReport(
     context: Context,
     dpm: DevicePolicyManager,
     admin: ComponentName,
+    forceFresh: Boolean,
 ): LocationReport? {
     if (!dpm.isDeviceOwnerApp(context.packageName)) return null
-    val location = LocateCommands.currentLocation(context, dpm, admin) ?: return null
+    val location = LocateCommands.currentLocation(context, dpm, admin, forceFresh) ?: return null
     return LocationReport(
         latitude = location.latitude,
         longitude = location.longitude,
