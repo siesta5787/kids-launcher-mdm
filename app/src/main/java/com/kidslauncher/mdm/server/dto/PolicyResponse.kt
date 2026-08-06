@@ -22,6 +22,12 @@ import kotlinx.serialization.Serializable
  * [com.kidslauncher.mdm.ui.quickcontrols.QuickControlsActivity].
  * [pendingCommand] is Find My Device's remote-command queue (ring/lock/wipe) - see
  * [com.kidslauncher.mdm.server.LocateCommands] and [MdmSyncWorker]'s dispatch of it.
+ * [forcePrivateDnsToPi] mirrors the server's global (not per-device) DNS/Filters on/off setting -
+ * when true, [com.kidslauncher.mdm.server.AppEnforcer.applyPrivateDnsLock] locks Android's system
+ * Private DNS to the server's own hostname (parsed from [com.kidslauncher.mdm.preferences.LauncherPreferences]'s
+ * `mdm.server_url()`) via `DevicePolicyManager.setGlobalPrivateDnsModeSpecifiedHost`, so DNS
+ * resolution goes straight to the filter engine over DNS-over-TLS regardless of exit-node routing
+ * or app-level DNS-over-HTTPS settings that would otherwise bypass plain port 53.
  */
 @Serializable
 data class PolicyResponse(
@@ -42,4 +48,5 @@ data class PolicyResponse(
     val tailscaleExitNodeId: String? = null,
     val quickControlsMask: Long = 0,
     val pendingCommand: PendingCommand? = null,
+    val forcePrivateDnsToPi: Boolean = false,
 )

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.UserManager
@@ -152,6 +153,8 @@ object AppEnforcer {
         applyRadioRestrictions(dpm, admin, effectivePolicy)
 
         applyVpnRestrictions(dpm, admin, effectivePolicy)
+
+        applyPrivateDnsLock(dpm, admin, effectivePolicy)
     }
 
     /**
@@ -291,6 +294,49 @@ object AppEnforcer {
             }
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to set always-on VPN", e)
+        }
+    }
+
+    /**
+     * Locks Android's system-wide Private DNS to this server's own hostname when the admin site's
+     * global DNS/Filters toggle is on - see `dns_engine.rs`'s module doc comment on the server for
+     * the full picture. Confirmed live that plain port-53 interception has too many independent
+     * bypasses to rely on alone (exit-node routing quirks, per-app DNS-over-HTTPS, Tailscale's own
+     * MagicDNS override) - `setGlobalPrivateDnsModeSpecifiedHost` operates at the OS resolver
+     * level instead, and `DISALLOW_CONFIG_PRIVATE_DNS` prevents it being switched back via
+     * Settings. There is no public API to force Private DNS *off*, only to a specific host or
+     * "Automatic" - pointing it at this server's own DNS-over-TLS listener is the correct
+     * equivalent anyway, since it makes the encrypted path go through the filter rather than just
+     * disabling encryption.
+     *
+     * Deliberately fails closed if this server becomes unreachable (Android's "specified host"
+     * mode does not silently fall back to plain DNS) - an explicit choice, not an oversight: the
+     * existing offline-override PIN / Settings "pause restrictions" kill-switch already provide a
+     * fully-offline recovery path (both already flow into `effectivePolicy` being null, which this
+     * function treats the same as the server-side toggle being off), so there's no unblocked-
+     * internet fallback for a kid to fall into if the tailnet connection ever drops.
+     */
+    private fun applyPrivateDnsLock(
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        policy: PolicyResponse?,
+    ) {
+        val shouldLock = policy?.forcePrivateDnsToPi == true
+        try {
+            if (shouldLock) {
+                val host = Uri.parse(LauncherPreferences.mdm().serverUrl()).host
+                if (host.isNullOrBlank()) {
+                    Log.w(LOG_TAG, "Cannot lock Private DNS - no valid server hostname configured")
+                    return
+                }
+                dpm.setGlobalPrivateDnsModeSpecifiedHost(admin, host)
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+            } else {
+                dpm.setGlobalPrivateDnsModeOpportunistic(admin)
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+            }
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to apply Private DNS lock", e)
         }
     }
 
