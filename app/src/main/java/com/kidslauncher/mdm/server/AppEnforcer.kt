@@ -329,7 +329,20 @@ object AppEnforcer {
                     Log.w(LOG_TAG, "Cannot lock Private DNS - no valid server hostname configured")
                     return
                 }
-                dpm.setGlobalPrivateDnsModeSpecifiedHost(admin, host)
+                // Returns a status, not void - confirmed live this matters: Android actively
+                // tests connectivity to the specified host before accepting it, and silently
+                // stays on whatever mode was previously set if that test fails, with nothing
+                // else visibly wrong (the restriction below still applies either way). Logging
+                // the result is the only way to tell "locked to this Pi" apart from "Android
+                // rejected the host and quietly kept Automatic".
+                when (val result = dpm.setGlobalPrivateDnsModeSpecifiedHost(admin, host)) {
+                    DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR ->
+                        Log.i(LOG_TAG, "Private DNS locked to $host")
+                    DevicePolicyManager.PRIVATE_DNS_SET_ERROR_HOST_NOT_SERVING ->
+                        Log.w(LOG_TAG, "Private DNS lock rejected - $host does not appear to serve DNS-over-TLS (RFC 7858) right now")
+                    else ->
+                        Log.w(LOG_TAG, "Private DNS lock to $host failed, code=$result")
+                }
                 dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
             } else {
                 dpm.setGlobalPrivateDnsModeOpportunistic(admin)
