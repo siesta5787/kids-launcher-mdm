@@ -29,11 +29,15 @@ jobs:
     - name: Build tsnet.aar with gomobile
       # tsnet (tailscale.com/tsnet) gives the launcher its own embeddable tailnet
       # connection - see this repo's CLAUDE.md for why (replaces the standalone
-      # Tailscale app + the DoT-to-Pi Private DNS approach). gomobile bind compiles
-      # it (and its transitive deps - WireGuard, the userspace netstack, etc.) into
-      # an Android-consumable .aar; app/build.gradle.kts references the output by
-      # path. arm64-only since that's the only architecture either test device
-      # needs - see CLAUDE.md if that ever needs to change.
+      # Tailscale app + the DoT-to-Pi Private DNS approach). Binds against
+      # mobile/tsembed, a thin wrapper (not tsnet.Server directly - gobind can't
+      # generate bindings for tsnet.Server's own methods, several of which return
+      # more values than gobind supports; see mobile/tsembed's package doc).
+      # gomobile compiles it (and its transitive deps - WireGuard, the userspace
+      # netstack, etc.) into an Android-consumable .aar; app/build.gradle.kts
+      # references the output by path. arm64-only since that's the only
+      # architecture either test device needs - see CLAUDE.md if that ever needs
+      # to change.
       run: |
         export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.1.13356709"
         go install golang.org/x/mobile/cmd/gomobile@latest
@@ -47,7 +51,7 @@ jobs:
         # golang.org/x/mobile declared here too, not just on the CI runner's PATH.
         go get -tool golang.org/x/mobile/cmd/gobind
         gomobile init
-        gomobile bind -o ../app/libs/tsnet.aar -target=android/arm64 -androidapi 34 tailscale.com/tsnet
+        gomobile bind -o ../app/libs/tsnet.aar -target=android/arm64 -androidapi 34 ./tsembed
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Read Debug Keystore
