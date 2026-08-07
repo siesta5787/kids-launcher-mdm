@@ -57,8 +57,7 @@ func (c *Client) Up(timeoutSeconds int) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
 	defer cancel()
 
-	status, err := c.srv.Up(ctx)
-	if err != nil {
+	if _, err := c.srv.Up(ctx); err != nil {
 		return "", err
 	}
 	ip4, _ := c.srv.TailscaleIPs()
