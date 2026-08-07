@@ -63,12 +63,17 @@ interface MdmApi {
 }
 
 /** [token] is omitted for the enroll-only call (no token exists yet); pass it for every
- * subsequent authenticated call. */
+ * subsequent authenticated call. Routes through [TsnetClient]'s embedded-tailnet SOCKS5 proxy
+ * whenever one is running, so calls reach the server over the tailnet without needing the
+ * standalone Tailscale app - falls back to the device's normal network path (plain internet
+ * routing, whatever that resolves to) if tsnet hasn't connected yet, same as before this existed. */
 fun createMdmApi(baseUrl: String, token: String? = null): MdmApi {
     val clientBuilder = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .writeTimeout(10, TimeUnit.SECONDS)
+
+    TsnetClient.proxy()?.let { clientBuilder.proxy(it) }
 
     if (token != null) {
         clientBuilder.addInterceptor { chain ->

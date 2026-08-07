@@ -1,10 +1,18 @@
 package com.kidslauncher.mdm.server
 
 import android.util.Log
+import java.net.Authenticator
+import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
+import java.net.Proxy
 import tsembed.Client
 import tsembed.Tsembed
 
 private const val LOG_TAG = "TsnetClient"
+
+/** Fixed per tsnet.Server.Loopback's own contract - the SOCKS5 proxy it starts always expects
+ * this exact username, with the per-connection proxyCred as the password. Not configurable. */
+private const val SOCKS_USERNAME = "tsnet"
 
 /**
  * Thin Kotlin wrapper around the embedded tsnet connection (see this repo's
@@ -55,13 +63,47 @@ object TsnetClient {
         return try {
             val c = client ?: Tsembed.new_(hostname, authKey, stateDir).also { client = it }
             val ip = c.up(timeoutSeconds)
-            proxyAddress = c.startProxy()
-            proxyCredential = c.proxyCredential()
+            val addr = c.startProxy()
+            val cred = c.proxyCredential()
+            proxyAddress = addr
+            proxyCredential = cred
+            installAuthenticator(addr, cred)
             ip
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to connect to tailnet", e)
             null
         }
+    }
+
+    /** A [Proxy] pointing at the running SOCKS5 proxy, or null if not connected yet - see
+     * [MdmApi]'s `createMdmApi`, the only intended caller. Credentials are supplied separately via
+     * the process-wide [Authenticator] installed in [connect], since OkHttp's [Proxy] type itself
+     * carries no room for them (that's how the JDK's own SOCKS5 client is designed - proxy
+     * authentication is always negotiated through [Authenticator], not the [Proxy] object). */
+    fun proxy(): Proxy? {
+        val addr = proxyAddress ?: return null
+        val host = addr.substringBeforeLast(':')
+        val port = addr.substringAfterLast(':').toIntOrNull() ?: return null
+        return Proxy(Proxy.Type.SOCKS, InetSocketAddress(host, port))
+    }
+
+    /**
+     * [Authenticator] is a single process-wide singleton in the JDK, not something you can scope
+     * to one [OkHttpClient] instance - this app has no other proxy/authenticator use anywhere
+     * (confirmed: this is the only [Authenticator] reference in the codebase), so installing one
+     * globally here is safe. Checks the requesting host/port match this proxy specifically before
+     * handing out the credential, rather than answering unconditionally, in case that ever
+     * changes.
+     */
+    private fun installAuthenticator(proxyAddr: String, cred: String) {
+        val host = proxyAddr.substringBeforeLast(':')
+        val port = proxyAddr.substringAfterLast(':').toIntOrNull()
+        Authenticator.setDefault(object : Authenticator() {
+            override fun getPasswordAuthentication(): PasswordAuthentication? {
+                if (requestingHost != host || requestingPort != port) return null
+                return PasswordAuthentication(SOCKS_USERNAME, cred.toCharArray())
+            }
+        })
     }
 
     fun close() {

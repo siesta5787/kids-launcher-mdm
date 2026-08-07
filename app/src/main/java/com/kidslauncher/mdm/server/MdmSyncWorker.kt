@@ -41,6 +41,21 @@ suspend fun performMdmSync(context: Context): Boolean {
         return false
     }
 
+    // Phase B of the on-device-filtering migration (see CLAUDE.md): join the
+    // embedded tailnet before talking to the server, so createMdmApi below
+    // picks up TsnetClient's SOCKS5 proxy. Skipped entirely if no auth key is
+    // configured yet (this preference is new) - falls through to whatever
+    // network path already exists (today, that's still the standalone
+    // Tailscale app), same as before this existed. Not yet gated to only run
+    // once per app lifetime - TsnetClient.connect() itself no-ops past the
+    // first successful join, so calling it every sync cycle is cheap.
+    val authKey = mdm.tailscaleAuthKey()
+    if (!authKey.isNullOrBlank() && !TsnetClient.connected) {
+        val hostname = "kids-launcher-${android.os.Build.MODEL}".replace(Regex("[^A-Za-z0-9-]"), "-")
+        val stateDir = context.filesDir.resolve("tailscale").absolutePath
+        TsnetClient.connect(hostname, authKey, stateDir)
+    }
+
     val api = createMdmApi(serverUrl, deviceToken)
     val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
     val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
