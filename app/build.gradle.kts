@@ -106,6 +106,15 @@ dependencies {
     // multi-hundred-MB Go-toolchain build artifact. Gives the launcher its
     // own embeddable tailnet connection - see CLAUDE.md.
     implementation(files("libs/tsnet.aar"))
+    // IP/UDP packet parsing+construction (with automatic checksum/length
+    // correction) and DNS message parsing, for KidVpnService's local packet
+    // filter - same libraries (and versions, for pcap4j) DNS66 uses for this
+    // exact pattern on Android, confirmed via its own build.gradle rather
+    // than assumed. MIT (pcap4j) and BSD-3-Clause (dnsjava), both compatible
+    // with this repo's GPLv3.
+    implementation("org.pcap4j:pcap4j-core:1.8.2")
+    implementation("org.pcap4j:pcap4j-packetfactory-static:1.8.2")
+    implementation("dnsjava:dnsjava:3.6.5")
     implementation(libs.androidx.activity)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)

@@ -151,6 +151,9 @@
     <string name="notification_channel_listener">Find My Device background connection</string>
     <string name="notification_listener_title">Kids Device MDM</string>
     <string name="notification_listener_text">Ready for parent commands (ring, lock, locate).</string>
+    <string name="notification_channel_vpn_filter">Content filter</string>
+    <string name="notification_vpn_filter_title">Content filter active</string>
+    <string name="notification_vpn_filter_text">Blocking ads and inappropriate content.</string>
     <string name="crash_info"><![CDATA[
         Looks like something went wrong, sorry about that!<br><br>
         For privacy reasons, crash logs are not collected automatically.<br>

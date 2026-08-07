@@ -71,6 +71,12 @@ suspend fun performMdmSync(context: Context): Boolean {
         // with zero network at all, which is the entire point of the offline failsafe.
         mdm.overridePinHash(freshPolicy.overridePinHash)
         mdm.overridePinSalt(freshPolicy.overridePinSalt)
+        // KidVpnService reads this cached value directly (it never talks to the network itself for
+        // policy) - see DnsFilterEngine.resolveUpstream.
+        mdm.dnsUpstreamProvider(freshPolicy.dnsUpstreamProvider)
+        // Only actually re-fetches the (potentially 100k+ domain) full list if the version token
+        // changed - see DnsFilterEngine's doc comment.
+        DnsFilterEngine.refreshIfNeeded(context, api, freshPolicy.dnsFilterVersion)
         // Only ever dispatched off a genuinely fresh fetch, never the cached fallback below - the
         // cached policy blob can still hold a `pendingCommand` from a past cycle that's already
         // been delivered and consumed server-side, and replaying it from cache while offline would
@@ -114,8 +120,23 @@ suspend fun performMdmSync(context: Context): Boolean {
     }
 
     checkForTrackedAppUpdates(context, api)
+    reportBlockedDnsEvents(context, api)
 
     return freshPolicy != null
+}
+
+/** Drains whatever [KidVpnService] has queued via [BlockedEventLog] since the last successful
+ * report - best-effort, same as the status report above; only clears the queue once the server
+ * call actually succeeds, so a failed report doesn't silently lose events. */
+private suspend fun reportBlockedDnsEvents(context: Context, api: MdmApi) {
+    val events = BlockedEventLog.drain(context)
+    if (events.isEmpty()) return
+    try {
+        api.sendDnsEvents(events)
+        BlockedEventLog.clearReported(context, events.size)
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Blocked-DNS-event report failed", e)
+    }
 }
 
 /**

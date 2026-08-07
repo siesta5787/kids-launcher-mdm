@@ -99,6 +99,15 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // even the passive getLastKnownLocation() read triggers the location-in-use
                         // indicator, not just an active fetch.
                         @Preference(name = "cached_location_json", type = String.class),
+                        // Admin-configured public DoT upstream ("cloudflare" | "quad9") for
+                        // KidVpnService's on-device filter - cached from the last successful
+                        // policy sync (PolicyResponse.dnsUpstreamProvider) so the VPN service can
+                        // read it without needing to touch the network itself.
+                        @Preference(name = "dns_upstream_provider", type = String.class, defaultValue = "\"cloudflare\""),
+                        // BlockedEventLog's own persisted queue - see that class. Separate from
+                        // tracked_app_update_state/cached_location_json above since it's a list,
+                        // not a single blob, and gets drained (not just replaced) each sync.
+                        @Preference(name = "blocked_dns_event_queue_json", type = String.class),
                 }),
         })
 public final class LauncherPreferences$Config {
