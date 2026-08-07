@@ -34,3 +34,6 @@
 # runtime footprint we need, dnsjava just no-ops logging without a real slf4j binding present.
 -dontwarn lombok.Generated
 -dontwarn org.slf4j.**
+# dnsjava's optional adapter for the desktop-JDK-only sun.net.spi.nameservice SPI (plugging into
+# InetAddress's internal resolution) - doesn't exist on Android and this app never uses it.
+-dontwarn sun.net.spi.nameservice.**
