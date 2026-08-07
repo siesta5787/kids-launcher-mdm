@@ -69,6 +69,14 @@ jobs:
       with:
         name: launcher-debug-${{ github.sha }}.apk
         path: app/build/outputs/apk/debug/app-debug.apk
+    - name: Upload tsnet.aar
+      # Not consumed by anything - purely so the generated gobind Java/Kotlin
+      # API surface can be inspected without a local Go toolchain. Safe to
+      # remove once TsnetClient.kt is written and stable.
+      uses: actions/upload-artifact@v4
+      with:
+        name: tsnet-aar-${{ github.sha }}
+        path: app/libs/tsnet.aar
 
     - name: Delete Old Pre-Release
       if: github.ref == 'refs/heads/master'
