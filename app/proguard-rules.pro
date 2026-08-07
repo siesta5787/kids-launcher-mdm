@@ -28,3 +28,9 @@
 -dontwarn javax.annotation.processing.AbstractProcessor
 -dontwarn javax.annotation.processing.SupportedAnnotationTypes
 -dontwarn javax.annotation.processing.SupportedSourceVersion
+
+# dnsjava (KidVpnService's DNS message parsing) references lombok's compile-time-only @Generated
+# annotation and an optional slf4j logging binding this app doesn't include - neither has any
+# runtime footprint we need, dnsjava just no-ops logging without a real slf4j binding present.
+-dontwarn lombok.Generated
+-dontwarn org.slf4j.**
