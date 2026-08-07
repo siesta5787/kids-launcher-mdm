@@ -101,6 +101,11 @@ android {
 }
 
 dependencies {
+    // Built by CI (see .github/workflows/android.yml's "Build tsnet.aar with
+    // gomobile" step, and mobile/go.mod) - not checked in, since it's a
+    // multi-hundred-MB Go-toolchain build artifact. Gives the launcher its
+    // own embeddable tailnet connection - see CLAUDE.md.
+    implementation(files("libs/tsnet.aar"))
     implementation(libs.androidx.activity)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)

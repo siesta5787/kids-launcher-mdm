@@ -20,6 +20,29 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+    - name: Install Android NDK
+      run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.1.13356709"
+    - name: Build tsnet.aar with gomobile
+      # tsnet (tailscale.com/tsnet) gives the launcher its own embeddable tailnet
+      # connection - see this repo's CLAUDE.md for why (replaces the standalone
+      # Tailscale app + the DoT-to-Pi Private DNS approach). gomobile bind compiles
+      # it (and its transitive deps - WireGuard, the userspace netstack, etc.) into
+      # an Android-consumable .aar; app/build.gradle.kts references the output by
+      # path. arm64-only since that's the only architecture either test device
+      # needs - see CLAUDE.md if that ever needs to change.
+      run: |
+        export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.1.13356709"
+        go install golang.org/x/mobile/cmd/gomobile@latest
+        go install golang.org/x/mobile/cmd/gobind@latest
+        mkdir -p app/libs
+        cd mobile
+        go get tailscale.com/tsnet@latest
+        gomobile init
+        gomobile bind -o ../app/libs/tsnet.aar -target=android/arm64 -androidapi 34 tailscale.com/tsnet
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Read Debug Keystore
