@@ -142,8 +142,12 @@ object DnsFilterEngine {
             Socket().use { plain ->
                 protectSocket(plain)
                 plain.connect(InetSocketAddress(ip, 853), 5000)
-                val tls = SSLSocketFactory.getDefault()
-                    .createSocket(plain, tlsHostname, 853, true) as SSLSocket
+                // SSLSocketFactory.getDefault()'s *declared* return type is the base SocketFactory
+                // class (a real JDK API quirk, not a typo) - createSocket(Socket, String, int,
+                // boolean) is only declared on SSLSocketFactory itself, so an explicit cast is
+                // required even though the runtime object always actually is one.
+                val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+                val tls = factory.createSocket(plain, tlsHostname, 853, true) as SSLSocket
                 tls.use { socket ->
                     val params = socket.sslParameters
                     params.endpointIdentificationAlgorithm = "HTTPS"
