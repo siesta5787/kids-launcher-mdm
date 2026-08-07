@@ -75,6 +75,20 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             true
         }
 
+        val tailscaleAuthKey = findPreference<Preference>(mdm.keys().tailscaleAuthKey())
+        tailscaleAuthKey?.summary = if (mdm.tailscaleAuthKey().isNullOrBlank()) "Not set" else "Set"
+        tailscaleAuthKey?.setOnPreferenceClickListener {
+            showEditTextDialog(
+                requireContext(),
+                getString(R.string.settings_mdm_tailscale_auth_key),
+                currentValue = null,
+            ) { value ->
+                mdm.tailscaleAuthKey(value)
+                tailscaleAuthKey.summary = if (value.isNullOrBlank()) "Not set" else "Set"
+            }
+            true
+        }
+
         val enrollNow = findPreference<Preference>("settings_mdm_enroll_now")
         enrollNow?.setOnPreferenceClickListener {
             showEditTextDialog(
