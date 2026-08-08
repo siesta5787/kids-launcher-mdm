@@ -19,30 +19,68 @@ package tsembed
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"time"
 
+	"github.com/wlynxg/anet"
+	"tailscale.com/net/netmon"
 	"tailscale.com/tsnet"
 )
 
 func init() {
-	// Confirmed live: without this, tsnet.Server.Start fails outright on
+	// TS_NO_LOGS_NO_SUPPORT is Tailscale's own documented opt-out of client
+	// log uploads - desirable on its own merits regardless of the bug below
+	// (an embedded tailnet client on a kid's device shouldn't be uploading
+	// operational logs to Tailscale's servers). Confirmed live this alone
+	// does NOT fix the netlink crash below (same panic either way) - kept
+	// for the privacy reason, not as the actual fix.
+	os.Setenv("TS_NO_LOGS_NO_SUPPORT", "true")
+
+	// The actual fix, confirmed against the real root cause: tsnet.Server.Start
+	// (and, separately, logpolicy's log-upload transport setup) both call
+	// Go's standard net.Interfaces() internally, which fails outright on
 	// Android with "route ip+net: netlinkrib: permission denied" - Android's
 	// SELinux policy blocks unprivileged apps from netlink route-table
-	// queries, and that error comes from logpolicy.NewLogtailTransport (log
-	// upload setup) calling net.Interfaces() internally, not from any code
-	// path this app actually needs - see tailscale/tailscale#17311 (open,
-	// unresolved upstream as of this writing) vs tailscale/tailscale#9836
-	// (a similar but different call path, already fixed via Android build
-	// tags in wgengine/router - those don't cover this one).
-	// TS_NO_LOGS_NO_SUPPORT is Tailscale's own documented opt-out of client
-	// log uploads, which skips constructing that transport entirely -
-	// desirable on its own merits for this project anyway (an embedded
-	// tailnet client on a kid's device shouldn't be uploading operational
-	// logs to Tailscale's servers), and happens to route around this bug as
-	// a side effect. Must be set before any tsnet.Server method runs.
-	os.Setenv("TS_NO_LOGS_NO_SUPPORT", "true")
+	// queries entirely (this is a real, currently-unresolved upstream gap -
+	// see tailscale/tailscale#17311 - distinct from a similarly-named but
+	// already-fixed issue, #9836, whose fix only covered a different call
+	// path via Android build tags in wgengine/router).
+	//
+	// netmon.RegisterInterfaceGetter lets a caller substitute the interface-
+	// enumeration implementation tsnet uses internally - this registers
+	// github.com/wlynxg/anet's Android-compatible implementation (a small
+	// library purpose-built for exactly this problem, referencing upstream
+	// Go issues golang/go#68082 and golang/go#40569), the same mechanism
+	// Tailscale's own official Android app uses. Must run before any
+	// tsnet.Server method is called.
+	netmon.RegisterInterfaceGetter(androidInterfaceGetter)
 }
+
+func androidInterfaceGetter() ([]netmon.Interface, error) {
+	ifs, err := anet.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]netmon.Interface, 0, len(ifs))
+	for i := range ifs {
+		ifi := ifs[i]
+		addrs, err := anet.InterfaceAddrsByInterface(&ifi)
+		if err != nil {
+			// Best effort - an interface we can't get addresses for just
+			// gets reported with none, rather than dropping it (and
+			// whatever info it does have) entirely.
+			addrs = nil
+		}
+		result = append(result, netmon.Interface{
+			Interface: &ifi,
+			AltAddrs:  addrs,
+		})
+	}
+	return result, nil
+}
+
+var _ = net.Interface{} // keep "net" import even if only used via anet's return types above
 
 // Client owns one embedded tailnet node. Not safe for concurrent use across
 // goroutines/threads without external synchronization - callers should treat

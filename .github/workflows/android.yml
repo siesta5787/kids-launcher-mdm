@@ -45,13 +45,20 @@ jobs:
         mkdir -p app/libs
         cd mobile
         go get tailscale.com/tsnet@latest
+        # Works around a real, currently-open upstream gap (tailscale/tailscale#17311):
+        # tsnet.Server.Start calls Go's net.Interfaces() internally, which Android's
+        # SELinux policy blocks for unprivileged apps - see tsembed.go's init().
+        go get github.com/wlynxg/anet@latest
         # Go 1.24+ requires a build tool to be an explicit `tool` dependency in
         # go.mod, not just globally `go install`'d - gomobile bind builds
         # generated glue code inside this module's context, so it needs
         # golang.org/x/mobile declared here too, not just on the CI runner's PATH.
         go get -tool golang.org/x/mobile/cmd/gobind
         gomobile init
-        gomobile bind -o ../app/libs/tsnet.aar -target=android/arm64 -androidapi 34 ./tsembed
+        # -checklinkname=0: anet uses //go:linkname internally (a low-level Go
+        # runtime linking mechanism) which Go 1.23+ restricts by default unless
+        # explicitly allowed - see github.com/wlynxg/anet's own build notes.
+        gomobile bind -o ../app/libs/tsnet.aar -target=android/arm64 -androidapi 34 -ldflags="-checklinkname=0" ./tsembed
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Read Debug Keystore
