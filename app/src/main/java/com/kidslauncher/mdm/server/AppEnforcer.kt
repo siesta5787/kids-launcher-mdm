@@ -225,20 +225,31 @@ object AppEnforcer {
     }
 
     /**
-     * Sets Android's always-on-VPN-with-lockdown requirement on the launcher's own package via
+     * Sets Android's always-on-VPN requirement on the launcher's own package via
      * [DevicePolicyManager.setAlwaysOnVpnPackage] - [KidVpnService] is now the device's only VPN
      * (the standalone Tailscale app and its managed-config/exit-node plumbing are retired; tsnet is
-     * embedded directly, see [TsnetClient], and doesn't register as a VpnService at all). Enforced
-     * by the OS's connectivity stack directly, independent of anything running inside this app -
-     * the same reasoning that motivated switching to this API for Tailscale originally (its own
-     * Quick Settings tile didn't honor the in-app-only managed-config restriction).
+     * embedded directly, see [TsnetClient], and doesn't register as a VpnService at all). This is
+     * what makes Android auto-start/restart the service as needed, independent of anything this app
+     * does itself.
      *
-     * Unconditional, not gated on any policy field - this isn't an admin-configurable feature
-     * anymore, it's the device's baseline network path. Safe to lock down unlike the old
-     * Tailscale-without-an-exit-node case (github.com/tailscale/tailscale#12925): lockdown only
-     * blocks traffic while the VPN isn't connected, and [KidVpnService] itself never captures
-     * general traffic even while running (it only ever routes its one fake DNS-server address, see
-     * that class's doc comment) - so there's no split-tunnel gap for lockdown to strand traffic in.
+     * Lockdown is deliberately NOT enabled here - unconditional, not gated on any policy field,
+     * because it's actively wrong for this VPN's design, not just risky. Confirmed live: with
+     * lockdown on, once this VPN becomes the system default network, `dumpsys connectivity` showed
+     * its routes as only the one fake-DNS-server address plus an explicit `::/0 unreachable` -
+     * [KidVpnService] deliberately never adds a general/default route (see that class's doc comment
+     * on why: it's what makes the "everything else flows over the real network untouched" design
+     * work at all when NOT locked down). Lockdown forces every app's traffic onto this network
+     * regardless of what routes it declares, so with no default route to fall back to, general
+     * internet connectivity broke device-wide - not a hypothetical, reproduced on the very first
+     * live test of this code. This is the exact same failure mode as the old
+     * Tailscale-without-an-exit-node bug (github.com/tailscale/tailscale#12925) that motivated
+     * gating lockdown on an exit node being configured for that VPN - except here there's no
+     * equivalent "configure a broader route" escape hatch to gate on, since narrow routing is
+     * permanent by design, not a transient unconfigured state. Without lockdown, Android's
+     * always-on designation still auto-restarts the service and still blocks a kid from disabling
+     * it via Settings (both Device-Owner-enforced); the only thing lost is that DNS briefly goes
+     * unfiltered through the OS's normal path if the service is ever down, which is an acceptable
+     * gap next to bricking the device's entire network.
      */
     private fun applyVpnRestrictions(
         dpm: DevicePolicyManager,
@@ -246,7 +257,7 @@ object AppEnforcer {
         ownPackage: String,
     ) {
         try {
-            dpm.setAlwaysOnVpnPackage(admin, ownPackage, true)
+            dpm.setAlwaysOnVpnPackage(admin, ownPackage, false)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to set always-on VPN", e)
         }
