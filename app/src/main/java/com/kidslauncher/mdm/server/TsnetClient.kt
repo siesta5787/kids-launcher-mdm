@@ -35,6 +35,14 @@ private const val SOCKS_USERNAME = "tsnet"
 object TsnetClient {
     private var client: Client? = null
 
+    // The (hostname, authKey, stateDir) the current [client] was constructed with. tsnet.Server's
+    // AuthKey is only read at construction time (Tsembed.new_), so without tracking this,
+    // connect() below would keep reusing a Client built with a stale key forever after the first
+    // call in this process's lifetime - a real bug hit live: updating the auth key in Settings had
+    // no effect until the app was force-stopped, since the cached Client's Go-side AuthKey field
+    // never changed.
+    private var clientParams: Triple<String, String, String>? = null
+
     @Volatile
     var proxyAddress: String? = null
         private set
@@ -61,7 +69,17 @@ object TsnetClient {
         timeoutSeconds: Long = 30,
     ): String? {
         return try {
-            val c = client ?: Tsembed.new_(hostname, authKey, stateDir).also { client = it }
+            val params = Triple(hostname, authKey, stateDir)
+            if (params != clientParams) {
+                client?.close()
+                proxyAddress = null
+                proxyCredential = null
+                client = null
+            }
+            val c = client ?: Tsembed.new_(hostname, authKey, stateDir).also {
+                client = it
+                clientParams = params
+            }
             val ip = c.up(timeoutSeconds)
             val addr = c.startProxy()
             val cred = c.proxyCredential()
@@ -113,6 +131,7 @@ object TsnetClient {
             Log.w(LOG_TAG, "Failed to close tsnet client", e)
         } finally {
             client = null
+            clientParams = null
             proxyAddress = null
             proxyCredential = null
         }
