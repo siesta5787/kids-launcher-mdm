@@ -205,7 +205,15 @@ private suspend fun currentLocationReport(
  * tracked app server-side - so there's no special-cased launcher-update code here at all. The one
  * real place self-update still differs is [AppInstallReceiver] skipping its cache-file cleanup on
  * success, since installing over yourself risks the process dying before that line runs. One
- * app's failure never affects another's, or the rest of the sync.
+ * app's failure never affects another's, or the rest of the sync - *except* the launcher's own
+ * self-update, which is why it's always processed last (see the reordering below): installing an
+ * update over the running app can get this process SIGKILLed the moment [AppInstaller] commits
+ * that session, and everything after that point in this function (any other app still queued in
+ * this loop, [reportBlockedDnsEvents] back in [performMdmSync]) would simply never run this cycle.
+ * A committed [android.content.pm.PackageInstaller] session is handled by the OS from that point
+ * on regardless of whether this process survives, so every other app's install is safe to have
+ * already been kicked off first - it isn't reverted just because we don't stick around to see the
+ * result.
  */
 private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
     val updates = try {
@@ -215,8 +223,9 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
         return
     }
 
+    val (launcherUpdates, otherUpdates) = updates.partition { it.isLauncher }
     val state = TrackedAppUpdateState.load()
-    for (update in updates) {
+    for (update in otherUpdates + launcherUpdates) {
         val key = update.id.toString()
         val known = state[key]
         if (update.releaseTag == known?.lastInstalledTag || update.releaseTag == known?.lastFailedTag) {
