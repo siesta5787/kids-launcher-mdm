@@ -142,6 +142,12 @@
             android:name=".server.AppInstallReceiver"
             android:exported="false" />
 
+        <!-- Not externally reachable - only ever triggered via the PendingIntent passed to
+             PackageInstaller.uninstall() in AppInstaller.kt. -->
+        <receiver
+            android:name=".server.AppUninstallReceiver"
+            android:exported="false" />
+
         <!-- Not externally reachable - only ever triggered via the "Stop Ringing" action's own
              PendingIntent on the notification LocateCommands.ring() shows. -->
         <receiver

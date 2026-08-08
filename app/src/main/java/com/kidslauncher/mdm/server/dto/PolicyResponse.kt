@@ -26,6 +26,10 @@ import kotlinx.serialization.Serializable
  * [vpnFilterEnabled] is a per-device admin toggle for [com.kidslauncher.mdm.server.KidVpnService]
  * itself (not a blocklist/domain setting) - see [com.kidslauncher.mdm.server.AppEnforcer.applyVpnRestrictions].
  * Defaults true; a parent can turn off ad/content filtering for a specific kid's device entirely.
+ * [packagesToUninstall] are packages the admin unchecked in the "Apps to install" list while they
+ * were still on the device - [MdmSyncWorker] uninstalls each silently (Device Owner privilege, no
+ * confirmation dialog) on every sync where this is non-empty; the server clears an entry once a
+ * later status report confirms the package is actually gone, not on any client-side acknowledgement.
  */
 @Serializable
 data class PolicyResponse(
@@ -47,4 +51,5 @@ data class PolicyResponse(
     val vpnFilterEnabled: Boolean = true,
     val dnsFilterVersion: String? = null,
     val dnsUpstreamProvider: String = "cloudflare",
+    val packagesToUninstall: List<String> = emptyList(),
 )

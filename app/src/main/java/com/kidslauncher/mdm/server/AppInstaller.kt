@@ -15,6 +15,8 @@ const val APP_INSTALL_KEY_EXTRA = "install_key"
 const val APP_INSTALL_NAME_EXTRA = "install_name"
 const val APP_INSTALL_IS_LAUNCHER_EXTRA = "is_launcher"
 const val APP_INSTALL_RELEASE_TAG_EXTRA = "release_tag"
+const val APP_UNINSTALL_ACTION = "com.kidslauncher.mdm.APP_UNINSTALL_RESULT"
+const val APP_UNINSTALL_PACKAGE_NAME_EXTRA = "package_name"
 
 /**
  * Silently installs a downloaded APK for any tracked app - a third-party app (e.g. Tailscale) or
@@ -89,6 +91,31 @@ object AppInstaller {
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to start silent install of $installKey", e)
             apkFile.delete()
+        }
+    }
+
+    /** Silently uninstalls [packageName] - no confirmation dialog, same Device Owner privilege
+     * class as [installSilently]. Fire-and-forget: [AppUninstallReceiver] only logs the result,
+     * since the server confirms completion itself from the next status report (see
+     * [PolicyResponse.packagesToUninstall]'s doc comment) rather than needing an explicit
+     * client-side acknowledgement. Uninstalling an already-absent package fails harmlessly. */
+    fun uninstallSilently(context: Context, packageName: String) {
+        try {
+            val resultIntent = Intent(context, AppUninstallReceiver::class.java)
+                .setAction(APP_UNINSTALL_ACTION)
+                .putExtra(APP_UNINSTALL_PACKAGE_NAME_EXTRA, packageName)
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.FLAG_MUTABLE
+                } else {
+                    0
+                }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, packageName.hashCode(), resultIntent, flags
+            )
+            context.packageManager.packageInstaller.uninstall(packageName, pendingIntent.intentSender)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to start silent uninstall of $packageName", e)
         }
     }
 }

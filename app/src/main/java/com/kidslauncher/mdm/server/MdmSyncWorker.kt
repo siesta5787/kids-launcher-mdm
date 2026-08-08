@@ -15,6 +15,8 @@ import com.kidslauncher.mdm.server.dto.PendingCommand
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
 import com.kidslauncher.mdm.preferences.LauncherPreferences
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.io.File
@@ -22,6 +24,19 @@ import java.time.Instant
 import java.util.Calendar
 
 private const val LOG_TAG = "MdmSyncWorker"
+
+// CommandListenerService's periodic timer, its SSE push-nudge handler, and the Settings screen's
+// "Sync now" button each independently call performMdmSync with no coordination between them -
+// confirmed live that two overlapping calls processing the same pending tracked-app update (most
+// often the launcher's own self-update, which is in every device's batch whenever a new build's
+// published) race on the shared per-app cache file: one call's AppInstallReceiver cleanup (delete
+// on failure) can delete the file a second, still-in-flight call just wrote, or corrupt it
+// mid-write - producing exactly the INSTALL_PARSE_FAILED_NO_CERTIFICATES / FileNotFoundException
+// failures seen in logcat. withLock (not tryLock-and-skip) so a sync that lands while another's
+// already running queues and still completes, rather than silently no-oping - the trade-off is an
+// occasional redundant back-to-back sync when two triggers land close together, which is cheap
+// compared to a corrupted install.
+private val syncMutex = Mutex()
 
 /**
  * Combined heartbeat + policy sync: policy fetch/cache/evaluate, app allowlist + kiosk
@@ -35,7 +50,7 @@ private const val LOG_TAG = "MdmSyncWorker"
  * network contact happened, for callers like the "Sync now" button that want to tell the user
  * the truth about whether it worked.
  */
-suspend fun performMdmSync(context: Context): Boolean {
+suspend fun performMdmSync(context: Context): Boolean = syncMutex.withLock {
     val mdm = LauncherPreferences.mdm()
     val serverUrl = mdm.serverUrl()
     val deviceToken = mdm.deviceToken()
@@ -75,6 +90,11 @@ suspend fun performMdmSync(context: Context): Boolean {
         // been delivered and consumed server-side, and replaying it from cache while offline would
         // re-run an old command (harmless for ring, not for lock/wipe).
         dispatchPendingCommand(context, api, dpm, admin, freshPolicy.pendingCommand)
+        // Same "only off a genuinely fresh fetch" reasoning as the pending-command dispatch above -
+        // the server clears an entry once a status report confirms the package is gone, so acting
+        // on a stale cached list while offline would just be redundant, not actively harmful, but
+        // there's no reason to.
+        freshPolicy.packagesToUninstall.forEach { AppInstaller.uninstallSilently(context, it) }
     }
     val policy = freshPolicy ?: mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
 
@@ -243,7 +263,12 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
                 notifyAppInstallResult(context, update.id, update.name, success = false)
                 continue
             }
-            val apkFile = File(context.cacheDir, "tracked_app_${key}.apk")
+            // Unique per attempt (not just per app id) - defense in depth alongside the syncMutex
+            // above: even a future caller that bypasses the mutex can't have two downloads corrupt
+            // or delete each other's file if they never share a path. context.cacheDir is
+            // OS-reclaimable under storage pressure, so a launcher self-update's file (deliberately
+            // left behind on success - see AppInstallReceiver) doesn't need explicit cleanup here.
+            val apkFile = File(context.cacheDir, "tracked_app_${key}_${System.nanoTime()}.apk")
             body.byteStream().use { input ->
                 apkFile.outputStream().use { output -> input.copyTo(output) }
             }
