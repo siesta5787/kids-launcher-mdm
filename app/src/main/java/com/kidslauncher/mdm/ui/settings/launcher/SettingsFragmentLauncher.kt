@@ -115,9 +115,20 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             // preference themselves, rather than taking it as a parameter) see the new value.
             // No network call: this is what makes the toggle take effect immediately instead of
             // only on the next sync (which is what made it look broken while testing offline).
+            //
+            // The posted block itself must stay tiny and hand off to a background coroutine
+            // rather than call AppEnforcer.apply() directly - confirmed live this froze the UI
+            // thread for several seconds and triggered an ANR/force-close once apply() started
+            // (re)starting KidVpnService, whose onCreate() does a synchronous disk read
+            // (DnsFilterEngine.loadFromDisk) that's too slow for the main thread. AppEnforcer.apply()
+            // was never actually cheap either (a DevicePolicyManager Binder call per changed
+            // package), it just hadn't been reached by a slow enough operation to notice before.
+            val context = requireContext()
             view?.post {
-                AppEnforcer.apply(requireContext(), cachedPolicy())
-                reevaluateLockReasonFromCache()
+                CoroutineScope(Dispatchers.IO).launch {
+                    AppEnforcer.apply(context, cachedPolicy())
+                    reevaluateLockReasonFromCache()
+                }
             }
             true
         }
