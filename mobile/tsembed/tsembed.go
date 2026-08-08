@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/wlynxg/anet"
@@ -97,6 +98,21 @@ type Client struct {
 // its node identity/keys there so the device doesn't need to re-authenticate
 // with authKey on every restart.
 func New(hostname, authKey, stateDir string) *Client {
+	// logpolicy.LogsDir (called internally by tsnet.Server.Start, separately
+	// from Server.Dir above) searches TS_LOGS_DIR, then a handful of
+	// platform-specific defaults, then os.UserCacheDir(), then the working
+	// directory, then a temp dir - and panics with "no safe place found to
+	// store log state" if every candidate fails. On Android none of those
+	// work: no platform default exists, os.UserCacheDir() errors outright
+	// since $HOME/$XDG_CACHE_HOME are never set in an app process, and the
+	// working directory isn't writable. Pointing TS_LOGS_DIR at a subdir of
+	// our own already-writable stateDir short-circuits the whole search.
+	// TS_NO_LOGS_NO_SUPPORT (set below) only skips uploading this state
+	// somewhere, not the local directory search itself, so both are needed.
+	logsDir := filepath.Join(stateDir, "logs")
+	os.MkdirAll(logsDir, 0700)
+	os.Setenv("TS_LOGS_DIR", logsDir)
+
 	return &Client{
 		srv: &tsnet.Server{
 			Hostname:  hostname,
