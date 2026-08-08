@@ -155,7 +155,7 @@ object AppEnforcer {
 
         applyPrivateDnsLock(dpm, admin)
 
-        applySideloadRestriction(dpm, admin)
+        applySideloadRestriction(dpm, admin, blockSideloading = !overrideActive)
     }
 
     /**
@@ -316,11 +316,14 @@ object AppEnforcer {
     }
 
     /**
-     * Unconditionally blocks installing apps from outside the device's trusted app store
-     * (sideloaded APKs - e.g. one downloaded via an allowlisted browser) - not gated on any policy
-     * field and not lifted during an offline override/pause-restrictions, same reasoning as
-     * [applyPrivateDnsLock]: a baseline safety measure, not a kid-facing access restriction an
-     * emergency escape hatch should ever need to lift. Doesn't affect the device's own app store
+     * Blocks installing apps from outside the device's trusted app store (sideloaded APKs - e.g.
+     * one downloaded via an allowlisted browser). Not gated on any policy field, but - unlike
+     * [applyPrivateDnsLock], which this was originally modeled on - IS lifted while an offline
+     * override or the pause-restrictions kill-switch is active, via [blockSideloading]. Confirmed
+     * live this needed to be the standing rule for every restriction added here going forward, not
+     * just this one: the whole point of those overrides is a guaranteed, fully-unblocked device
+     * when something's wrong, and there's no such thing as a restriction a parent can't reach
+     * through their own offline PIN if they need to. Doesn't affect the device's own app store
      * (Play Store / GrapheneOS's, if present) installing or updating apps, nor this app's own
      * Device-Owner `PackageInstaller`-based tracked-app pushes (see `AppInstaller.kt`) - both go
      * through a privileged install path this restriction doesn't gate at all, only the
@@ -331,11 +334,13 @@ object AppEnforcer {
      *
      * Doesn't, on its own, stop a kid from *opening* an already-installed app that isn't on the
      * allowlist - that's [enforceOnNewPackage]'s job for anything installed after this policy
-     * first applied, same as the regular suspend/hide loop above for anything already present.
+     * first applied, same as the regular suspend/hide loop above for anything already present
+     * ([enforceOnNewPackage] already respects the same overrides independently, since it runs
+     * outside this function entirely - see its own doc comment).
      */
-    private fun applySideloadRestriction(dpm: DevicePolicyManager, admin: ComponentName) {
-        setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES, true)
-        setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY, true)
+    private fun applySideloadRestriction(dpm: DevicePolicyManager, admin: ComponentName, blockSideloading: Boolean) {
+        setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES, blockSideloading)
+        setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY, blockSideloading)
     }
 
     /**
