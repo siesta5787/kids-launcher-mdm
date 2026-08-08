@@ -11,7 +11,8 @@ import java.io.File
 private const val LOG_TAG = "AppInstaller"
 const val APP_INSTALL_ACTION = "com.kidslauncher.mdm.APP_INSTALL_RESULT"
 const val APP_INSTALL_APK_PATH_EXTRA = "apk_path"
-const val APP_INSTALL_PACKAGE_NAME_EXTRA = "package_name"
+const val APP_INSTALL_KEY_EXTRA = "install_key"
+const val APP_INSTALL_IS_LAUNCHER_EXTRA = "is_launcher"
 const val APP_INSTALL_RELEASE_TAG_EXTRA = "release_tag"
 
 /**
@@ -21,11 +22,23 @@ const val APP_INSTALL_RELEASE_TAG_EXTRA = "release_tag"
  * determines install-vs-update purely from the APK's own embedded package name, so no special
  * handling is needed either way at this layer; the one place self-update genuinely differs is
  * [AppInstallReceiver] skipping its cache-file cleanup on success, since installing over yourself
- * risks the process dying before that line gets to run.
+ * risks the process dying before that line gets to run - see [isLauncher].
  */
 object AppInstaller {
 
-    fun installSilently(context: Context, apkFile: File, packageName: String, releaseTag: String) {
+    /** [installKey] is [TrackedAppUpdate.id], stringified - an arbitrary-but-stable label for
+     * [PackageInstaller.Session.openWrite]'s required "name" argument (which doesn't need to be a
+     * real Android package name; Android determines the actually-installed package from the APK's
+     * own signed manifest at commit time, not from this string). [isLauncher] is threaded through
+     * to [AppInstallReceiver] so it can decide whether this install is the launcher's own
+     * self-update without relying on a package-name string comparison. */
+    fun installSilently(
+        context: Context,
+        apkFile: File,
+        installKey: String,
+        isLauncher: Boolean,
+        releaseTag: String,
+    ) {
         val packageInstaller = context.packageManager.packageInstaller
         val params =
             PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -37,7 +50,7 @@ object AppInstaller {
             val sessionId = packageInstaller.createSession(params)
             packageInstaller.openSession(sessionId).use { session ->
                 apkFile.inputStream().use { input ->
-                    session.openWrite(packageName, 0, apkFile.length()).use { output ->
+                    session.openWrite(installKey, 0, apkFile.length()).use { output ->
                         input.copyTo(output)
                         session.fsync(output)
                     }
@@ -54,7 +67,8 @@ object AppInstaller {
                 val resultIntent = Intent(context, AppInstallReceiver::class.java)
                     .setAction(APP_INSTALL_ACTION)
                     .putExtra(APP_INSTALL_APK_PATH_EXTRA, apkFile.absolutePath)
-                    .putExtra(APP_INSTALL_PACKAGE_NAME_EXTRA, packageName)
+                    .putExtra(APP_INSTALL_KEY_EXTRA, installKey)
+                    .putExtra(APP_INSTALL_IS_LAUNCHER_EXTRA, isLauncher)
                     .putExtra(APP_INSTALL_RELEASE_TAG_EXTRA, releaseTag)
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -67,7 +81,7 @@ object AppInstaller {
                 session.commit(pendingIntent.intentSender)
             }
         } catch (e: Exception) {
-            Log.w(LOG_TAG, "Failed to start silent install of $packageName", e)
+            Log.w(LOG_TAG, "Failed to start silent install of $installKey", e)
             apkFile.delete()
         }
     }

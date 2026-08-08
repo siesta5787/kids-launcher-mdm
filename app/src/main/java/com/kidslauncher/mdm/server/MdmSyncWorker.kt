@@ -196,13 +196,14 @@ private suspend fun currentLocationReport(
 
 /**
  * Downloads and silently installs a newer release for every app tracked server-side (see
- * kid-phone-server's `handlers::tracked_apps`) - either from a GitHub repo's Releases (e.g.
- * Tailscale) or manually uploaded by an admin. The launcher's own self-update goes through this
- * exact same path now too - it's just another tracked app server-side, package name
- * [BuildConfig.APPLICATION_ID] - so there's no special-cased launcher-update code here at all.
- * The one real place self-update still differs is [AppInstallReceiver] skipping its cache-file
- * cleanup on success, since installing over yourself risks the process dying before that line
- * runs. One app's failure never affects another's, or the rest of the sync.
+ * kid-phone-server's `handlers::tracked_apps`) that's actually scoped to this device (or is the
+ * launcher itself, see [TrackedAppUpdate.isLauncher] - always included regardless of scoping) -
+ * either from a GitHub repo's Releases (e.g. Tailscale) or manually uploaded by an admin. The
+ * launcher's own self-update goes through this exact same path now too, since it's just another
+ * tracked app server-side - so there's no special-cased launcher-update code here at all. The one
+ * real place self-update still differs is [AppInstallReceiver] skipping its cache-file cleanup on
+ * success, since installing over yourself risks the process dying before that line runs. One
+ * app's failure never affects another's, or the rest of the sync.
  */
 private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
     val updates = try {
@@ -214,19 +215,20 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
 
     val state = TrackedAppUpdateState.load()
     for (update in updates) {
-        val known = state[update.packageName]
+        val key = update.id.toString()
+        val known = state[key]
         if (update.releaseTag == known?.lastInstalledTag || update.releaseTag == known?.lastFailedTag) {
             continue
         }
 
         try {
             val body = api.downloadTrackedApp(update.downloadUrl).body() ?: continue
-            val apkFile = File(context.cacheDir, "tracked_app_${update.packageName}.apk")
+            val apkFile = File(context.cacheDir, "tracked_app_${key}.apk")
             body.byteStream().use { input ->
                 apkFile.outputStream().use { output -> input.copyTo(output) }
             }
             Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag}, installing")
-            AppInstaller.installSilently(context, apkFile, update.packageName, update.releaseTag)
+            AppInstaller.installSilently(context, apkFile, key, update.isLauncher, update.releaseTag)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Update check failed for ${update.packageName}", e)
         }

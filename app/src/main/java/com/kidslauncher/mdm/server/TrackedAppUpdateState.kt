@@ -15,12 +15,15 @@ data class TrackedAppState(
 )
 
 /**
- * Per-package install/failure tracking for apps tracked from GitHub Releases (see [AppInstaller],
+ * Per-app install/failure tracking for apps tracked from GitHub Releases (see [AppInstaller],
  * [MdmSyncWorker]'s tracked-app sync) - cached as one JSON blob in a single preference, the same
  * "small JSON blob in a String preference" pattern already used for `kid_mode_policy`, rather than
  * a new custom preference-annotation serializer for a `Map` type. Without this, a release that
  * fails to install (or one that's already installed) would be re-downloaded and re-attempted every
- * 2-minute sync forever.
+ * 2-minute sync forever. Keyed by [TrackedAppUpdate.id] (as a string - stringified once at the
+ * call site, not here, to keep this a plain `Map<String, _>` like the preference blob it mirrors),
+ * not the app's Android package name - that's optional server-side now and can't be trusted to be
+ * present or unique across tracked apps.
  */
 object TrackedAppUpdateState {
 
@@ -49,16 +52,16 @@ object TrackedAppUpdateState {
             .commit()
     }
 
-    fun recordInstalled(context: Context, packageName: String, releaseTag: String) {
+    fun recordInstalled(context: Context, appKey: String, releaseTag: String) {
         val state = load().toMutableMap()
-        state[packageName] = TrackedAppState(lastInstalledTag = releaseTag)
+        state[appKey] = TrackedAppState(lastInstalledTag = releaseTag)
         save(context, state)
     }
 
-    fun recordFailed(context: Context, packageName: String, releaseTag: String) {
+    fun recordFailed(context: Context, appKey: String, releaseTag: String) {
         val state = load().toMutableMap()
-        val lastInstalledTag = state[packageName]?.lastInstalledTag
-        state[packageName] = TrackedAppState(lastInstalledTag, lastFailedTag = releaseTag)
+        val lastInstalledTag = state[appKey]?.lastInstalledTag
+        state[appKey] = TrackedAppState(lastInstalledTag, lastFailedTag = releaseTag)
         save(context, state)
     }
 }
