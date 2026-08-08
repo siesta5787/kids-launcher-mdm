@@ -19,10 +19,30 @@ package tsembed
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"tailscale.com/tsnet"
 )
+
+func init() {
+	// Confirmed live: without this, tsnet.Server.Start fails outright on
+	// Android with "route ip+net: netlinkrib: permission denied" - Android's
+	// SELinux policy blocks unprivileged apps from netlink route-table
+	// queries, and that error comes from logpolicy.NewLogtailTransport (log
+	// upload setup) calling net.Interfaces() internally, not from any code
+	// path this app actually needs - see tailscale/tailscale#17311 (open,
+	// unresolved upstream as of this writing) vs tailscale/tailscale#9836
+	// (a similar but different call path, already fixed via Android build
+	// tags in wgengine/router - those don't cover this one).
+	// TS_NO_LOGS_NO_SUPPORT is Tailscale's own documented opt-out of client
+	// log uploads, which skips constructing that transport entirely -
+	// desirable on its own merits for this project anyway (an embedded
+	// tailnet client on a kid's device shouldn't be uploading operational
+	// logs to Tailscale's servers), and happens to route around this bug as
+	// a side effect. Must be set before any tsnet.Server method runs.
+	os.Setenv("TS_NO_LOGS_NO_SUPPORT", "true")
+}
 
 // Client owns one embedded tailnet node. Not safe for concurrent use across
 // goroutines/threads without external synchronization - callers should treat
@@ -41,9 +61,9 @@ type Client struct {
 func New(hostname, authKey, stateDir string) *Client {
 	return &Client{
 		srv: &tsnet.Server{
-			Hostname: hostname,
-			AuthKey:  authKey,
-			Dir:      stateDir,
+			Hostname:  hostname,
+			AuthKey:   authKey,
+			Dir:       stateDir,
 			Ephemeral: false,
 		},
 	}
