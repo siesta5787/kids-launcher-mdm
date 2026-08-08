@@ -63,12 +63,23 @@ class CommandListenerService : Service() {
     private var reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
     private var stopped = false
 
-    private val client by lazy {
-        OkHttpClient.Builder()
+    /**
+     * Built fresh on every [connect] call, not cached - the server is now only reachable over the
+     * embedded tailnet (see CLAUDE.md's on-device-filtering/embedded-tsnet migration: KidVpnService
+     * is the device's sole always-on VPN as of Phase D, so there's no more OS-level MagicDNS/routing
+     * from a standalone Tailscale app for a plain client to piggyback on), so this needs
+     * [TsnetClient]'s SOCKS5 proxy exactly like [createMdmApi] already uses - and a cached client
+     * built before that connects would stay proxy-less forever, the same staleness bug already once
+     * fixed in [TsnetClient.connect] itself. [connect] already retries via [scheduleReconnect] until
+     * this succeeds, so rebuilding here each time costs nothing extra.
+     */
+    private fun buildClient(): OkHttpClient {
+        val builder = OkHttpClient.Builder()
             // SSE connections are meant to stay open indefinitely - a normal read timeout would
             // tear this down and force a reconnect every time it elapsed.
             .readTimeout(0, TimeUnit.MILLISECONDS)
-            .build()
+        TsnetClient.proxy()?.let { builder.proxy(it) }
+        return builder.build()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -124,7 +135,7 @@ class CommandListenerService : Service() {
             .header("Authorization", "Bearer $deviceToken")
             .build()
 
-        eventSource = EventSources.createFactory(client).newEventSource(
+        eventSource = EventSources.createFactory(buildClient()).newEventSource(
             request,
             object : EventSourceListener() {
                 override fun onOpen(eventSource: EventSource, response: Response) {
