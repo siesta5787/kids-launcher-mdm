@@ -13,22 +13,16 @@ import kotlinx.serialization.Serializable
  * [wifiMode]/[bluetoothMode] are one of "open" | "restricted" | "disabled".
  * [overridePinHash]/[overridePinSalt] back the offline override PIN (see [com.kidslauncher.mdm.ui.LockActivity])
  * - both null means no PIN is configured for this device.
- * [requireTailscale]/[tailscaleExitNodeId] are pushed to the Tailscale app (`com.tailscale.ipn`)
- * as Android managed-app-restrictions (`ForceEnabled`/`ExitNodeID`) - see
- * [com.kidslauncher.mdm.server.AppEnforcer.applyVpnRestrictions]. A blank/null exit node ID means
- * no exit node is enforced.
  * [quickControlsMask] is the raw bitmask for which switches show up on the launcher's
  * swipe-left-from-home "Quick Controls" screen (1 = WiFi, 2 = Bluetooth, 4 = brightness) - see
  * [com.kidslauncher.mdm.ui.quickcontrols.QuickControlsActivity].
  * [pendingCommand] is Find My Device's remote-command queue (ring/lock/wipe) - see
  * [com.kidslauncher.mdm.server.LocateCommands] and [MdmSyncWorker]'s dispatch of it.
- * [forcePrivateDnsToPi] is a leftover from the retired DoT-to-Pi approach (see this repo's
- * CLAUDE.md) - the server no longer sends this field at all (Phase A of the on-device-filtering
- * migration removed it server-side), so this always deserializes to its default. Kept only until
- * [com.kidslauncher.mdm.server.AppEnforcer.applyPrivateDnsLock] and the Tailscale-app-specific
- * fields below are cleaned up together in a later pass - see [com.kidslauncher.mdm.server.KidVpnService].
- * [dnsFilterVersion]/[dnsUpstreamProvider] are the client-side-filtering replacement - see
- * [com.kidslauncher.mdm.server.DnsFilterEngine].
+ * [dnsFilterVersion]/[dnsUpstreamProvider] are the on-device DNS filtering fields - see
+ * [com.kidslauncher.mdm.server.DnsFilterEngine]. The standalone-Tailscale-app fields
+ * (`requireTailscale`/`tailscaleExitNodeId`) and the DoT-to-Pi Private DNS field
+ * (`forcePrivateDnsToPi`) that used to live here are gone along with the code that read them - see
+ * this repo's CLAUDE.md for the on-device-filtering/embedded-tsnet migration this was part of.
  */
 @Serializable
 data class PolicyResponse(
@@ -45,11 +39,8 @@ data class PolicyResponse(
     val bluetoothMode: String = "open",
     val overridePinHash: String? = null,
     val overridePinSalt: String? = null,
-    val requireTailscale: Boolean = false,
-    val tailscaleExitNodeId: String? = null,
     val quickControlsMask: Long = 0,
     val pendingCommand: PendingCommand? = null,
-    val forcePrivateDnsToPi: Boolean = false,
     val dnsFilterVersion: String? = null,
     val dnsUpstreamProvider: String = "cloudflare",
 )

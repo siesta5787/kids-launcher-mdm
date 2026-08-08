@@ -1,6 +1,9 @@
 package com.kidslauncher.mdm.server
 
+import android.content.Context
+import android.os.Build
 import android.util.Log
+import com.kidslauncher.mdm.preferences.LauncherPreferences
 import java.net.Authenticator
 import java.net.InetSocketAddress
 import java.net.PasswordAuthentication
@@ -91,6 +94,21 @@ object TsnetClient {
             Log.w(LOG_TAG, "Failed to connect to tailnet", e)
             null
         }
+    }
+
+    /**
+     * Reads the configured auth key/hostname/state dir from preferences and calls [connect] - the
+     * one shared entry point for every caller (eager kickoff from [com.kidslauncher.mdm.Application.onCreate],
+     * plus every [MdmSyncWorker] cycle as a retry-until-connected backstop), so hostname/state-dir
+     * computation lives in exactly one place. No-ops (returns null) if no auth key is configured yet,
+     * or if already connected - safe to call as often as needed.
+     */
+    fun connectFromPreferences(context: Context): String? {
+        val authKey = LauncherPreferences.mdm().tailscaleAuthKey()
+        if (authKey.isNullOrBlank() || connected) return null
+        val hostname = "kids-launcher-${Build.MODEL}".replace(Regex("[^A-Za-z0-9-]"), "-")
+        val stateDir = context.filesDir.resolve("tailscale").absolutePath
+        return connect(hostname, authKey, stateDir)
     }
 
     /** A [Proxy] pointing at the running SOCKS5 proxy, or null if not connected yet - see

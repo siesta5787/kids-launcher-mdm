@@ -16,6 +16,8 @@ import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.apps.AbstractAppInfo
 import com.kidslauncher.mdm.apps.AbstractDetailedAppInfo
 import com.kidslauncher.mdm.server.CommandListenerService
+import com.kidslauncher.mdm.server.KidVpnService
+import com.kidslauncher.mdm.server.TsnetClient
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.preferences.migratePreferencesToNewVersion
 import com.kidslauncher.mdm.preferences.resetPreferences
@@ -145,6 +147,16 @@ class Application : android.app.Application() {
         // sync directly off its own timer - see that class's doc comment for why this replaced a
         // separate WorkManager-based schedule() call here.
         CommandListenerService.start(this)
+
+        // The on-device DNS filter and the embedded tailnet connection are both the device's
+        // baseline network path now, not admin-configurable features - see CLAUDE.md's
+        // on-device-filtering/embedded-tsnet migration writeup. Both fail soft if not ready yet
+        // (no VPN consent granted, no auth key configured) and get retried on the next sync cycle
+        // (KidVpnService via Android's own always-on-VPN management once AppEnforcer.apply grants
+        // consent; TsnetClient via MdmSyncWorker's connectFromPreferences call) - see each class's
+        // own doc comment.
+        KidVpnService.start(this)
+        CoroutineScope(Dispatchers.IO).launch { TsnetClient.connectFromPreferences(this@Application) }
     }
 
     fun getCustomAppNames(): HashMap<AbstractAppInfo, String> {

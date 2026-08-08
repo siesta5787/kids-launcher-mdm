@@ -1,9 +1,12 @@
 package com.kidslauncher.mdm.server
 
+import android.content.Context
+import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.kidslauncher.mdm.NOTIFICATION_CHANNEL_VPN_FILTER
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.VPN_FILTER_NOTIFICATION_ID
@@ -230,5 +233,23 @@ class KidVpnService : VpnService() {
             Log.w(LOG_TAG, "Failed to close VPN interface", e)
         }
         pfd = null
+    }
+
+    companion object {
+        /**
+         * Call once at app startup - safe to call repeatedly, Android no-ops a redundant start
+         * (matches [CommandListenerService.start]'s own established pattern). Unconditional, not
+         * gated on enrollment/device-owner state: [startVpn]'s `establish()` already fails soft
+         * (logs and returns) if VPN consent isn't available yet - e.g. on first-ever launch, before
+         * [AppEnforcer.applyVpnRestrictions] has had a chance to grant it via
+         * `setAlwaysOnVpnPackage` on the first sync. From that point on Android's own always-on-VPN
+         * management takes over keeping this service running/restarted as needed, independent of
+         * this call - this just closes the gap between a fresh app launch and the first successful
+         * sync, so filtering doesn't need to wait on that.
+         */
+        fun start(context: Context) {
+            val intent = Intent(context, KidVpnService::class.java)
+            ContextCompat.startForegroundService(context, intent)
+        }
     }
 }

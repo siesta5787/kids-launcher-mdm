@@ -7,9 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.os.UserManager
 import android.util.Log
 import com.kidslauncher.mdm.server.dto.PolicyResponse
@@ -17,8 +15,6 @@ import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.HomeActivity
 
 private const val LOG_TAG = "AppEnforcer"
-
-private const val TAILSCALE_PACKAGE = "com.tailscale.ipn"
 
 /**
  * The set of packages [AppEnforcer] will ever consider suspending/hiding, and that
@@ -101,15 +97,9 @@ object AppEnforcer {
         val pm = context.packageManager
 
         val installedPackages = controllablePackages(pm)
-        val requireTailscale = effectivePolicy?.requireTailscale == true
 
         for (packageName in installedPackages) {
             if (packageName == ownPackage) continue
-            // Tailscale providing the connectivity that requireTailscale itself depends on must
-            // never be suspendable by the same policy that requires it - an admin who forgets to
-            // check it in the allowlist would otherwise cut the phone off from ever reaching the
-            // server again. Mirrors the ownPackage skip above; see applyVpnRestrictions.
-            if (requireTailscale && packageName == TAILSCALE_PACKAGE) continue
 
             val shouldBeSuspended = allowedPackages != null && packageName !in allowedPackages
             val currentlySuspended = try {
@@ -152,9 +142,9 @@ object AppEnforcer {
 
         applyRadioRestrictions(dpm, admin, effectivePolicy)
 
-        applyVpnRestrictions(dpm, admin, effectivePolicy)
+        applyVpnRestrictions(dpm, admin, ownPackage)
 
-        applyPrivateDnsLock(dpm, admin, effectivePolicy)
+        applyPrivateDnsLock(dpm, admin)
     }
 
     /**
@@ -235,119 +225,53 @@ object AppEnforcer {
     }
 
     /**
-     * Pushes [PolicyResponse.requireTailscale]/[PolicyResponse.tailscaleExitNodeId] to the
-     * Tailscale app as Android managed-app-restrictions (`ForceEnabled`/`ExitNodeID`) - the same
-     * `DevicePolicyManager.setApplicationRestrictions` mechanism used for any MDM-manageable app,
-     * confirmed against Tailscale's own `app_restrictions.xml`. `ForceEnabled` prevents the user
-     * from disconnecting Tailscale from within its own app; `ExitNodeID` forces routing through a
-     * specific exit node once one is configured (blank/null means none enforced yet). Always sets
-     * the full bundle explicitly, including the "off" case - otherwise a previously-pushed
-     * ForceEnabled=true would linger forever after a parent turns the toggle back off, since
-     * setApplicationRestrictions replaces the whole bundle rather than merging into it.
+     * Sets Android's always-on-VPN-with-lockdown requirement on the launcher's own package via
+     * [DevicePolicyManager.setAlwaysOnVpnPackage] - [KidVpnService] is now the device's only VPN
+     * (the standalone Tailscale app and its managed-config/exit-node plumbing are retired; tsnet is
+     * embedded directly, see [TsnetClient], and doesn't register as a VpnService at all). Enforced
+     * by the OS's connectivity stack directly, independent of anything running inside this app -
+     * the same reasoning that motivated switching to this API for Tailscale originally (its own
+     * Quick Settings tile didn't honor the in-app-only managed-config restriction).
      *
-     * Also sets Android's always-on-VPN-with-lockdown requirement via
-     * [DevicePolicyManager.setAlwaysOnVpnPackage] - a separate, OS-level enforcement layer on top
-     * of the managed-config bundle above. `ForceEnabled` only binds Tailscale's own in-app UI; it
-     * turned out Tailscale's own Quick Settings tile doesn't check the same flag, so a kid could
-     * still disconnect from there. `setAlwaysOnVpnPackage` is enforced by the OS's connectivity
-     * stack directly, independent of the VPN app's own cooperation - the real fix, not a
-     * replacement for `ForceEnabled` (which is still useful for the in-app UI). Kept as its own
-     * try/catch so a failure here (e.g. Tailscale not yet fully registered as a VpnService on
-     * first run) can't block the managed-config push above, or vice versa.
-     *
-     * Lockdown is only ever engaged when an exit node is also configured. Tailscale is a
-     * split-tunnel VPN by design - it only routes tailnet-destined traffic through its tunnel, not
-     * general internet traffic, unless an exit node is set. Lockdown forces *all* traffic through
-     * the VPN interface regardless; without an exit node, Tailscale's tunnel has nowhere to send
-     * non-tailnet packets, so they're just dropped - total loss of connectivity, confirmed live
-     * (this is Tailscale's own documented behavior, not a bug on our end - see
-     * github.com/tailscale/tailscale#12925 and #1568). An admin checking "Require Tailscale"
-     * without also setting an exit node must never be able to brick the phone's network - so
-     * lockdown only engages once both are present; `ForceEnabled` alone still applies regardless.
+     * Unconditional, not gated on any policy field - this isn't an admin-configurable feature
+     * anymore, it's the device's baseline network path. Safe to lock down unlike the old
+     * Tailscale-without-an-exit-node case (github.com/tailscale/tailscale#12925): lockdown only
+     * blocks traffic while the VPN isn't connected, and [KidVpnService] itself never captures
+     * general traffic even while running (it only ever routes its one fake DNS-server address, see
+     * that class's doc comment) - so there's no split-tunnel gap for lockdown to strand traffic in.
      */
     private fun applyVpnRestrictions(
         dpm: DevicePolicyManager,
         admin: ComponentName,
-        policy: PolicyResponse?,
+        ownPackage: String,
     ) {
-        val bundle = Bundle().apply {
-            putBoolean("ForceEnabled", policy?.requireTailscale == true)
-            val exitNodeId = policy?.tailscaleExitNodeId?.trim()
-            if (!exitNodeId.isNullOrEmpty()) {
-                putString("ExitNodeID", exitNodeId)
-            }
-        }
         try {
-            dpm.setApplicationRestrictions(admin, TAILSCALE_PACKAGE, bundle)
-        } catch (e: Exception) {
-            // Fails soft (e.g. Tailscale not installed yet) - never let this break the rest of a
-            // sync cycle, matching every other DPM call in this file.
-            Log.w(LOG_TAG, "Failed to apply Tailscale managed restrictions", e)
-        }
-
-        try {
-            val exitNodeConfigured = !policy?.tailscaleExitNodeId?.trim().isNullOrEmpty()
-            if (policy?.requireTailscale == true && exitNodeConfigured) {
-                dpm.setAlwaysOnVpnPackage(admin, TAILSCALE_PACKAGE, true)
-            } else {
-                dpm.setAlwaysOnVpnPackage(admin, null, false)
-            }
+            dpm.setAlwaysOnVpnPackage(admin, ownPackage, true)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to set always-on VPN", e)
         }
     }
 
     /**
-     * Locks Android's system-wide Private DNS to this server's own hostname when the admin site's
-     * global DNS/Filters toggle is on - see `dns_engine.rs`'s module doc comment on the server for
-     * the full picture. Confirmed live that plain port-53 interception has too many independent
-     * bypasses to rely on alone (exit-node routing quirks, per-app DNS-over-HTTPS, Tailscale's own
-     * MagicDNS override) - `setGlobalPrivateDnsModeSpecifiedHost` operates at the OS resolver
-     * level instead, and `DISALLOW_CONFIG_PRIVATE_DNS` prevents it being switched back via
-     * Settings. There is no public API to force Private DNS *off*, only to a specific host or
-     * "Automatic" - pointing it at this server's own DNS-over-TLS listener is the correct
-     * equivalent anyway, since it makes the encrypted path go through the filter rather than just
-     * disabling encryption.
-     *
-     * Deliberately fails closed if this server becomes unreachable (Android's "specified host"
-     * mode does not silently fall back to plain DNS) - an explicit choice, not an oversight: the
-     * existing offline-override PIN / Settings "pause restrictions" kill-switch already provide a
-     * fully-offline recovery path (both already flow into `effectivePolicy` being null, which this
-     * function treats the same as the server-side toggle being off), so there's no unblocked-
-     * internet fallback for a kid to fall into if the tailnet connection ever drops.
+     * Locks Android's system-wide Private DNS to Opportunistic (never a specific host - the retired
+     * DoT-to-Pi approach's `setGlobalPrivateDnsModeSpecifiedHost` call lived here previously, see
+     * this repo's CLAUDE.md) and prevents it being switched away via
+     * [UserManager.DISALLOW_CONFIG_PRIVATE_DNS]. Unconditional on every `apply()` call, not gated on
+     * any policy field - closes the one gap [KidVpnService]'s DNS filtering can't otherwise cover on
+     * its own: a kid manually switching Private DNS to Strict mode against some other resolver would
+     * produce encrypted DoT traffic on port 853 that this app can't inspect, silently bypassing
+     * filtering entirely. Opportunistic mode, by contrast, only *attempts* DoT and transparently
+     * falls back to plain port-53 DNS if that fails - which is exactly what happens against
+     * [KidVpnService]'s own fake DNS server, since it deliberately doesn't answer on port 853 (see
+     * that class's doc comment on why it must stay DoT-silent for this to work).
      */
     private fun applyPrivateDnsLock(
         dpm: DevicePolicyManager,
         admin: ComponentName,
-        policy: PolicyResponse?,
     ) {
-        val shouldLock = policy?.forcePrivateDnsToPi == true
         try {
-            if (shouldLock) {
-                val host = Uri.parse(LauncherPreferences.mdm().serverUrl()).host
-                if (host.isNullOrBlank()) {
-                    Log.w(LOG_TAG, "Cannot lock Private DNS - no valid server hostname configured")
-                    return
-                }
-                // Returns a status, not void - confirmed live this matters: Android actively
-                // tests connectivity to the specified host before accepting it, and silently
-                // stays on whatever mode was previously set if that test fails, with nothing
-                // else visibly wrong (the restriction below still applies either way). Logging
-                // the result is the only way to tell "locked to this Pi" apart from "Android
-                // rejected the host and quietly kept Automatic".
-                when (val result = dpm.setGlobalPrivateDnsModeSpecifiedHost(admin, host)) {
-                    DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR ->
-                        Log.i(LOG_TAG, "Private DNS locked to $host")
-                    DevicePolicyManager.PRIVATE_DNS_SET_ERROR_HOST_NOT_SERVING ->
-                        Log.w(LOG_TAG, "Private DNS lock rejected - $host does not appear to serve DNS-over-TLS (RFC 7858) right now")
-                    else ->
-                        Log.w(LOG_TAG, "Private DNS lock to $host failed, code=$result")
-                }
-                dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-            } else {
-                dpm.setGlobalPrivateDnsModeOpportunistic(admin)
-                dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-            }
+            dpm.setGlobalPrivateDnsModeOpportunistic(admin)
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to apply Private DNS lock", e)
         }
