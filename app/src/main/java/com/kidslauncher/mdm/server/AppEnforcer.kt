@@ -154,6 +154,8 @@ object AppEnforcer {
         applyVpnRestrictions(context, dpm, admin, vpnFilterEnabled)
 
         applyPrivateDnsLock(dpm, admin)
+
+        applySideloadRestriction(dpm, admin)
     }
 
     /**
@@ -310,6 +312,64 @@ object AppEnforcer {
             dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to apply Private DNS lock", e)
+        }
+    }
+
+    /**
+     * Unconditionally blocks installing apps from outside the device's trusted app store
+     * (sideloaded APKs - e.g. one downloaded via an allowlisted browser) - not gated on any policy
+     * field and not lifted during an offline override/pause-restrictions, same reasoning as
+     * [applyPrivateDnsLock]: a baseline safety measure, not a kid-facing access restriction an
+     * emergency escape hatch should ever need to lift. Doesn't affect the device's own app store
+     * (Play Store / GrapheneOS's, if present) installing or updating apps, nor this app's own
+     * Device-Owner `PackageInstaller`-based tracked-app pushes (see `AppInstaller.kt`) - both go
+     * through a privileged install path this restriction doesn't gate at all, only the
+     * user-facing "install unknown apps" permission a browser/file manager would otherwise need.
+     * Sets both the plain and device-wide ("_GLOBALLY") restrictions together since the public
+     * docs don't clearly distinguish which one a Device Owner on a single-user device (no separate
+     * work profile) actually needs to enforce this - costs nothing to set both.
+     *
+     * Doesn't, on its own, stop a kid from *opening* an already-installed app that isn't on the
+     * allowlist - that's [enforceOnNewPackage]'s job for anything installed after this policy
+     * first applied, same as the regular suspend/hide loop above for anything already present.
+     */
+    private fun applySideloadRestriction(dpm: DevicePolicyManager, admin: ComponentName) {
+        setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES, true)
+        setRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY, true)
+    }
+
+    /**
+     * Suspends/hides a single newly-installed package immediately if it's not on the current
+     * allowlist, rather than waiting for the next full [apply] cycle (up to the 5-minute periodic-
+     * sync backstop). Called from [com.kidslauncher.mdm.Application]'s `LauncherApps.Callback
+     * .onPackageAdded`, which fires the instant Android finishes installing anything - on-device,
+     * no network round-trip, regardless of whether the install came from an app store or (if
+     * [applySideloadRestriction] hasn't been set, or the app was already present before it was) a
+     * sideloaded APK. Deliberately narrower than a full [apply] pass: only this one package needs
+     * checking, so there's no reason to re-touch every other controllable package's state on every
+     * single install event.
+     */
+    fun enforceOnNewPackage(context: Context, packageName: String) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!dpm.isDeviceOwnerApp(context.packageName)) return
+        if (packageName == context.packageName) return
+        if (OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()) return
+
+        val allowedPackages = cachedPolicy()?.allowlist?.takeIf { it.isNotEmpty() }?.toSet() ?: return
+        if (packageName in allowedPackages) return
+
+        val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
+        try {
+            val notSuspended = dpm.setPackagesSuspended(admin, arrayOf(packageName), true)
+            if (!notSuspended.isNullOrEmpty()) {
+                Log.w(LOG_TAG, "Platform refused to suspend newly-installed $packageName")
+            }
+            val hiddenOk = dpm.setApplicationHidden(admin, packageName, true)
+            if (!hiddenOk) {
+                Log.w(LOG_TAG, "Platform refused to hide newly-installed $packageName")
+            }
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to suspend newly-installed $packageName", e)
         }
     }
 

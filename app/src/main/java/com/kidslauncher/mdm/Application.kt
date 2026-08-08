@@ -15,6 +15,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.apps.AbstractAppInfo
 import com.kidslauncher.mdm.apps.AbstractDetailedAppInfo
+import com.kidslauncher.mdm.server.AppEnforcer
 import com.kidslauncher.mdm.server.CommandListenerService
 import com.kidslauncher.mdm.server.KidVpnService
 import com.kidslauncher.mdm.server.TsnetClient
@@ -46,6 +47,16 @@ class Application : android.app.Application() {
 
         override fun onPackageAdded(p0: String?, p1: UserHandle?) {
             loadApps()
+            // Reacts to this specific install immediately (no network round-trip, no waiting on
+            // the next sync) - see AppEnforcer.enforceOnNewPackage's own doc comment. Called back
+            // on the main thread by default; AppEnforcer.enforceOnNewPackage does DevicePolicyManager
+            // Binder calls, which don't belong there (see the ANR this app already hit once from a
+            // similar main-thread AppEnforcer call in SettingsFragmentLauncher).
+            p0?.let { packageName ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    AppEnforcer.enforceOnNewPackage(this@Application, packageName)
+                }
+            }
         }
 
         override fun onPackageChanged(p0: String?, p1: UserHandle?) {
