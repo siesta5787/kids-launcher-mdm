@@ -86,9 +86,8 @@ object AppEnforcer {
         // server sent no policy at all - every branch below already means "fully open" for a null
         // policy (no allowlist, kiosk not desired, WiFi/Bluetooth "open"), so this reuses the same
         // code path rather than duplicating an "unlock everything" special case.
-        val effectivePolicy =
-            if (OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()) null
-            else policy
+        val overrideActive = OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()
+        val effectivePolicy = if (overrideActive) null else policy
 
         enforceDefaultHome(dpm, admin, context)
 
@@ -142,13 +141,17 @@ object AppEnforcer {
 
         applyRadioRestrictions(dpm, admin, effectivePolicy)
 
-        // Deliberately reads vpnFilterEnabled off the raw policy (fresh or cached-last-known - see
-        // MdmSyncWorker), not effectivePolicy, which goes null during an active offline override or
-        // the pause-restrictions kill-switch. Those exist to lift *access* restrictions (allowlist,
-        // kiosk, radios) when something's broken - they were never meant to also override a parent's
-        // separate, deliberate content-filtering choice. Only defaults to true (filtering on) for a
-        // device that's never completed a single sync, which has no admin choice to respect yet.
-        applyVpnRestrictions(context, dpm, admin, policy?.vpnFilterEnabled ?: true)
+        // Same "fully open" treatment as everything else while an override is active - confirmed
+        // live this needs to include the VPN filter too: the whole point of the offline-override PIN
+        // and the pause-restrictions kill-switch is a guaranteed working, unblocked device when
+        // something's wrong, which can include the VPN/filter itself misbehaving. An earlier version
+        // of this deliberately excluded vpnFilterEnabled from that (reasoning: an emergency escape
+        // hatch for access restrictions shouldn't silently override a parent's separate content-
+        // filtering choice) - wrong in practice, reverted. Only true-by-default (filtering on) when
+        // no override is active AND no policy has ever been fetched, which has no admin choice yet
+        // to respect.
+        val vpnFilterEnabled = if (overrideActive) false else (policy?.vpnFilterEnabled ?: true)
+        applyVpnRestrictions(context, dpm, admin, vpnFilterEnabled)
 
         applyPrivateDnsLock(dpm, admin)
     }
