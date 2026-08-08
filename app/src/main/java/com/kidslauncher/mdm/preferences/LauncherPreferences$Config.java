@@ -108,6 +108,11 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // tracked_app_update_state/cached_location_json above since it's a list,
                         // not a single blob, and gets drained (not just replaced) each sync.
                         @Preference(name = "blocked_dns_event_queue_json", type = String.class),
+                        // Cached from the last successful policy sync (PolicyResponse.vpnFilterEnabled)
+                        // so Application.onCreate's cold-start KidVpnService.start call - which runs
+                        // before any policy has ever been fetched - knows whether to start the service
+                        // at all. See AppEnforcer.applyVpnRestrictions, the only writer.
+                        @Preference(name = "vpn_filter_enabled", type = boolean.class, defaultValue = "true"),
                 }),
         })
 public final class LauncherPreferences$Config {

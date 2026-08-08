@@ -142,7 +142,13 @@ object AppEnforcer {
 
         applyRadioRestrictions(dpm, admin, effectivePolicy)
 
-        applyVpnRestrictions(dpm, admin, ownPackage)
+        // Deliberately reads vpnFilterEnabled off the raw policy (fresh or cached-last-known - see
+        // MdmSyncWorker), not effectivePolicy, which goes null during an active offline override or
+        // the pause-restrictions kill-switch. Those exist to lift *access* restrictions (allowlist,
+        // kiosk, radios) when something's broken - they were never meant to also override a parent's
+        // separate, deliberate content-filtering choice. Only defaults to true (filtering on) for a
+        // device that's never completed a single sync, which has no admin choice to respect yet.
+        applyVpnRestrictions(context, dpm, admin, policy?.vpnFilterEnabled ?: true)
 
         applyPrivateDnsLock(dpm, admin)
     }
@@ -250,16 +256,32 @@ object AppEnforcer {
      * it via Settings (both Device-Owner-enforced); the only thing lost is that DNS briefly goes
      * unfiltered through the OS's normal path if the service is ever down, which is an acceptable
      * gap next to bricking the device's entire network.
+     *
+     * [vpnFilterEnabled] is [PolicyResponse.vpnFilterEnabled] - a per-device admin toggle for the
+     * filter itself (independent of the lockdown discussion above). When off, both the always-on
+     * designation and the running service are torn down; when on, both are (re)established. Also
+     * caches the value so [com.kidslauncher.mdm.Application.onCreate]'s cold-start
+     * [KidVpnService.start] call - which runs before any policy has ever been fetched - knows
+     * whether to start the service at all, rather than always starting and then immediately
+     * stopping it again once this function runs on the first sync.
      */
     private fun applyVpnRestrictions(
+        context: Context,
         dpm: DevicePolicyManager,
         admin: ComponentName,
-        ownPackage: String,
+        vpnFilterEnabled: Boolean,
     ) {
+        LauncherPreferences.mdm().vpnFilterEnabled(vpnFilterEnabled)
         try {
-            dpm.setAlwaysOnVpnPackage(admin, ownPackage, false)
+            if (vpnFilterEnabled) {
+                dpm.setAlwaysOnVpnPackage(admin, context.packageName, false)
+                KidVpnService.start(context)
+            } else {
+                dpm.setAlwaysOnVpnPackage(admin, null, false)
+                KidVpnService.stop(context)
+            }
         } catch (e: Exception) {
-            Log.w(LOG_TAG, "Failed to set always-on VPN", e)
+            Log.w(LOG_TAG, "Failed to apply VPN filter enabled state", e)
         }
     }
 

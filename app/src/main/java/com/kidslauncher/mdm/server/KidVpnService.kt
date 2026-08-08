@@ -251,5 +251,11 @@ class KidVpnService : VpnService() {
             val intent = Intent(context, KidVpnService::class.java)
             ContextCompat.startForegroundService(context, intent)
         }
+
+        /** Stops the service if running - safe to call whether or not it's currently up. Used by
+         * [AppEnforcer.applyVpnRestrictions] when a parent turns filtering off for this device. */
+        fun stop(context: Context) {
+            context.stopService(Intent(context, KidVpnService::class.java))
+        }
     }
 }

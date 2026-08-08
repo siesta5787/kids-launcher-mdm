@@ -23,6 +23,9 @@ import kotlinx.serialization.Serializable
  * (`requireTailscale`/`tailscaleExitNodeId`) and the DoT-to-Pi Private DNS field
  * (`forcePrivateDnsToPi`) that used to live here are gone along with the code that read them - see
  * this repo's CLAUDE.md for the on-device-filtering/embedded-tsnet migration this was part of.
+ * [vpnFilterEnabled] is a per-device admin toggle for [com.kidslauncher.mdm.server.KidVpnService]
+ * itself (not a blocklist/domain setting) - see [com.kidslauncher.mdm.server.AppEnforcer.applyVpnRestrictions].
+ * Defaults true; a parent can turn off ad/content filtering for a specific kid's device entirely.
  */
 @Serializable
 data class PolicyResponse(
@@ -41,6 +44,7 @@ data class PolicyResponse(
     val overridePinSalt: String? = null,
     val quickControlsMask: Long = 0,
     val pendingCommand: PendingCommand? = null,
+    val vpnFilterEnabled: Boolean = true,
     val dnsFilterVersion: String? = null,
     val dnsUpstreamProvider: String = "cloudflare",
 )

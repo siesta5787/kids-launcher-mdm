@@ -154,8 +154,13 @@ class Application : android.app.Application() {
         // (no VPN consent granted, no auth key configured) and get retried on the next sync cycle
         // (KidVpnService via Android's own always-on-VPN management once AppEnforcer.apply grants
         // consent; TsnetClient via MdmSyncWorker's connectFromPreferences call) - see each class's
-        // own doc comment.
-        KidVpnService.start(this)
+        // own doc comment. KidVpnService itself IS gated - on the cached vpnFilterEnabled preference
+        // (PolicyResponse.vpnFilterEnabled, see AppEnforcer.applyVpnRestrictions) - so a device a
+        // parent has turned filtering off for doesn't flash it back on for a moment on every launch
+        // before the first sync corrects it.
+        if (LauncherPreferences.mdm().vpnFilterEnabled()) {
+            KidVpnService.start(this)
+        }
         CoroutineScope(Dispatchers.IO).launch { TsnetClient.connectFromPreferences(this@Application) }
     }
 
