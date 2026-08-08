@@ -25,6 +25,8 @@ val NOTIFICATION_CHANNEL_LISTENER = "launcher:command_listener"
 const val COMMAND_LISTENER_NOTIFICATION_ID = 1002
 val NOTIFICATION_CHANNEL_VPN_FILTER = "launcher:vpn_filter"
 const val VPN_FILTER_NOTIFICATION_ID = 1003
+val NOTIFICATION_CHANNEL_APP_INSTALL = "launcher:app_install"
+private const val APP_INSTALL_NOTIFICATION_ID_BASE = 2000
 
 fun createNotificationChannels(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -70,8 +72,71 @@ fun createNotificationChannels(context: Context) {
                 NotificationManager.IMPORTANCE_MIN
             )
         )
+        // LOW importance, not MIN - unlike the two foreground-service channels above, this one is
+        // meant to actually be seen (a parent glancing at the shade should be able to tell an app
+        // install/update - including the launcher's own silent self-update, which otherwise "just
+        // happens" with zero visible indication - is in progress), just without sound/heads-up
+        // interruption for something this routine.
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_APP_INSTALL,
+                context.getString(R.string.notification_channel_app_install),
+                NotificationManager.IMPORTANCE_LOW
+            )
+        )
     }
 }
+
+/** Shown while [MdmSyncWorker] downloads+installs one tracked app's update (including the
+ * launcher's own self-update) - cancelled by [notifyAppInstallResult] once the real result is
+ * known. One notification per app (keyed by [appId], the server's stable tracked-app id) so
+ * several updates queued in the same sync cycle don't clobber each other's progress notification. */
+fun notifyAppInstalling(context: Context, appId: Long, appName: String) {
+    val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_APP_INSTALL)
+        .setSmallIcon(android.R.drawable.stat_sys_download)
+        .setContentTitle(context.getString(R.string.notification_app_installing_title, appName))
+        .setOngoing(true)
+        .setAutoCancel(false)
+        .setPriority(NotificationCompat.PRIORITY_LOW)
+
+    try {
+        NotificationManagerCompat.from(context).notify(appInstallNotificationId(appId), builder.build())
+    } catch (e: SecurityException) {
+        Log.w("Notifications", "Could not show app-install notification for $appName", e)
+    }
+}
+
+/** On success, just cancels the ongoing "Installing..." notification - it disappearing is enough
+ * signal, and a lingering "Installed" toast isn't worth the extra notification. On failure, swaps
+ * it for a dismissible one, since a silently-failed background install/update is exactly the kind
+ * of thing worth surfacing (same reasoning as this channel's own doc comment above). */
+fun notifyAppInstallResult(context: Context, appId: Long, appName: String, success: Boolean) {
+    val notificationManager = NotificationManagerCompat.from(context)
+    val id = appInstallNotificationId(appId)
+    if (success) {
+        try {
+            notificationManager.cancel(id)
+        } catch (e: SecurityException) {
+            // Nothing to clean up if we can't reach the notification manager anyway.
+        }
+        return
+    }
+
+    val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_APP_INSTALL)
+        .setSmallIcon(android.R.drawable.stat_sys_warning)
+        .setContentTitle(context.getString(R.string.notification_app_install_failed_title, appName))
+        .setOngoing(false)
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_LOW)
+
+    try {
+        notificationManager.notify(id, builder.build())
+    } catch (e: SecurityException) {
+        Log.w("Notifications", "Could not show app-install-failed notification for $appName", e)
+    }
+}
+
+private fun appInstallNotificationId(appId: Long): Int = APP_INSTALL_NOTIFICATION_ID_BASE + appId.toInt()
 
 fun requestNotificationPermission(activity: Activity) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {

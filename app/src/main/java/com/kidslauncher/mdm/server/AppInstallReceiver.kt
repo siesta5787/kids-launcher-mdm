@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.util.Log
+import com.kidslauncher.mdm.notifyAppInstallResult
 import java.io.File
 
 private const val LOG_TAG = "AppInstallReceiver"
@@ -26,8 +27,10 @@ class AppInstallReceiver : BroadcastReceiver() {
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
         val apkPath = intent.getStringExtra(APP_INSTALL_APK_PATH_EXTRA)
         val installKey = intent.getStringExtra(APP_INSTALL_KEY_EXTRA)
+        val installName = intent.getStringExtra(APP_INSTALL_NAME_EXTRA) ?: installKey ?: "app"
         val isLauncher = intent.getBooleanExtra(APP_INSTALL_IS_LAUNCHER_EXTRA, false)
         val releaseTag = intent.getStringExtra(APP_INSTALL_RELEASE_TAG_EXTRA)
+        val appId = installKey?.toLongOrNull()
 
         when (status) {
             PackageInstaller.STATUS_SUCCESS -> {
@@ -35,11 +38,13 @@ class AppInstallReceiver : BroadcastReceiver() {
                 if (installKey != null && releaseTag != null) {
                     TrackedAppUpdateState.recordInstalled(context, installKey, releaseTag)
                 }
+                appId?.let { notifyAppInstallResult(context, it, installName, success = true) }
             }
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 // Shouldn't happen as device owner with USER_ACTION_NOT_REQUIRED, but if it does
                 // there's nothing this receiver can silently do about it - just log for
-                // visibility rather than leaving the downloaded file behind unexplained.
+                // visibility rather than leaving the downloaded file behind unexplained. Leaves
+                // the "Installing..." notification as-is - this isn't a resolved failure.
                 Log.w(LOG_TAG, "Install of $installKey requires user action unexpectedly: $message")
             }
             else -> {
@@ -49,6 +54,7 @@ class AppInstallReceiver : BroadcastReceiver() {
                 if (installKey != null && releaseTag != null) {
                     TrackedAppUpdateState.recordFailed(context, installKey, releaseTag)
                 }
+                appId?.let { notifyAppInstallResult(context, it, installName, success = false) }
             }
         }
 

@@ -14,6 +14,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TrackedAppUpdate(
     val id: Long,
+    /** Admin-facing catalog name (e.g. "Tailscale") - used for the install-progress
+     * notification, since [packageName] can be blank now. */
+    val name: String,
     val packageName: String,
     val releaseTag: String,
     val downloadUrl: String,

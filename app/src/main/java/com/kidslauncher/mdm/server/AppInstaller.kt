@@ -12,6 +12,7 @@ private const val LOG_TAG = "AppInstaller"
 const val APP_INSTALL_ACTION = "com.kidslauncher.mdm.APP_INSTALL_RESULT"
 const val APP_INSTALL_APK_PATH_EXTRA = "apk_path"
 const val APP_INSTALL_KEY_EXTRA = "install_key"
+const val APP_INSTALL_NAME_EXTRA = "install_name"
 const val APP_INSTALL_IS_LAUNCHER_EXTRA = "is_launcher"
 const val APP_INSTALL_RELEASE_TAG_EXTRA = "release_tag"
 
@@ -29,13 +30,17 @@ object AppInstaller {
     /** [installKey] is [TrackedAppUpdate.id], stringified - an arbitrary-but-stable label for
      * [PackageInstaller.Session.openWrite]'s required "name" argument (which doesn't need to be a
      * real Android package name; Android determines the actually-installed package from the APK's
-     * own signed manifest at commit time, not from this string). [isLauncher] is threaded through
-     * to [AppInstallReceiver] so it can decide whether this install is the launcher's own
-     * self-update without relying on a package-name string comparison. */
+     * own signed manifest at commit time, not from this string). [displayName] is
+     * [TrackedAppUpdate.name] - purely cosmetic, threaded through to [AppInstallReceiver] so it can
+     * update the install-progress notification [MdmSyncWorker] shows under the same [installKey].
+     * [isLauncher] is also threaded through to [AppInstallReceiver] so it can decide whether this
+     * install is the launcher's own self-update without relying on a package-name string
+     * comparison. */
     fun installSilently(
         context: Context,
         apkFile: File,
         installKey: String,
+        displayName: String,
         isLauncher: Boolean,
         releaseTag: String,
     ) {
@@ -68,6 +73,7 @@ object AppInstaller {
                     .setAction(APP_INSTALL_ACTION)
                     .putExtra(APP_INSTALL_APK_PATH_EXTRA, apkFile.absolutePath)
                     .putExtra(APP_INSTALL_KEY_EXTRA, installKey)
+                    .putExtra(APP_INSTALL_NAME_EXTRA, displayName)
                     .putExtra(APP_INSTALL_IS_LAUNCHER_EXTRA, isLauncher)
                     .putExtra(APP_INSTALL_RELEASE_TAG_EXTRA, releaseTag)
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or

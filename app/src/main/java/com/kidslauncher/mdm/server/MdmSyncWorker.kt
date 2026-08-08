@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import com.kidslauncher.mdm.BuildConfig
+import com.kidslauncher.mdm.notifyAppInstallResult
+import com.kidslauncher.mdm.notifyAppInstalling
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
 import com.kidslauncher.mdm.server.dto.InstalledApp
 import com.kidslauncher.mdm.server.dto.LocationReport
@@ -221,16 +223,28 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             continue
         }
 
+        // Shown for the whole download+install span, not just the install step - cancelled by
+        // AppInstallReceiver once the real PackageInstaller result comes back, or explicitly here
+        // on a download failure (AppInstallReceiver never runs in that case, since installSilently
+        // is never reached).
+        notifyAppInstalling(context, update.id, update.name)
         try {
-            val body = api.downloadTrackedApp(update.downloadUrl).body() ?: continue
+            val body = api.downloadTrackedApp(update.downloadUrl).body()
+            if (body == null) {
+                notifyAppInstallResult(context, update.id, update.name, success = false)
+                continue
+            }
             val apkFile = File(context.cacheDir, "tracked_app_${key}.apk")
             body.byteStream().use { input ->
                 apkFile.outputStream().use { output -> input.copyTo(output) }
             }
             Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag}, installing")
-            AppInstaller.installSilently(context, apkFile, key, update.isLauncher, update.releaseTag)
+            AppInstaller.installSilently(
+                context, apkFile, key, update.name, update.isLauncher, update.releaseTag
+            )
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Update check failed for ${update.packageName}", e)
+            notifyAppInstallResult(context, update.id, update.name, success = false)
         }
     }
 }
