@@ -1,6 +1,7 @@
 package com.kidslauncher.mdm.server
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.kidslauncher.mdm.server.dto.BrowserHistoryUpload
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
 import com.kidslauncher.mdm.server.dto.DnsBlocklistCategory
 import com.kidslauncher.mdm.server.dto.DnsEventReport
@@ -87,6 +88,11 @@ interface MdmApi {
         @Path("remoteId") remoteId: Long,
         @Body body: RequestBody,
     ): Response<Unit>
+
+    /** Same all-or-nothing transaction semantics as [uploadJournalEntries] - see
+     * [com.kidslauncher.mdm.server.BrowserHistorySync]. */
+    @POST("api/devices/browser-history")
+    suspend fun uploadBrowserHistory(@Body entries: List<BrowserHistoryUpload>): Response<Unit>
 }
 
 /** [token] is omitted for the enroll-only call (no token exists yet); pass it for every
