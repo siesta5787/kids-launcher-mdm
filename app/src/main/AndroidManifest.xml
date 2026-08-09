@@ -154,6 +154,26 @@
             android:name=".server.StopRingReceiver"
             android:exported="false" />
 
+        <!-- Deliberately exported, unlike every other receiver in this app - see
+             UnifiedPushRegistrationReceiver's own doc comment for why. Other apps' UnifiedPush
+             connector libraries send these two actions as implicit broadcasts to discover an
+             installed distributor; there's no component name they could target instead.
+             android:enabled="false" here matches the spec's own recommendation to keep a
+             distributor's registration receiver disabled until its setup precondition is met -
+             here, that's a parent opting in from Settings, which flips this at runtime via
+             PackageManager.setComponentEnabledSetting (see SettingsFragmentLauncher). Until then
+             this app isn't even discoverable as a distributor, not just non-functional. -->
+        <receiver
+            android:name=".server.UnifiedPushRegistrationReceiver"
+            android:exported="true"
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="org.unifiedpush.android.distributor.REGISTER" />
+                <action android:name="org.unifiedpush.android.distributor.UNREGISTER" />
+                <action android:name="org.unifiedpush.android.distributor.MESSAGE_ACK" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".server.CommandListenerService"
             android:exported="false"

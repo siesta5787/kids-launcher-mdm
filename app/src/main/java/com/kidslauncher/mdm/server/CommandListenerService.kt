@@ -55,6 +55,11 @@ private const val PERIODIC_SYNC_INTERVAL_MS = 5 * 60 * 1000L
  * way around it, is Android's own mandatory persistent notification for any foreground service -
  * kept at MIN importance and silent, since it's not meant to draw attention the way the ring
  * notification deliberately does.
+ *
+ * Since this service already pays that foreground-service cost, it also optionally owns
+ * [UnifiedPushRelay] (a UnifiedPush distributor for *other* apps on the device, opt-in from
+ * Settings, off by default) - one persistent connection/notification doing two jobs instead of
+ * a second dedicated distributor app running its own.
  */
 class CommandListenerService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
@@ -93,6 +98,13 @@ class CommandListenerService : Service() {
         startForeground(COMMAND_LISTENER_NOTIFICATION_ID, buildNotification())
         connect()
         schedulePeriodicSync()
+        // Piggybacks on this same foreground service/notification rather than running as a
+        // second one - see UnifiedPushRelay's own doc comment for why. Off by default (a parent
+        // has to opt in from Settings), so this is a no-op on a device where that's never been
+        // touched.
+        if (LauncherPreferences.mdm().unifiedpushDistributorEnabled()) {
+            UnifiedPushRelay.start(applicationContext)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -103,6 +115,7 @@ class CommandListenerService : Service() {
         stopped = true
         handler.removeCallbacksAndMessages(null)
         eventSource?.cancel()
+        UnifiedPushRelay.stop()
         scope.cancel()
         super.onDestroy()
     }

@@ -106,6 +106,9 @@
     <string name="settings_mdm_restrictions_paused">Pause all restrictions</string>
     <string name="settings_mdm_restrictions_paused_summary">Turns off kiosk mode, the schedule, and WiFi/Bluetooth restrictions until you turn this back on. Emergency use only, e.g. if an update causes a problem - stays off until you flip it back.</string>
 
+    <string name="settings_mdm_unifiedpush_distributor_enabled">Push notifications for other apps</string>
+    <string name="settings_mdm_unifiedpush_distributor_enabled_summary">Lets other apps on this phone receive push notifications through this app (UnifiedPush) instead of needing a separate app installed for it. Off unless you turn it on.</string>
+
     <string name="settings_gate_dialog_title">Enter code to open settings</string>
 
     <string name="alert_cant_choose_home_screen">Failed to open the home screen chooser. You need to choose a homescreen manually in Android Settings.</string>

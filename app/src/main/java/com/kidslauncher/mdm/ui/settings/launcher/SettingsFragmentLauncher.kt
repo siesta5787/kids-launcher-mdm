@@ -1,7 +1,9 @@
 package com.kidslauncher.mdm.ui.settings.launcher
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.EditText
@@ -14,6 +16,8 @@ import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.copyToClipboard
 import com.kidslauncher.mdm.getDeviceInfo
 import com.kidslauncher.mdm.server.AppEnforcer
+import com.kidslauncher.mdm.server.UnifiedPushRegistrationReceiver
+import com.kidslauncher.mdm.server.UnifiedPushRelay
 import com.kidslauncher.mdm.server.cachedPolicy
 import com.kidslauncher.mdm.server.createMdmApi
 import com.kidslauncher.mdm.server.dto.EnrollRequest
@@ -129,6 +133,33 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                     AppEnforcer.apply(context, cachedPolicy())
                     reevaluateLockReasonFromCache()
                 }
+            }
+            true
+        }
+
+        val unifiedPushEnabled =
+            findPreference<Preference>(mdm.keys().unifiedpushDistributorEnabled())
+        unifiedPushEnabled?.setOnPreferenceChangeListener { _, newValue ->
+            val enabled = newValue as Boolean
+            val context = requireContext()
+            // The receiver's manifest declaration is exported unconditionally (see its own doc
+            // comment on why), but this component-enabled flip is a second, independent gate: a
+            // parent who's never touched this toggle should never have their phone silently
+            // discoverable as a UnifiedPush distributor. DONT_KILL_APP since flipping this off
+            // shouldn't restart the whole launcher process.
+            context.packageManager.setComponentEnabledSetting(
+                ComponentName(context, UnifiedPushRegistrationReceiver::class.java),
+                if (enabled) {
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                } else {
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                },
+                PackageManager.DONT_KILL_APP,
+            )
+            if (enabled) {
+                UnifiedPushRelay.start(context.applicationContext)
+            } else {
+                UnifiedPushRelay.stop()
             }
             true
         }

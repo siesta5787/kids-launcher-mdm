@@ -113,6 +113,20 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // before any policy has ever been fetched - knows whether to start the service
                         // at all. See AppEnforcer.applyVpnRestrictions, the only writer.
                         @Preference(name = "vpn_filter_enabled", type = boolean.class, defaultValue = "true"),
+                        // Off by default - a parent has to explicitly opt in from Settings before
+                        // this app starts advertising itself as a UnifiedPush distributor at all
+                        // (see server.UnifiedPushRegistrationReceiver, enabled/disabled at runtime
+                        // via PackageManager.setComponentEnabledSetting). Mirrors vpn_filter_enabled's
+                        // "cached so a cold start before any Settings interaction knows what to do"
+                        // shape, even though this one's purely local (no server-side equivalent).
+                        @Preference(name = "unifiedpush_distributor_enabled", type = boolean.class, defaultValue = "false"),
+                        // JSON blob: token -> {packageName, topic} for every app currently registered
+                        // with this distributor (see server.UnifiedPushRelay) - same "small JSON blob
+                        // in one preference" shape as tracked_app_update_state above. The topic is
+                        // this app's own generated ntfy.sh topic name for that registration, not
+                        // anything the registering app ever sees directly - it only ever gets the
+                        // full https://ntfy.sh/<topic> endpoint URL via NEW_ENDPOINT.
+                        @Preference(name = "unifiedpush_registrations", type = String.class),
                 }),
         })
 public final class LauncherPreferences$Config {
