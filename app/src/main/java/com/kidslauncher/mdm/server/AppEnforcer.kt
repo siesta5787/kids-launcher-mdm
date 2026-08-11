@@ -143,7 +143,7 @@ object AppEnforcer {
             lockTaskFeatures = effectivePolicy?.lockTaskFeatures ?: 0,
         )
 
-        applyRadioRestrictions(dpm, admin, effectivePolicy)
+        clearRadioRestrictions(dpm, admin)
 
         // Same "fully open" treatment as everything else while an override is active - confirmed
         // live this needs to include the VPN filter too: the whole point of the offline-override PIN
@@ -201,44 +201,18 @@ object AppEnforcer {
     }
 
     /**
-     * WiFi/Bluetooth restriction levels via [UserManager] restrictions, device-owner-only APIs.
-     * WiFi only supports "open"/"restricted" (no "disabled") - a prior "disabled" WiFi mode that
-     * force-toggled the radio via `setWifiEnabled(false)` proved unreliable in testing and had no
-     * strong use case, so it was removed rather than fixed; anything other than "restricted"
-     * (including a stale "disabled" value in already-stored policy) falls through to "open".
-     * Bluetooth keeps its "disabled" option - DISALLOW_BLUETOOTH alone both disables the radio and
-     * blocks re-enabling, unlike WiFi where no single restriction does both.
+     * WiFi/Bluetooth restriction *levels* (open/restricted/disabled, independent of the always-on
+     * kiosk allowlist) were retired as an admin-configurable policy - confirmed in practice not
+     * worth the UI complexity. This unconditionally clears the four restrictions that feature used
+     * to set, every `apply()` cycle same as before, rather than just deleting the code outright -
+     * a device that already had "restricted" or "disabled" saved from before this change needs
+     * those actively lifted, not just abandoned in whatever state they were last left in.
      */
-    private fun applyRadioRestrictions(
-        dpm: DevicePolicyManager,
-        admin: ComponentName,
-        policy: PolicyResponse?,
-    ) {
-        when (policy?.wifiMode ?: "open") {
-            "restricted" -> {
-                setRestriction(dpm, admin, UserManager.DISALLOW_CHANGE_WIFI_STATE, false)
-                setRestriction(dpm, admin, UserManager.DISALLOW_ADD_WIFI_CONFIG, true)
-            }
-            else -> {
-                setRestriction(dpm, admin, UserManager.DISALLOW_CHANGE_WIFI_STATE, false)
-                setRestriction(dpm, admin, UserManager.DISALLOW_ADD_WIFI_CONFIG, false)
-            }
-        }
-
-        when (policy?.bluetoothMode ?: "open") {
-            "disabled" -> {
-                setRestriction(dpm, admin, UserManager.DISALLOW_BLUETOOTH, true)
-                setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_BLUETOOTH, false)
-            }
-            "restricted" -> {
-                setRestriction(dpm, admin, UserManager.DISALLOW_BLUETOOTH, false)
-                setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_BLUETOOTH, true)
-            }
-            else -> {
-                setRestriction(dpm, admin, UserManager.DISALLOW_BLUETOOTH, false)
-                setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_BLUETOOTH, false)
-            }
-        }
+    private fun clearRadioRestrictions(dpm: DevicePolicyManager, admin: ComponentName) {
+        setRestriction(dpm, admin, UserManager.DISALLOW_CHANGE_WIFI_STATE, false)
+        setRestriction(dpm, admin, UserManager.DISALLOW_ADD_WIFI_CONFIG, false)
+        setRestriction(dpm, admin, UserManager.DISALLOW_BLUETOOTH, false)
+        setRestriction(dpm, admin, UserManager.DISALLOW_CONFIG_BLUETOOTH, false)
     }
 
     /**
