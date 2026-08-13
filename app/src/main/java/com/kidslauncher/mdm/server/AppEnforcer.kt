@@ -181,23 +181,66 @@ object AppEnforcer {
         val mdm = LauncherPreferences.mdm()
         val shouldEngageKiosk = allowedPackages != null && kioskDesired
 
-        try {
-            if (shouldEngageKiosk) {
-                dpm.setLockTaskPackages(admin, (allowedPackages + ownPackage).toTypedArray())
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    dpm.setLockTaskFeatures(admin, lockTaskFeatures.toInt())
-                }
-                mdm.kioskEnabled(true)
-            } else {
+        if (!shouldEngageKiosk) {
+            try {
                 dpm.setLockTaskPackages(admin, emptyArray())
                 mdm.kioskEnabled(false)
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "Failed to unpin kiosk state", e)
             }
-        } catch (e: Exception) {
-            // Unlike every DPM call above, this one previously wasn't guarded - letting it throw
-            // would kill the rest of apply() (and, since apply() itself isn't try/caught by its
-            // caller, the whole sync cycle including the status report) over one bad kiosk call.
-            Log.w(LOG_TAG, "Failed to apply kiosk state", e)
+            return
         }
+
+        // Order matters here, and it didn't before: setLockTaskFeatures (which carries the
+        // keyguard-safe bit) must be verified *before* setLockTaskPackages ever pins the device,
+        // and a failure here must skip pinning entirely rather than continue on with whatever
+        // feature set the platform already had. The previous version called both DPM calls back
+        // to back inside one try/catch that just logged and swallowed either failure - if
+        // setLockTaskPackages succeeded but setLockTaskFeatures then threw (silently, for any
+        // device-specific reason), the device would end up pinned with Android's own default
+        // (non-keyguard) feature set. That's the exact condition that caused a real, unrecoverable-
+        // except-via-hardware-recovery-mode boot deadlock before (GrapheneOS's auto-reboot, or any
+        // plain reboot, re-locks storage pre-decrypt with no keyguard reachable and no launcher
+        // resolvable either - see kid-phone-server's CLAUDE.md for the full incident). Failing
+        // closed to "not pinned this cycle" is safe either way, since apply() re-runs every ~2
+        // minutes (or sooner via SSE push) and will retry.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (!applyLockTaskFeaturesVerified(dpm, admin, lockTaskFeatures.toInt())) {
+                Log.w(LOG_TAG, "Refusing to pin kiosk this cycle - lock task features never verified")
+                return
+            }
+        }
+
+        try {
+            dpm.setLockTaskPackages(admin, (allowedPackages + ownPackage).toTypedArray())
+            mdm.kioskEnabled(true)
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to pin kiosk packages", e)
+        }
+    }
+
+    /**
+     * setLockTaskFeatures is a cheap Binder call - one immediate retry after a failed
+     * write-then-verify is trivial insurance against a transient platform hiccup, not a real
+     * performance concern. Reads back [DevicePolicyManager.getLockTaskFeatures] rather than
+     * trusting the setter not to throw, since a silent mismatch is exactly what would otherwise
+     * let a device get pinned without the keyguard bit actually applied.
+     */
+    private fun applyLockTaskFeaturesVerified(dpm: DevicePolicyManager, admin: ComponentName, features: Int): Boolean {
+        repeat(2) { attempt ->
+            try {
+                dpm.setLockTaskFeatures(admin, features)
+                if (dpm.getLockTaskFeatures(admin) == features) return true
+                Log.w(
+                    LOG_TAG,
+                    "setLockTaskFeatures didn't verify on attempt ${attempt + 1} " +
+                        "(wanted $features, got ${dpm.getLockTaskFeatures(admin)})"
+                )
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "setLockTaskFeatures threw on attempt ${attempt + 1}", e)
+            }
+        }
+        return false
     }
 
     /**
