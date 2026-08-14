@@ -3,6 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- In-app "Scan setup QR" flow (SettingsFragmentLauncher, zxing-android-embedded) - Device
+         Owner self-grants this the same way as other prompt-free permissions elsewhere in this
+         file, so scanning never shows the runtime permission dialog. -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />

@@ -27,6 +27,11 @@
         android:title="@string/settings_mdm_tailscale_auth_key" />
 
     <Preference
+        android:key="settings_mdm_scan_setup_qr"
+        android:title="@string/settings_mdm_scan_setup_qr"
+        android:summary="@string/settings_mdm_scan_setup_qr_summary" />
+
+    <Preference
         android:key="settings_mdm_enroll_now"
         android:title="@string/settings_mdm_enroll_now" />
 

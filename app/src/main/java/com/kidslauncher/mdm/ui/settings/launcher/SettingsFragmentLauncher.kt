@@ -1,5 +1,6 @@
 package com.kidslauncher.mdm.ui.settings.launcher
 
+import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -11,16 +12,23 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanIntentResult
+import com.journeyapps.barcodescanner.ScanOptions
 import com.kidslauncher.mdm.BuildConfig
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.copyToClipboard
 import com.kidslauncher.mdm.getDeviceInfo
 import com.kidslauncher.mdm.server.AppEnforcer
+import com.kidslauncher.mdm.server.MdmDeviceAdminReceiver
+import com.kidslauncher.mdm.server.QuickControls
 import com.kidslauncher.mdm.server.UnifiedPushRegistrationReceiver
 import com.kidslauncher.mdm.server.UnifiedPushRelay
+import com.kidslauncher.mdm.server.applyProvisioningExtras
 import com.kidslauncher.mdm.server.cachedPolicy
 import com.kidslauncher.mdm.server.createMdmApi
 import com.kidslauncher.mdm.server.dto.EnrollRequest
+import com.kidslauncher.mdm.server.dto.ProvisioningExtras
 import com.kidslauncher.mdm.server.performBrowserHistorySync
 import com.kidslauncher.mdm.server.performJournalSync
 import com.kidslauncher.mdm.server.performMdmSync
@@ -40,6 +48,13 @@ private const val LOG_TAG = "SettingsFragmentLauncher"
  * The [SettingsFragmentLauncher] holds all of the app's settings on a single screen.
  */
 class SettingsFragmentLauncher : PreferenceFragmentCompat() {
+
+    // Must be registered unconditionally before the fragment reaches CREATED - registering this
+    // lazily inside a click listener (e.g. only when the "Scan setup QR" preference is tapped)
+    // throws, per the Activity Result API's own contract.
+    private val scanSetupQrLauncher = registerForActivityResult(ScanContract()) { result ->
+        handleSetupQrScanResult(result)
+    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
@@ -92,6 +107,12 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                 mdm.tailscaleAuthKey(value)
                 tailscaleAuthKey.summary = if (value.isNullOrBlank()) "Not set" else "Set"
             }
+            true
+        }
+
+        val scanSetupQr = findPreference<Preference>("settings_mdm_scan_setup_qr")
+        scanSetupQr?.setOnPreferenceClickListener {
+            launchSetupQrScanner()
             true
         }
 
@@ -235,6 +256,71 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                     mdm.enrolled(true)
                     Toast.makeText(context, R.string.toast_mdm_enroll_success, Toast.LENGTH_LONG)
                         .show()
+                }.onFailure { e ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.toast_mdm_enroll_failure, e.message),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    /**
+     * Launches ZXing's embedded scanner activity for the in-app "Scan setup QR" flow - the
+     * GrapheneOS-friendly counterpart to Android's native zero-touch QR provisioning (which has
+     * no trigger in that OS's setup wizard at all, see kid-phone-server's `handlers::provisioning`).
+     * Only meaningful once Device Owner is already granted some other way (currently
+     * `adb shell dpm set-device-owner`) - scanning here never touches Device Owner state itself,
+     * only the server URL/Tailscale key/enrollment code that would otherwise need typing in by
+     * hand across three separate preference dialogs.
+     */
+    private fun launchSetupQrScanner() {
+        val context = requireContext()
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
+        if (dpm.isDeviceOwnerApp(context.packageName)) {
+            // Silent grant, same mechanism/precedent as QuickControls' other self-granted runtime
+            // permissions - a kid-phone parent scanning this during setup shouldn't need to
+            // navigate a system permission dialog first.
+            QuickControls.selfGrantPermission(context, dpm, admin, android.Manifest.permission.CAMERA)
+        }
+        scanSetupQrLauncher.launch(
+            ScanOptions()
+                .setOrientationLocked(false)
+                .setBeepEnabled(false)
+        )
+    }
+
+    private fun handleSetupQrScanResult(result: ScanIntentResult) {
+        val context = requireContext()
+        val contents = result.contents
+        if (contents == null) {
+            Toast.makeText(context, R.string.toast_mdm_scan_qr_cancelled, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val extras = ProvisioningExtras.fromQrJson(contents)
+        if (extras == null) {
+            Toast.makeText(context, R.string.toast_mdm_scan_qr_invalid, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val outcome = applyProvisioningExtras(extras)
+            withContext(Dispatchers.Main) {
+                outcome.onSuccess {
+                    Toast.makeText(context, R.string.toast_mdm_enroll_success, Toast.LENGTH_LONG)
+                        .show()
+                    // Refresh preference summaries in place - applyProvisioningExtras persisted
+                    // new values this screen already read into local vals in onCreatePreferences,
+                    // so those closures' captured Preference views need an explicit update rather
+                    // than relying on a full screen recreation.
+                    findPreference<Preference>(LauncherPreferences.mdm().keys().serverUrl())?.summary =
+                        extras.serverUrl
+                    findPreference<Preference>(LauncherPreferences.mdm().keys().tailscaleAuthKey())?.summary =
+                        if (extras.tailscaleAuthKey.isBlank()) "Not set" else "Set"
                 }.onFailure { e ->
                     Toast.makeText(
                         context,

@@ -37,8 +37,8 @@ android {
         applicationId = "com.kidslauncher.mdm"
         minSdk = 34
         targetSdk = 36
-        versionCode = 104
-        versionName = "0.19.0"
+        versionCode = 105
+        versionName = "0.20.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -115,6 +115,10 @@ dependencies {
     implementation("org.pcap4j:pcap4j-core:1.8.2")
     implementation("org.pcap4j:pcap4j-packetfactory-static:1.8.2")
     implementation("dnsjava:dnsjava:3.6.5")
+    // In-app "Scan setup QR" flow (SettingsFragmentLauncher) - ZXing, not Google's ML Kit, to
+    // match this project's existing avoid-Google/Play-Services-dependencies pattern (embedded
+    // tsnet over the standalone Tailscale app, UnifiedPush over FCM, etc.). Zero GMS footprint.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation(libs.androidx.activity)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)
