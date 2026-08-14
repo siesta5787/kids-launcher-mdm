@@ -290,6 +290,12 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             ScanOptions()
                 .setOrientationLocked(false)
                 .setBeepEnabled(false)
+                // Restricting to just QR (the only format this feature ever produces) skips
+                // decoding every frame against every other barcode symbology ZXing supports by
+                // default - a real, not cosmetic, difference in how fast/reliably a code is
+                // recognized, not just a validation nicety.
+                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                .setPrompt(getString(R.string.settings_mdm_scan_setup_qr_prompt))
         )
     }
 
@@ -307,8 +313,9 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             return
         }
 
+        val appContext = context.applicationContext
         CoroutineScope(Dispatchers.IO).launch {
-            val outcome = applyProvisioningExtras(extras)
+            val outcome = applyProvisioningExtras(appContext, extras)
             withContext(Dispatchers.Main) {
                 outcome.onSuccess {
                     Toast.makeText(context, R.string.toast_mdm_enroll_success, Toast.LENGTH_LONG)

@@ -94,6 +94,7 @@
     <string name="settings_mdm_not_set">Not set</string>
     <string name="settings_mdm_scan_setup_qr">Scan setup QR</string>
     <string name="settings_mdm_scan_setup_qr_summary">Applies server URL, Tailscale key, and enrollment code from the admin site\'s per-device QR code in one scan</string>
+    <string name="settings_mdm_scan_setup_qr_prompt">Point the camera at the setup QR code on the admin site</string>
     <string name="settings_mdm_enroll_now">Enroll now</string>
     <string name="dialog_enrollment_code_title">Enter enrollment code</string>
     <string name="toast_mdm_enroll_missing_fields">Set the server URL first.</string>
