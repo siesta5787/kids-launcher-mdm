@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kidslauncher.mdm.databinding.ActivityHomeBinding
 import com.kidslauncher.mdm.server.LockReason
+import com.kidslauncher.mdm.server.TsnetClient
 import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.openAppsList
 import com.kidslauncher.mdm.preferences.LauncherPreferences
@@ -21,6 +22,9 @@ import com.kidslauncher.mdm.requestNotificationPermission
 import com.kidslauncher.mdm.setDefaultHomeScreen
 import com.kidslauncher.mdm.ui.minimalist.MinimalistHomeAdapter
 import com.kidslauncher.mdm.ui.quickcontrols.QuickControlsActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 private const val SWIPE_UP_MIN_DISTANCE = 100
@@ -160,6 +164,14 @@ class HomeActivity : UIObjectActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Deliberately triggered here, not from Application.onCreate() - see TsnetClient's own
+        // doc comment on the GrapheneOS hardened_malloc / native-crash risk this sidesteps by
+        // waiting until the launcher has actually rendered instead of racing the very first UI
+        // paint after unlock. connectFromPreferences() already no-ops once connected (or with no
+        // auth key configured), so calling it on every resume - not just the first - is safe, not
+        // wasteful; MdmSyncWorker's regular sync cycle is the retry-until-connected backstop
+        // either way.
+        CoroutineScope(Dispatchers.IO).launch { TsnetClient.connectFromPreferences(this@HomeActivity) }
         // Fresh check against the clock every time the home screen comes to the foreground, not
         // just on the 60-second timer - covers e.g. the device having been asleep since the last
         // tick.

@@ -18,7 +18,6 @@ import com.kidslauncher.mdm.apps.AbstractDetailedAppInfo
 import com.kidslauncher.mdm.server.AppEnforcer
 import com.kidslauncher.mdm.server.CommandListenerService
 import com.kidslauncher.mdm.server.KidVpnService
-import com.kidslauncher.mdm.server.TsnetClient
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.preferences.migratePreferencesToNewVersion
 import com.kidslauncher.mdm.preferences.resetPreferences
@@ -159,20 +158,24 @@ class Application : android.app.Application() {
         // separate WorkManager-based schedule() call here.
         CommandListenerService.start(this)
 
-        // The on-device DNS filter and the embedded tailnet connection are both the device's
-        // baseline network path now, not admin-configurable features - see CLAUDE.md's
-        // on-device-filtering/embedded-tsnet migration writeup. Both fail soft if not ready yet
-        // (no VPN consent granted, no auth key configured) and get retried on the next sync cycle
-        // (KidVpnService via Android's own always-on-VPN management once AppEnforcer.apply grants
-        // consent; TsnetClient via MdmSyncWorker's connectFromPreferences call) - see each class's
-        // own doc comment. KidVpnService itself IS gated - on the cached vpnFilterEnabled preference
-        // (PolicyResponse.vpnFilterEnabled, see AppEnforcer.applyVpnRestrictions) - so a device a
-        // parent has turned filtering off for doesn't flash it back on for a moment on every launch
-        // before the first sync corrects it.
+        // The on-device DNS filter is the device's baseline network path now, not an
+        // admin-configurable feature - see CLAUDE.md's on-device-filtering migration writeup.
+        // Fails soft if not ready yet (no VPN consent granted) and gets retried via Android's own
+        // always-on-VPN management once AppEnforcer.apply grants consent - see KidVpnService's own
+        // doc comment. Gated on the cached vpnFilterEnabled preference (PolicyResponse.vpnFilterEnabled,
+        // see AppEnforcer.applyVpnRestrictions) so a device a parent has turned filtering off for
+        // doesn't flash it back on for a moment on every launch before the first sync corrects it.
         if (LauncherPreferences.mdm().vpnFilterEnabled()) {
             KidVpnService.start(this)
         }
-        CoroutineScope(Dispatchers.IO).launch { TsnetClient.connectFromPreferences(this@Application) }
+        // The embedded tailnet connection deliberately does NOT kick off here - TsnetClient.connect
+        // runs tsnet's native Go/cgo runtime, a real crash surface (see that class's own doc
+        // comment on the GrapheneOS hardened_malloc risk and the prior real SIGABRT incident this
+        // app already hit once). Application.onCreate() is the earliest possible point in the
+        // process's life, racing the very first UI paint after unlock - a crash here has no chance
+        // to have shown anything yet. HomeActivity's first onResume() is the trigger instead, after
+        // the launcher itself has actually rendered; MdmSyncWorker's regular sync cycle is the
+        // retry-until-connected backstop either way, same as before.
     }
 
     fun getCustomAppNames(): HashMap<AbstractAppInfo, String> {

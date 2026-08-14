@@ -3,6 +3,7 @@ package com.kidslauncher.mdm.server
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import java.net.Authenticator
 import java.net.InetSocketAddress
@@ -12,6 +13,22 @@ import tsembed.Client
 import tsembed.Tsembed
 
 private const val LOG_TAG = "TsnetClient"
+
+/** Plain string preference keys, not routed through the kapt-generated LauncherPreferences
+ * Config system - this is internal crash-detection bookkeeping, not an admin-facing setting, so
+ * it doesn't need a donottranslate.xml entry (same reasoning LocateCommands.kt's own cached-state
+ * preferences already use). */
+private const val CRASH_GUARD_PENDING_KEY = "tsnet_connect_attempt_pending"
+private const val CRASH_COUNT_KEY = "tsnet_connect_crash_count"
+private const val LAST_CRASH_AT_KEY = "tsnet_connect_last_crash_at"
+
+/** After this many consecutive crashes-during-connect, skip the next attempt entirely rather than
+ * retry into the same crash - see [TsnetClient.connectFromPreferences]'s own doc comment. */
+private const val MAX_CONSECUTIVE_CRASHES = 2
+
+/** A crash streak older than this doesn't count toward the threshold - the goal is catching a
+ * tight boot loop, not permanently disabling tsnet after two crashes that happened days apart. */
+private const val CRASH_STREAK_COOLDOWN_MS = 15 * 60 * 1000L
 
 /** Fixed per tsnet.Server.Loopback's own contract - the SOCKS5 proxy it starts always expects
  * this exact username, with the per-connection proxyCred as the password. Not configurable. */
@@ -98,17 +115,83 @@ object TsnetClient {
 
     /**
      * Reads the configured auth key/hostname/state dir from preferences and calls [connect] - the
-     * one shared entry point for every caller (eager kickoff from [com.kidslauncher.mdm.Application.onCreate],
-     * plus every [MdmSyncWorker] cycle as a retry-until-connected backstop), so hostname/state-dir
-     * computation lives in exactly one place. No-ops (returns null) if no auth key is configured yet,
-     * or if already connected - safe to call as often as needed.
+     * one shared entry point for every caller ([com.kidslauncher.mdm.ui.HomeActivity]'s first
+     * post-unlock resume, every [MdmSyncWorker] cycle as a retry-until-connected backstop, and
+     * [applyProvisioningExtras]'s QR setup flow), so hostname/state-dir computation lives in
+     * exactly one place. No-ops (returns null) if no auth key is configured yet, or if already
+     * connected - safe to call as often as needed.
+     *
+     * Wrapped in a crash-loop guard, not called unconditionally: [connect] runs tsnet's embedded
+     * Go/cgo runtime, a real native-crash surface a plain Kotlin try/catch cannot protect against
+     * (a hard abort - e.g. from GrapheneOS's hardened_malloc catching a memory-safety violation -
+     * bypasses the JVM's exception handling entirely and kills the process at the signal level).
+     * This app has no fallback Home app once Device-Owner-pinned, so a connect attempt that
+     * crashes on every launch would boot-loop the device with no way to reach a working launcher
+     * again short of a hardware-recovery-mode wipe - confirmed as a real, not hypothetical, risk:
+     * this exact mechanism (tsnet's Go runtime SIGABRT-crashing the whole process) already
+     * happened once before for a different, since-fixed trigger (`no safe place found to store
+     * log state`). A persisted "attempt in progress" flag, set synchronously right before and
+     * cleared right after, survives a native crash where in-memory state can't - if a launch finds
+     * it still true from last time, that's evidence the previous attempt never returned, and after
+     * [MAX_CONSECUTIVE_CRASHES] such detections in a row this skips the attempt entirely for that
+     * launch, letting the rest of the app boot normally without tailnet connectivity that cycle,
+     * rather than retrying straight into the same crash.
      */
     fun connectFromPreferences(context: Context): String? {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val now = System.currentTimeMillis()
+
+        // Consumed immediately, regardless of what happens below - this must never stay
+        // stale-true across a cycle that didn't actually attempt a connection (e.g. one skipped
+        // by the threshold check further down), or every future call would misread it as evidence
+        // of a fresh crash forever, permanently locking tsnet off with no way to self-heal.
+        val wasLeftPending = prefs.getBoolean(CRASH_GUARD_PENDING_KEY, false)
+        if (wasLeftPending) prefs.edit().putBoolean(CRASH_GUARD_PENDING_KEY, false).commit()
+
+        var crashCount = prefs.getInt(CRASH_COUNT_KEY, 0)
+        val lastCrashAt = prefs.getLong(LAST_CRASH_AT_KEY, 0)
+        if (crashCount > 0 && now - lastCrashAt > CRASH_STREAK_COOLDOWN_MS) {
+            crashCount = 0
+        }
+        if (wasLeftPending) {
+            crashCount += 1
+            Log.w(
+                LOG_TAG,
+                "Previous tsnet connect attempt never completed (process likely crashed) - " +
+                    "consecutive count now $crashCount",
+            )
+            prefs.edit()
+                .putInt(CRASH_COUNT_KEY, crashCount)
+                .putLong(LAST_CRASH_AT_KEY, now)
+                .commit()
+        }
+
+        if (crashCount >= MAX_CONSECUTIVE_CRASHES) {
+            Log.w(
+                LOG_TAG,
+                "Skipping tsnet connect this launch - $crashCount consecutive crashes detected " +
+                    "within the last ${CRASH_STREAK_COOLDOWN_MS / 60_000}m",
+            )
+            return null
+        }
+
         val authKey = LauncherPreferences.mdm().tailscaleAuthKey()
         if (authKey.isNullOrBlank() || connected) return null
         val hostname = "kids-launcher-${Build.MODEL}".replace(Regex("[^A-Za-z0-9-]"), "-")
         val stateDir = context.filesDir.resolve("tailscale").absolutePath
-        return connect(hostname, authKey, stateDir)
+
+        prefs.edit().putBoolean(CRASH_GUARD_PENDING_KEY, true).commit()
+        return try {
+            connect(hostname, authKey, stateDir)
+        } finally {
+            // Reached by any path that returns normally (success or a caught/logged failure
+            // inside connect() itself, which already has its own try/catch) - proves the process
+            // survived the attempt, so clear the guard and reset the streak.
+            prefs.edit()
+                .putBoolean(CRASH_GUARD_PENDING_KEY, false)
+                .putInt(CRASH_COUNT_KEY, 0)
+                .commit()
+        }
     }
 
     /** A [Proxy] pointing at the running SOCKS5 proxy, or null if not connected yet - see
