@@ -43,6 +43,18 @@ import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "SettingsFragmentLauncher"
 
+/**
+ * "Set"/"Not set" alone left no way to tell *which* key is configured, or to notice a stale one
+ * from a prior scan - reported directly after the Tailscale key visibly worked but the summary
+ * gave no indication anything had actually changed. Shows just enough (a masked prefix plus the
+ * real last 4 characters) to recognize the value without displaying the secret itself on a screen
+ * anyone glancing at the phone could read.
+ */
+private fun maskedSecretSummary(value: String?): String {
+    if (value.isNullOrBlank()) return "Not set"
+    val tail = value.takeLast(4)
+    return "••••••••$tail"
+}
 
 /**
  * The [SettingsFragmentLauncher] holds all of the app's settings on a single screen.
@@ -97,7 +109,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         }
 
         val tailscaleAuthKey = findPreference<Preference>(mdm.keys().tailscaleAuthKey())
-        tailscaleAuthKey?.summary = if (mdm.tailscaleAuthKey().isNullOrBlank()) "Not set" else "Set"
+        tailscaleAuthKey?.summary = maskedSecretSummary(mdm.tailscaleAuthKey())
         tailscaleAuthKey?.setOnPreferenceClickListener {
             showEditTextDialog(
                 requireContext(),
@@ -105,7 +117,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                 currentValue = null,
             ) { value ->
                 mdm.tailscaleAuthKey(value)
-                tailscaleAuthKey.summary = if (value.isNullOrBlank()) "Not set" else "Set"
+                tailscaleAuthKey.summary = maskedSecretSummary(value)
             }
             true
         }
@@ -288,7 +300,14 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         }
         scanSetupQrLauncher.launch(
             ScanOptions()
-                .setOrientationLocked(false)
+                // false told CaptureActivity to dynamically recompute the camera preview's
+                // rotation transform on the fly - but this app has no actual rotation handling of
+                // its own to match, and letting the transform recalculate against an Activity that
+                // in practice never rotates produced a badly skewed preview (a narrow off-center
+                // strip with diagonal artifacts, no visible framing rectangle) reported live.
+                // Locking to the orientation already in effect at launch sidesteps that
+                // recalculation entirely.
+                .setOrientationLocked(true)
                 .setBeepEnabled(false)
                 // Restricting to just QR (the only format this feature ever produces) skips
                 // decoding every frame against every other barcode symbology ZXing supports by
@@ -323,11 +342,14 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                     // Refresh preference summaries in place - applyProvisioningExtras persisted
                     // new values this screen already read into local vals in onCreatePreferences,
                     // so those closures' captured Preference views need an explicit update rather
-                    // than relying on a full screen recreation.
-                    findPreference<Preference>(LauncherPreferences.mdm().keys().serverUrl())?.summary =
-                        extras.serverUrl
-                    findPreference<Preference>(LauncherPreferences.mdm().keys().tailscaleAuthKey())?.summary =
-                        if (extras.tailscaleAuthKey.isBlank()) "Not set" else "Set"
+                    // than relying on a full screen recreation. Read the actual persisted values
+                    // back rather than trusting extras.tailscaleAuthKey directly - a blank value in
+                    // the scanned QR leaves whatever key was already configured untouched, and the
+                    // summary should reflect that instead of falsely showing "Not set".
+                    val mdm = LauncherPreferences.mdm()
+                    findPreference<Preference>(mdm.keys().serverUrl())?.summary = mdm.serverUrl()
+                    findPreference<Preference>(mdm.keys().tailscaleAuthKey())?.summary =
+                        maskedSecretSummary(mdm.tailscaleAuthKey())
                 }.onFailure { e ->
                     Toast.makeText(
                         context,
