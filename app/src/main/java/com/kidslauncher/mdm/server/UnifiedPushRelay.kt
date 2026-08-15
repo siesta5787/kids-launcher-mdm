@@ -30,6 +30,7 @@ data class UnifiedPushRegistration(val packageName: String, val topic: String)
 @Serializable
 private data class NtfyEnvelope(
     val event: String = "",
+    val time: Long? = null,
     val topic: String? = null,
     val message: String? = null,
     val encoding: String? = null,
@@ -64,12 +65,21 @@ object UnifiedPushRelay {
         // A subscribe WebSocket is meant to stay open indefinitely, same reasoning as
         // CommandListenerService's SSE client.
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        // Live device testing (2026-08-15) showed this connection getting a clean server-side
+        // close (code 1000) roughly every 5s, cause not yet confirmed - sending our own pings
+        // is a standard mitigation for exactly this class of premature-close behavior and costs
+        // nothing if it turns out to be unrelated.
+        .pingInterval(20, TimeUnit.SECONDS)
         .build()
     private val handler = Handler(Looper.getMainLooper())
 
     private var webSocket: WebSocket? = null
     private var reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
     private var running = false
+
+    /** Unix seconds of the most recent event (open/keepalive/message) seen on any topic, from
+     * ntfy's own `time` field - see [connect]'s `since` handling for why this is tracked. */
+    private var lastEventTimeSec: Long? = null
 
     /** Call once when the owning service starts (and the parent has enabled this in Settings) -
      * safe to call repeatedly. */
@@ -145,7 +155,15 @@ object UnifiedPushRelay {
         webSocket = null
         if (topics.isEmpty()) return
 
-        val url = "wss://$NTFY_HOST/${topics.joinToString(",")}/ws"
+        // Whatever is causing the reconnect churn seen in live testing (see [client]'s own doc
+        // comment), a bare resubscribe on every reconnect silently drops any message ntfy
+        // received during the gap between the old socket closing and the new one opening - ntfy
+        // has no way to know we missed anything, so it just moves on. `since` (ntfy's own replay
+        // param, docs.ntfy.sh/subscribe/api/#poll-for-messages) asks it to replay anything
+        // published at or after our last-seen event instead, so a reconnect - however brief -
+        // can't silently swallow a real push the way it currently does.
+        val sinceParam = lastEventTimeSec?.let { "?since=$it" }.orEmpty()
+        val url = "wss://$NTFY_HOST/${topics.joinToString(",")}/ws$sinceParam"
         val request = Request.Builder().url(url).build()
         webSocket = client.newWebSocket(
             request,
@@ -196,6 +214,11 @@ object UnifiedPushRelay {
             // connection - anything that doesn't parse as a full envelope is expected, not an error.
             return
         }
+        // Advance the replay watermark on every event, not just "message" ones - a keepalive/open
+        // event still proves we were caught up as of that timestamp, and using it means a
+        // subsequent reconnect's `since` doesn't needlessly re-fetch messages we already saw.
+        envelope.time?.let { lastEventTimeSec = it }
+
         if (envelope.event != "message") return
         val topic = envelope.topic ?: return
 

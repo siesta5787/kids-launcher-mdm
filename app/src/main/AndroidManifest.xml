@@ -191,6 +191,17 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Not externally reachable despite the implicit-action intent-filter - MY_PACKAGE_REPLACED
+             is a protected system broadcast only the OS can send, always targeted at the just-updated
+             app itself. See PackageReplacedReceiver's own doc comment for why this exists. -->
+        <receiver
+            android:name=".server.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- On-device DNS filter - see KidVpnService.kt and this repo's CLAUDE.md. Only the OS may
              bind to a VpnService, enforced via BIND_VPN_SERVICE here (not a <uses-permission> -
              see the manifest permission block above). -->
