@@ -6,6 +6,11 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.util.Log
 import com.kidslauncher.mdm.notifyAppInstallResult
+import com.kidslauncher.mdm.preferences.LauncherPreferences
+import com.kidslauncher.mdm.server.dto.InstallProgressReport
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 
 private const val LOG_TAG = "AppInstallReceiver"
@@ -55,6 +60,7 @@ class AppInstallReceiver : BroadcastReceiver() {
                     TrackedAppUpdateState.recordFailed(context, installKey, releaseTag)
                 }
                 appId?.let { notifyAppInstallResult(context, it, installName, success = false) }
+                appId?.let { reportInstallFailureToServer(context, it) }
             }
         }
 
@@ -66,6 +72,33 @@ class AppInstallReceiver : BroadcastReceiver() {
         // now (see kid-phone-server's tracked_app_add.html) and can't be trusted for this.
         if (status != PackageInstaller.STATUS_SUCCESS || !isLauncher) {
             apkPath?.let { File(it).delete() }
+        }
+    }
+
+    /**
+     * Best-effort report so the admin site shows "Install failed" instead of silence - previously
+     * a real `PackageInstaller` failure only ever produced a client-local, permanently-sticky
+     * "don't retry this release" marker ([TrackedAppUpdateState.recordFailed]) with nothing
+     * surfaced server-side, which looked from the admin's side exactly like the request never left
+     * the device. `goAsync()` keeps this receiver's process alive long enough for the network call
+     * to finish - same reasoning as [MdmDeviceAdminReceiver.onProfileProvisioningComplete].
+     */
+    private fun reportInstallFailureToServer(context: Context, trackedAppId: Long) {
+        val mdm = LauncherPreferences.mdm()
+        val serverUrl = mdm.serverUrl()
+        val deviceToken = mdm.deviceToken()
+        if (serverUrl.isNullOrBlank() || deviceToken.isNullOrBlank()) return
+
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                createMdmApi(serverUrl, deviceToken)
+                    .reportInstallProgress(InstallProgressReport(trackedAppId, percent = 0, failed = true))
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "Failed to report install failure", e)
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 }

@@ -244,6 +244,13 @@ private suspend fun currentLocationReport(
 // doc comment for the actual bug this guards against.
 private const val INSTALL_ATTEMPT_TIMEOUT_MS = 10 * 60 * 1000L
 
+// A release that failed to install once is retried automatically after this window rather than
+// being skipped forever - see TrackedAppUpdateState's own doc comment for the incident that
+// motivated this (a release stuck failed from the since-fixed overlapping-install race showed zero
+// notification and zero server-side visibility indefinitely, since nothing ever cleared
+// lastFailedTag short of the upstream release itself changing).
+private const val FAILED_RETRY_BACKOFF_MS = 60 * 60 * 1000L
+
 private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
     val updates = try {
         api.getTrackedAppUpdates().body() ?: return
@@ -257,7 +264,14 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
     for (update in otherUpdates + launcherUpdates) {
         val key = update.id.toString()
         val known = state[key]
-        if (update.releaseTag == known?.lastInstalledTag || update.releaseTag == known?.lastFailedTag) {
+        if (update.releaseTag == known?.lastInstalledTag) {
+            continue
+        }
+        val failedAt = known?.lastFailedAtMs
+        if (update.releaseTag == known?.lastFailedTag &&
+            failedAt != null &&
+            System.currentTimeMillis() - failedAt < FAILED_RETRY_BACKOFF_MS
+        ) {
             continue
         }
         val attemptStartedAt = known?.attemptStartedAtMs
@@ -285,6 +299,7 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             if (body == null) {
                 notifyAppInstallResult(context, update.id, update.name, success = false)
                 TrackedAppUpdateState.clearAttempt(context, key)
+                reportInstallFailure(api, update.id)
                 continue
             }
             // Unique per attempt (not just per app id) - defense in depth alongside the syncMutex
@@ -306,7 +321,20 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             Log.w(LOG_TAG, "Update check failed for ${update.packageName}", e)
             notifyAppInstallResult(context, update.id, update.name, success = false)
             TrackedAppUpdateState.clearAttempt(context, key)
+            reportInstallFailure(api, update.id)
         }
+    }
+}
+
+/** Best-effort visibility for the admin site - a download-level failure here doesn't mark
+ * [TrackedAppUpdateState.recordFailed] (a transient network hiccup should still retry next cycle,
+ * see [TrackedAppUpdateState.clearAttempt]'s own doc comment), so this alone is what lets the
+ * server show "Install failed" instead of the row just quietly staying "Not installed". */
+private suspend fun reportInstallFailure(api: MdmApi, trackedAppId: Long) {
+    try {
+        api.reportInstallProgress(InstallProgressReport(trackedAppId, percent = 0, failed = true))
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Failed to report install failure", e)
     }
 }
 

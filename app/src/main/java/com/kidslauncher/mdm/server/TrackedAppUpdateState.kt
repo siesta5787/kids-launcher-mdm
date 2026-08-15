@@ -12,6 +12,11 @@ private const val LOG_TAG = "TrackedAppUpdateState"
 data class TrackedAppState(
     val lastInstalledTag: String? = null,
     val lastFailedTag: String? = null,
+    /** When [lastFailedTag] was recorded - lets [MdmSyncWorker.checkForTrackedAppUpdates] retry
+     * automatically after a backoff window instead of skipping the same release forever. Null for
+     * state persisted before this field existed, which is treated as "eligible to retry now" (see
+     * that function) rather than crashing or defaulting to some other timestamp. */
+    val lastFailedAtMs: Long? = null,
     /** Set right before a download+install attempt starts, cleared once it resolves (success or
      * failure) - see [TrackedAppUpdateState.recordAttemptStarted]'s doc comment for what this
      * guards against. */
@@ -22,9 +27,13 @@ data class TrackedAppState(
  * Per-app install/failure tracking for apps tracked from GitHub Releases (see [AppInstaller],
  * [MdmSyncWorker]'s tracked-app sync) - cached as one JSON blob in a single preference, the same
  * "small JSON blob in a String preference" pattern already used for `kid_mode_policy`, rather than
- * a new custom preference-annotation serializer for a `Map` type. Without this, a release that
- * fails to install (or one that's already installed) would be re-downloaded and re-attempted every
- * 2-minute sync forever. Keyed by [TrackedAppUpdate.id] (as a string - stringified once at the
+ * a new custom preference-annotation serializer for a `Map` type. Without this, a release that's
+ * already installed would be re-downloaded and re-installed every 2-minute sync forever; one that
+ * fails to install is re-attempted after a backoff window instead of forever, see
+ * [MdmSyncWorker.checkForTrackedAppUpdates] - an earlier version of this skipped a failed release
+ * permanently until its tag changed, which left an app that failed once (e.g. from a since-fixed
+ * overlapping-install race) stuck silently un-retried indefinitely, with no notification and no
+ * server-side visibility either. Keyed by [TrackedAppUpdate.id] (as a string - stringified once at the
  * call site, not here, to keep this a plain `Map<String, _>` like the preference blob it mirrors),
  * not the app's Android package name - that's optional server-side now and can't be trusted to be
  * present or unique across tracked apps.
@@ -65,7 +74,11 @@ object TrackedAppUpdateState {
     fun recordFailed(context: Context, appKey: String, releaseTag: String) {
         val state = load().toMutableMap()
         val lastInstalledTag = state[appKey]?.lastInstalledTag
-        state[appKey] = TrackedAppState(lastInstalledTag, lastFailedTag = releaseTag)
+        state[appKey] = TrackedAppState(
+            lastInstalledTag,
+            lastFailedTag = releaseTag,
+            lastFailedAtMs = System.currentTimeMillis(),
+        )
         save(context, state)
     }
 
