@@ -159,13 +159,23 @@ object UnifiedPushRelay {
                     handleMessage(context, text)
                 }
 
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    Log.i(LOG_TAG, "ntfy relay closing: code=$code reason=$reason")
+                    webSocket.close(code, reason)
+                }
+
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    Log.i(LOG_TAG, "ntfy relay closed, reconnecting")
+                    Log.i(LOG_TAG, "ntfy relay closed, reconnecting: code=$code reason=$reason")
                     scheduleReconnect(context)
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Log.w(LOG_TAG, "ntfy relay connection failed, reconnecting", t)
+                    Log.w(
+                        LOG_TAG,
+                        "ntfy relay connection failed, reconnecting: response=${response?.code} " +
+                            "${response?.message}, headers=${response?.headers}",
+                        t,
+                    )
                     scheduleReconnect(context)
                 }
             },
