@@ -3,6 +3,7 @@ package com.kidslauncher.mdm.server
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import com.kidslauncher.mdm.BuildConfig
@@ -301,7 +302,11 @@ private fun collectInstalledApps(context: Context): List<InstalledApp> {
                 // excluded from getInstalledApplications(0), which would otherwise drop any
                 // currently-unchecked app right back out of this report.
                 val info = pm.getApplicationInfo(packageName, PackageManager.MATCH_UNINSTALLED_PACKAGES)
-                InstalledApp(packageName = packageName, label = pm.getApplicationLabel(info).toString())
+                InstalledApp(
+                    packageName = packageName,
+                    label = pm.getApplicationLabel(info).toString(),
+                    preinstalled = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                )
             } catch (e: PackageManager.NameNotFoundException) {
                 null
             }
