@@ -44,15 +44,17 @@ private data class NtfyEnvelope(
  * app - see [CommandListenerService], the only intended owner of this object's lifecycle.
  *
  * Each registration gets its own randomly-generated topic, never reused, never derived from the
- * app's identity - the registering app only ever sees the resulting `https://ntfy.sh/<topic>`
- * endpoint URL, not the generation scheme, so ntfy.sh itself can't correlate two registrations as
- * the same app/device.
+ * app's identity - the registering app only ever sees the resulting
+ * `https://ntfy.sh/<topic>?up=1` endpoint URL, not the generation scheme, so ntfy.sh itself can't
+ * correlate two registrations as the same app/device.
  *
- * The base64/`encoding` handling in [decodePayload] mirrors ntfy's own official Android app
+ * The `?up=1` suffix on that endpoint (see [register]'s own doc comment) is what makes ntfy
+ * auto-detect a genuinely binary UnifiedPush payload (WebPush is RFC 8291 binary) on the publish
+ * side and base64-encode it into the JSON envelope itself, rather than mangling it as lossy UTF-8
+ * text - the base64/`encoding` handling in [decodePayload] mirrors ntfy's own official Android app
  * exactly (`io.heckel.ntfy.util.decodeBytesMessage`, confirmed by reading that app's real source,
- * not guessed) - ntfy's JSON message envelope is text-only, so a publisher sending genuinely
- * binary UnifiedPush payload bytes (WebPush is RFC 8291 binary) is expected to base64-encode them
- * and set `encoding: "base64"`; anything else is treated as plain UTF-8 text bytes.
+ * not guessed) to consume exactly that envelope shape; anything without `encoding: "base64"` is
+ * treated as plain UTF-8 text bytes.
  *
  * Deliberately does NOT go through [TsnetClient]'s SOCKS5 proxy - that exists to reach this
  * project's own kid-phone-server over the tailnet, not the public internet ntfy.sh lives on.
@@ -86,15 +88,26 @@ object UnifiedPushRelay {
     }
 
     /** Registers [packageName] under [token], generating a fresh topic and reconnecting the
-     * shared WebSocket to include it. Returns the `https://ntfy.sh/<topic>` endpoint URL the
-     * caller should hand back to the registering app via NEW_ENDPOINT. */
+     * shared WebSocket to include it. Returns the `https://ntfy.sh/<topic>?up=1` endpoint URL the
+     * caller should hand back to the registering app via NEW_ENDPOINT.
+     *
+     * The `?up=1` suffix is load-bearing, not decorative: it's ntfy's own flag (see
+     * docs.ntfy.sh/publish and unifiedpush.org/users/distributors/ntfy/) marking this topic as
+     * UnifiedPush traffic, which is what makes the *publish* side - the registering app's own
+     * push/account server, POSTing the raw WebPush-encrypted binary payload straight to this
+     * opaque endpoint URL per spec - get auto-detected and base64-encoded server-side into the
+     * `encoding: "base64"` envelope field [decodePayload] already knows how to consume. Without
+     * it, ntfy treats the POST body as plain text, silently mangling any non-UTF8 binary payload
+     * in transit before it ever reaches [decodePayload] - the connector library's WebPush
+     * decryption then fails downstream with zero visible error on this end, since registration
+     * itself (which never touches payload bytes) works fine either way. */
     fun register(context: Context, token: String, packageName: String): String {
         val topic = "up-${UUID.randomUUID()}"
         val registrations = load().toMutableMap()
         registrations[token] = UnifiedPushRegistration(packageName, topic)
         save(registrations)
         if (running) connect(context)
-        return "https://$NTFY_HOST/$topic"
+        return "https://$NTFY_HOST/$topic?up=1"
     }
 
     fun unregister(context: Context, token: String) {
