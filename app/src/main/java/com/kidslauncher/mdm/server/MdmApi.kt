@@ -7,6 +7,7 @@ import com.kidslauncher.mdm.server.dto.DnsBlocklistCategory
 import com.kidslauncher.mdm.server.dto.DnsEventReport
 import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.dto.EnrollResponse
+import com.kidslauncher.mdm.server.dto.InstallProgressReport
 import com.kidslauncher.mdm.server.dto.JournalEntryUpload
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
@@ -58,6 +59,11 @@ interface MdmApi {
 
     @GET("api/devices/apps")
     suspend fun getTrackedAppUpdates(): Response<List<TrackedAppUpdate>>
+
+    /** Fire-and-forget from the caller's side (see [InstallProgressReport]'s own doc comment) -
+     * called on a throttled schedule during [downloadTrackedApp], not on every chunk. */
+    @POST("api/devices/apps/progress")
+    suspend fun reportInstallProgress(@Body report: InstallProgressReport): Response<Unit>
 
     /** Only called when [PolicyResponse.dnsFilterVersion] differs from the last-fetched value -
      * see [DnsFilterEngine] - since this can be a large (~100k+ domain) payload. */

@@ -10,6 +10,7 @@ import com.kidslauncher.mdm.BuildConfig
 import com.kidslauncher.mdm.notifyAppInstallResult
 import com.kidslauncher.mdm.notifyAppInstalling
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
+import com.kidslauncher.mdm.server.dto.InstallProgressReport
 import com.kidslauncher.mdm.server.dto.InstalledApp
 import com.kidslauncher.mdm.server.dto.LocationReport
 import com.kidslauncher.mdm.server.dto.PendingCommand
@@ -20,6 +21,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
+import okhttp3.ResponseBody
 import java.io.File
 import java.time.Instant
 import java.util.Calendar
@@ -236,6 +238,12 @@ private suspend fun currentLocationReport(
  * already been kicked off first - it isn't reverted just because we don't stick around to see the
  * result.
  */
+// Generous for a slow download+install over a poor connection, short enough that a genuinely
+// abandoned attempt (process died mid-download, AppInstallReceiver's callback somehow never
+// fired) doesn't block retries for long - see TrackedAppUpdateState.recordAttemptStarted's own
+// doc comment for the actual bug this guards against.
+private const val INSTALL_ATTEMPT_TIMEOUT_MS = 10 * 60 * 1000L
+
 private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
     val updates = try {
         api.getTrackedAppUpdates().body() ?: return
@@ -252,16 +260,31 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
         if (update.releaseTag == known?.lastInstalledTag || update.releaseTag == known?.lastFailedTag) {
             continue
         }
+        val attemptStartedAt = known?.attemptStartedAtMs
+        if (attemptStartedAt != null &&
+            System.currentTimeMillis() - attemptStartedAt < INSTALL_ATTEMPT_TIMEOUT_MS
+        ) {
+            // A previous cycle already started this app's download+install and it hasn't resolved
+            // yet (installSilently's commit() returns long before the real result arrives) - don't
+            // fire a second, overlapping attempt for the same target. Confirmed live: checking a
+            // second app while the first was still installing caused the first to restart from
+            // this exact redundant re-attempt, and the second app's own attempt never completed.
+            Log.i(LOG_TAG, "Skipping ${update.name} - an install attempt is already in flight")
+            continue
+        }
 
+        TrackedAppUpdateState.recordAttemptStarted(context, key)
         // Shown for the whole download+install span, not just the install step - cancelled by
         // AppInstallReceiver once the real PackageInstaller result comes back, or explicitly here
         // on a download failure (AppInstallReceiver never runs in that case, since installSilently
         // is never reached).
         notifyAppInstalling(context, update.id, update.name)
         try {
-            val body = api.downloadTrackedApp(update.downloadUrl).body()
+            val response = api.downloadTrackedApp(update.downloadUrl)
+            val body = response.body()
             if (body == null) {
                 notifyAppInstallResult(context, update.id, update.name, success = false)
+                TrackedAppUpdateState.clearAttempt(context, key)
                 continue
             }
             // Unique per attempt (not just per app id) - defense in depth alongside the syncMutex
@@ -270,16 +293,55 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             // OS-reclaimable under storage pressure, so a launcher self-update's file (deliberately
             // left behind on success - see AppInstallReceiver) doesn't need explicit cleanup here.
             val apkFile = File(context.cacheDir, "tracked_app_${key}_${System.nanoTime()}.apk")
-            body.byteStream().use { input ->
-                apkFile.outputStream().use { output -> input.copyTo(output) }
-            }
+            copyWithProgressReports(body, apkFile, api, update.id)
             Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag}, installing")
             AppInstaller.installSilently(
                 context, apkFile, key, update.name, update.isLauncher, update.releaseTag
             )
+            // Deliberately does NOT clear the in-flight marker here - installSilently's commit()
+            // is async, so this attempt is still unresolved until AppInstallReceiver's
+            // recordInstalled/recordFailed lands (or the timeout above reclaims it if that
+            // callback never fires).
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Update check failed for ${update.packageName}", e)
             notifyAppInstallResult(context, update.id, update.name, success = false)
+            TrackedAppUpdateState.clearAttempt(context, key)
+        }
+    }
+}
+
+/** Copies [body]'s bytes to [apkFile] while reporting download progress to the server on every
+ * 5% crossing (not every chunk - a large APK over a slow connection could otherwise fire dozens
+ * of requests a second). Best-effort: a failed progress report is logged and ignored, never
+ * allowed to interrupt the actual download it's reporting on. */
+private suspend fun copyWithProgressReports(
+    body: ResponseBody,
+    apkFile: File,
+    api: MdmApi,
+    trackedAppId: Long,
+) {
+    val contentLength = body.contentLength()
+    var lastReportedPercent = -1
+    body.byteStream().use { input ->
+        apkFile.outputStream().use { output ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var bytesRead = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read == -1) break
+                output.write(buffer, 0, read)
+                bytesRead += read
+                if (contentLength <= 0) continue
+                val percent = ((bytesRead * 100) / contentLength).toInt().coerceIn(0, 100)
+                if (percent >= lastReportedPercent + 5) {
+                    lastReportedPercent = percent
+                    try {
+                        api.reportInstallProgress(InstallProgressReport(trackedAppId, percent))
+                    } catch (e: Exception) {
+                        Log.w(LOG_TAG, "Failed to report install progress", e)
+                    }
+                }
+            }
         }
     }
 }

@@ -12,6 +12,10 @@ private const val LOG_TAG = "TrackedAppUpdateState"
 data class TrackedAppState(
     val lastInstalledTag: String? = null,
     val lastFailedTag: String? = null,
+    /** Set right before a download+install attempt starts, cleared once it resolves (success or
+     * failure) - see [TrackedAppUpdateState.recordAttemptStarted]'s doc comment for what this
+     * guards against. */
+    val attemptStartedAtMs: Long? = null,
 )
 
 /**
@@ -62,6 +66,49 @@ object TrackedAppUpdateState {
         val state = load().toMutableMap()
         val lastInstalledTag = state[appKey]?.lastInstalledTag
         state[appKey] = TrackedAppState(lastInstalledTag, lastFailedTag = releaseTag)
+        save(context, state)
+    }
+
+    /**
+     * Marks a download+install attempt as in flight for this app - checked by
+     * [MdmSyncWorker.checkForTrackedAppUpdates] before starting a *new* attempt for the same app,
+     * so a later sync cycle (triggered by checking a different app while this one's still
+     * mid-install) doesn't fire a second, overlapping install for the same target.
+     *
+     * This matters because [AppInstaller.installSilently]'s `PackageInstaller.Session.commit()`
+     * returns immediately - the real result only arrives later via [AppInstallReceiver], well after
+     * `performMdmSync` (and the `syncMutex` guarding it) has already returned. The mutex prevents
+     * two sync cycles from running *concurrently*, but does nothing to stop a *later, non-
+     * overlapping* cycle from re-attempting an app whose previous attempt simply hasn't resolved
+     * yet - confirmed live: checking a second app while the first was still installing caused the
+     * first app's install to restart from a fresh cycle's redundant attempt, and the second app's
+     * own attempt never completed, ending with it selected/allowed but never actually installed.
+     *
+     * Recorded before the download even starts (not just before `installSilently`), since the
+     * whole download+install span is the window a later cycle shouldn't re-enter. Cleared by
+     * [recordInstalled]/[recordFailed] once `AppInstallReceiver` resolves the real result, or by
+     * [clearAttempt] on an earlier failure (download error, exception) where that receiver is never
+     * reached at all. If neither ever fires - the process dies mid-attempt, or the callback is
+     * somehow lost - the timeout in `checkForTrackedAppUpdates` reclaims it instead of blocking
+     * retries forever.
+     */
+    fun recordAttemptStarted(context: Context, appKey: String) {
+        val state = load().toMutableMap()
+        val current = state[appKey] ?: TrackedAppState()
+        state[appKey] = current.copy(attemptStartedAtMs = System.currentTimeMillis())
+        save(context, state)
+    }
+
+    /** Clears an in-flight marker without touching `lastInstalledTag`/`lastFailedTag` - used for a
+     * failure that happens before `installSilently` is ever reached (download error, exception),
+     * where nothing else will ever resolve this attempt otherwise. Deliberately doesn't set
+     * `lastFailedTag` itself - a transient download failure should still be retried next cycle,
+     * not treated as a sticky "don't retry this release" the way a real install failure is. */
+    fun clearAttempt(context: Context, appKey: String) {
+        val state = load().toMutableMap()
+        val current = state[appKey] ?: return
+        if (current.attemptStartedAtMs == null) return
+        state[appKey] = current.copy(attemptStartedAtMs = null)
         save(context, state)
     }
 }
