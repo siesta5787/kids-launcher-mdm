@@ -15,7 +15,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import java.util.UUID
+import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
 private const val LOG_TAG = "UnifiedPushRelay"
@@ -23,6 +23,16 @@ private const val NTFY_HOST = "ntfy.sh"
 private const val BASE64_ENCODING = "base64"
 private const val INITIAL_RECONNECT_DELAY_MS = 5_000L
 private const val MAX_RECONNECT_DELAY_MS = 60_000L
+
+// ntfy's server (server.go: unifiedPushTopicPrefix/unifiedPushTopicLength) only recognizes a
+// topic as UnifiedPush traffic - and so only ever sets a rate visitor for it, which publishing
+// to it requires - if the topic ID is EXACTLY this shape: the literal prefix "up" (no separator)
+// followed by random characters totaling 14 characters. Confirmed against ntfy's actual server
+// source, not guessed - see UnifiedPushRelay's class doc comment for how this was found.
+private const val NTFY_UP_TOPIC_PREFIX = "up"
+private const val NTFY_UP_TOPIC_LENGTH = 14
+private const val NTFY_UP_TOPIC_CHARSET =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 @Serializable
 data class UnifiedPushRegistration(val packageName: String, val topic: String)
@@ -44,8 +54,8 @@ private data class NtfyEnvelope(
  * service, one connection, many registered apps" actually work, rather than one connection per
  * app - see [CommandListenerService], the only intended owner of this object's lifecycle.
  *
- * Each registration gets its own randomly-generated topic, never reused, never derived from the
- * app's identity - the registering app only ever sees the resulting
+ * Each registration gets its own randomly-generated topic (see [generateTopic]), never reused,
+ * never derived from the app's identity - the registering app only ever sees the resulting
  * `https://ntfy.sh/<topic>?up=1` endpoint URL, not the generation scheme, so ntfy.sh itself can't
  * correlate two registrations as the same app/device.
  *
@@ -110,14 +120,41 @@ object UnifiedPushRelay {
      * it, ntfy treats the POST body as plain text, silently mangling any non-UTF8 binary payload
      * in transit before it ever reaches [decodePayload] - the connector library's WebPush
      * decryption then fails downstream with zero visible error on this end, since registration
-     * itself (which never touches payload bytes) works fine either way. */
+     * itself (which never touches payload bytes) works fine either way.
+     *
+     * The topic itself must be shaped exactly like [generateTopic] produces - see that function's
+     * own doc comment. A topic that doesn't match silently never gets a rate visitor set on
+     * ntfy's side at all, which is a *harder* failure than the `?up=1` one above: every publish
+     * to it - including a registering app's real ones - gets hard-rejected with a 507
+     * ("cannot publish to UnifiedPush topic without previously active subscriber"), regardless of
+     * this app's own connection state, not just malformed for a genuinely binary payload. */
     fun register(context: Context, token: String, packageName: String): String {
-        val topic = "up-${UUID.randomUUID()}"
+        val topic = generateTopic()
         val registrations = load().toMutableMap()
         registrations[token] = UnifiedPushRegistration(packageName, topic)
         save(registrations)
         if (running) connect(context)
         return "https://$NTFY_HOST/$topic?up=1"
+    }
+
+    /** Generates a topic ID in exactly the shape ntfy's server requires to recognize it as
+     * UnifiedPush traffic: the literal prefix `"up"` (no separator - `"up-<uuid>"`, this app's
+     * original scheme, was 39 characters and silently never matched) followed by random
+     * characters for a total length of 14, drawn from the same mixed-case-alphanumeric charset
+     * ntfy's own `util.RandomStringPrefix` uses. Confirmed directly against ntfy's server source
+     * (github.com/binwiederhier/ntfy, `server/server.go`'s `unifiedPushTopicPrefix`/
+     * `unifiedPushTopicLength` constants and the `maybeSetRateVisitors` check that gates on them),
+     * not guessed - a topic that doesn't match this exactly never gets ntfy's per-topic rate
+     * visitor set, which every UnifiedPush-flagged publish to it requires. [SecureRandom] because
+     * this string is the entire unguessability guarantee for the endpoint - anyone who can guess
+     * or observe it can publish arbitrary push payloads to the registered app. */
+    private fun generateTopic(): String {
+        val random = SecureRandom()
+        val suffixLength = NTFY_UP_TOPIC_LENGTH - NTFY_UP_TOPIC_PREFIX.length
+        val suffix = (1..suffixLength)
+            .map { NTFY_UP_TOPIC_CHARSET[random.nextInt(NTFY_UP_TOPIC_CHARSET.length)] }
+            .joinToString("")
+        return "$NTFY_UP_TOPIC_PREFIX$suffix"
     }
 
     fun unregister(context: Context, token: String) {
