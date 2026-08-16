@@ -39,8 +39,8 @@ data class UnifiedPushRegistration(val packageName: String, val topic: String)
 
 @Serializable
 private data class NtfyEnvelope(
+    val id: String? = null,
     val event: String = "",
-    val time: Long? = null,
     val topic: String? = null,
     val message: String? = null,
     val encoding: String? = null,
@@ -87,9 +87,14 @@ object UnifiedPushRelay {
     private var reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
     private var running = false
 
-    /** Unix seconds of the most recent event (open/keepalive/message) seen on any topic, from
-     * ntfy's own `time` field - see [connect]'s `since` handling for why this is tracked. */
-    private var lastEventTimeSec: Long? = null
+    /** `id` of the most recent event (open/keepalive/message) seen on any topic - see [connect]'s
+     * `since` handling for why this is tracked. Deliberately an event ID, not a Unix timestamp:
+     * ntfy's `since` treats a timestamp as inclusive, so watermarking on a message's own `time`
+     * caused that same message to be replayed again on every subsequent reconnect forever
+     * (confirmed live 2026-08-15 - Molly logged a fresh "New message" in lockstep with every ~5s
+     * reconnect). `since=<id>` is ntfy's own documented mechanism for exact, non-repeating
+     * continuation (docs.ntfy.sh/subscribe/api/#fetch-cached-messages). */
+    private var lastEventId: String? = null
 
     /** Call once when the owning service starts (and the parent has enabled this in Settings) -
      * safe to call repeatedly. */
@@ -199,7 +204,7 @@ object UnifiedPushRelay {
         // param, docs.ntfy.sh/subscribe/api/#poll-for-messages) asks it to replay anything
         // published at or after our last-seen event instead, so a reconnect - however brief -
         // can't silently swallow a real push the way it currently does.
-        val sinceParam = lastEventTimeSec?.let { "?since=$it" }.orEmpty()
+        val sinceParam = lastEventId?.let { "?since=$it" }.orEmpty()
         val url = "wss://$NTFY_HOST/${topics.joinToString(",")}/ws$sinceParam"
         val request = Request.Builder().url(url).build()
         webSocket = client.newWebSocket(
@@ -252,9 +257,9 @@ object UnifiedPushRelay {
             return
         }
         // Advance the replay watermark on every event, not just "message" ones - a keepalive/open
-        // event still proves we were caught up as of that timestamp, and using it means a
-        // subsequent reconnect's `since` doesn't needlessly re-fetch messages we already saw.
-        envelope.time?.let { lastEventTimeSec = it }
+        // event still proves we were caught up as of that point, and using it means a subsequent
+        // reconnect's `since` doesn't needlessly re-fetch messages we already saw.
+        envelope.id?.let { lastEventId = it }
 
         if (envelope.event != "message") return
         val topic = envelope.topic ?: return
