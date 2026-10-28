@@ -1,10 +1,15 @@
 package com.kidslauncher.mdm.server
 
 import android.content.Context
+import android.os.PersistableBundle
 import android.util.Log
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.dto.ProvisioningExtras
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "Provisioning"
 
@@ -49,5 +54,49 @@ suspend fun applyProvisioningExtras(context: Context, extras: ProvisioningExtras
         }
     } catch (e: Exception) {
         Result.failure(e)
+    }
+}
+
+private val nativeProvisioningExtrasHandled = AtomicBoolean(false)
+
+/**
+ * Entry point for Android's native QR/zero-touch flow specifically. On Android 12+ the same
+ * admin extras bundle reaches this app twice - once via [ProvisioningComplianceActivity]
+ * (`ADMIN_POLICY_COMPLIANCE`) and once via
+ * [MdmDeviceAdminReceiver.onProfileProvisioningComplete] - and which one fires (or whether both
+ * do) varies by Android version and OEM setup wizard. Enrolling twice with the same single-use
+ * enrollment code would at best log a spurious failure and at worst race two device tokens, so
+ * only the first caller per process actually enrolls; the rest no-op.
+ *
+ * Fire-and-forget on [Dispatchers.IO] - callers are a setup-wizard-blocking activity and a
+ * broadcast receiver, neither of which should wait out [TsnetClient]'s up-to-30s connect. [onDone]
+ * runs after the attempt either way (or immediately if skipped), for the receiver's `goAsync()`.
+ */
+fun applyNativeProvisioningExtrasOnce(
+    context: Context,
+    bundle: PersistableBundle?,
+    onDone: () -> Unit = {},
+) {
+    val extras = ProvisioningExtras.fromAdminExtrasBundle(bundle)
+    if (extras == null) {
+        Log.i(LOG_TAG, "No admin extras bundle from provisioning - skipping auto-enroll")
+        onDone()
+        return
+    }
+    if (!nativeProvisioningExtrasHandled.compareAndSet(false, true)) {
+        Log.i(LOG_TAG, "Provisioning extras already applied this process - skipping duplicate")
+        onDone()
+        return
+    }
+
+    val appContext = context.applicationContext
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            applyProvisioningExtras(appContext, extras)
+                .onSuccess { Log.i(LOG_TAG, "Auto-enrolled from provisioning QR") }
+                .onFailure { e -> Log.w(LOG_TAG, "Auto-enroll from provisioning QR failed", e) }
+        } finally {
+            onDone()
+        }
     }
 }

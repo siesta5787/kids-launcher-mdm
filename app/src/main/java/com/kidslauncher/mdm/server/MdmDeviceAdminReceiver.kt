@@ -6,10 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.PersistableBundle
 import android.util.Log
-import com.kidslauncher.mdm.server.dto.ProvisioningExtras
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "MdmDeviceAdminReceiver"
 
@@ -40,25 +36,12 @@ class MdmDeviceAdminReceiver : DeviceAdminReceiver() {
             DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
             PersistableBundle::class.java,
         )
-        val extras = ProvisioningExtras.fromAdminExtrasBundle(bundle)
-        if (extras == null) {
-            Log.i(LOG_TAG, "No admin extras bundle in provisioning intent - skipping auto-enroll")
-            return
-        }
 
         // goAsync() keeps this receiver's process alive long enough for the enroll network call
         // to finish - a plain unscoped coroutine launch here risks the process being torn down
         // the moment this callback returns, since DeviceAdminReceiver callbacks follow the same
         // short-lived-broadcast-receiver lifecycle as any other BroadcastReceiver.
         val pendingResult = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                applyProvisioningExtras(context, extras)
-                    .onSuccess { Log.i(LOG_TAG, "Auto-enrolled from provisioning QR") }
-                    .onFailure { e -> Log.w(LOG_TAG, "Auto-enroll from provisioning QR failed", e) }
-            } finally {
-                pendingResult.finish()
-            }
-        }
+        applyNativeProvisioningExtrasOnce(context, bundle) { pendingResult.finish() }
     }
 }

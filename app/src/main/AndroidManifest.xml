@@ -147,6 +147,30 @@
             </intent-filter>
         </receiver>
 
+        <!-- Android 12+ QR/zero-touch Device Owner provisioning hands off to these two right
+             after installing the APK - GMS setup wizards abort with "Can't set up device" if
+             either is missing. BIND_DEVICE_ADMIN means only the system can launch them. -->
+        <activity
+            android:name=".server.ProvisioningModeActivity"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.app.action.GET_PROVISIONING_MODE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".server.ProvisioningComplianceActivity"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Not externally reachable - only ever triggered via the PendingIntent passed to
              PackageInstaller.Session.commit() in AppInstaller.kt, for every tracked app's
              install/update, including the launcher's own self-update. -->
