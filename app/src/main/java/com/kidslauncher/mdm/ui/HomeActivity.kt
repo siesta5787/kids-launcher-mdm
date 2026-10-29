@@ -1,7 +1,10 @@
 package com.kidslauncher.mdm.ui
 
 import android.app.ActivityManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
@@ -9,10 +12,14 @@ import android.os.Handler
 import android.os.Looper
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kidslauncher.mdm.Application
 import com.kidslauncher.mdm.databinding.ActivityHomeBinding
+import com.kidslauncher.mdm.isUserUnlocked
 import com.kidslauncher.mdm.server.LockReason
 import com.kidslauncher.mdm.server.TsnetClient
 import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
@@ -36,8 +43,17 @@ private const val LOCK_REASON_REFRESH_INTERVAL_MS = 60_000L
 /**
  * [HomeActivity] is the actual application launcher.
  * It shows a fixed list of chosen apps; swiping up opens the full app drawer.
+ *
+ * Direct-boot-aware (the only such component in this app), so it - not the Settings app's
+ * FallbackHome - is what Android starts as HOME before the first unlock after a reboot. In that
+ * window ([bootLocked]) nothing that reads credential-encrypted storage may run, so it shows only
+ * the wallpaper (behind the keyguard anyway) and rebuilds itself as the real launcher once
+ * ACTION_USER_UNLOCKED arrives. Every lifecycle method below must check [bootLocked] first.
  */
 class HomeActivity : UIObjectActivity() {
+
+    private var bootLocked = false
+    private var unlockReceiver: BroadcastReceiver? = null
 
     private lateinit var binding: ActivityHomeBinding
     private lateinit var minimalistAdapter: MinimalistHomeAdapter
@@ -72,7 +88,19 @@ class HomeActivity : UIObjectActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        bootLocked = !isUserUnlocked(this)
         super.onCreate(savedInstanceState)
+
+        // Back does nothing on the home screen, same as stock Android launchers.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {}
+        })
+
+        if (bootLocked) {
+            setContentView(FrameLayout(this))
+            waitForUnlock()
+            return
+        }
 
         // Initialise layout
         binding = ActivityHomeBinding.inflate(layoutInflater)
@@ -81,11 +109,6 @@ class HomeActivity : UIObjectActivity() {
         minimalistAdapter = MinimalistHomeAdapter(this)
         binding.homeMinimalistList.layoutManager = LinearLayoutManager(this)
         binding.homeMinimalistList.adapter = minimalistAdapter
-
-        // Back does nothing on the home screen, same as stock Android launchers.
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {}
-        })
 
         gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(
@@ -141,13 +164,39 @@ class HomeActivity : UIObjectActivity() {
         })
     }
 
+    /**
+     * Rebuilds as the real launcher once the user unlocks. [Application.initAfterUnlock] runs
+     * first (idempotent - Application's own unlock receiver may or may not have fired yet), since
+     * everything after [recreate] assumes [LauncherPreferences] is initialized.
+     */
+    private fun waitForUnlock() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) = onUnlocked()
+        }
+        unlockReceiver = receiver
+        ContextCompat.registerReceiver(
+            this, receiver, IntentFilter(Intent.ACTION_USER_UNLOCKED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        if (isUserUnlocked(this)) onUnlocked()
+    }
+
+    private fun onUnlocked() {
+        unlockReceiver?.let { unregisterReceiver(it) }
+        unlockReceiver = null
+        (application as Application).initAfterUnlock()
+        recreate()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (bootLocked) return true
         gestureDetector.onTouchEvent(event)
         return true
     }
 
     override fun onStart() {
         super.onStart()
+        if (bootLocked) return
 
         // First launch: mark it done and try to set the default home screen
         if (!LauncherPreferences.internal().started()) {
@@ -164,6 +213,7 @@ class HomeActivity : UIObjectActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (bootLocked) return
         // Deliberately triggered here, not from Application.onCreate() - see TsnetClient's own
         // doc comment on the GrapheneOS hardened_malloc / native-crash risk this sidesteps by
         // waiting until the launcher has actually rendered instead of racing the very first UI
@@ -225,9 +275,13 @@ class HomeActivity : UIObjectActivity() {
     }
 
     override fun onDestroy() {
-        LauncherPreferences.getSharedPreferences()
-            .unregisterOnSharedPreferenceChangeListener(sharedPreferencesListener)
-        minimalistAdapter.destroy()
+        unlockReceiver?.let { unregisterReceiver(it) }
+        unlockReceiver = null
+        if (!bootLocked) {
+            LauncherPreferences.getSharedPreferences()
+                .unregisterOnSharedPreferenceChangeListener(sharedPreferencesListener)
+            minimalistAdapter.destroy()
+        }
         super.onDestroy()
     }
 

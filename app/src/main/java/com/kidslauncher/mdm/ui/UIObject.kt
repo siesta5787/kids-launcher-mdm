@@ -5,6 +5,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Resources
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.kidslauncher.mdm.isUserUnlocked
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.preferences.theme.Background
 import com.kidslauncher.mdm.preferences.theme.Font
@@ -54,18 +55,24 @@ interface UIObject {
 
 }
 
+/**
+ * Every [UIObject] hook reads [LauncherPreferences], which lives in credential-encrypted storage -
+ * so all of them are skipped before the first unlock after a reboot, when only the
+ * direct-boot-aware [HomeActivity] can run at all (see [isUserUnlocked]).
+ */
 abstract class UIObjectActivity : AppCompatActivity(), UIObject {
     override fun onCreate(savedInstanceState: Bundle?) {
         super<AppCompatActivity>.onCreate(savedInstanceState)
-        super<UIObject>.onCreate()
+        if (isUserUnlocked(this)) super<UIObject>.onCreate()
     }
 
     override fun onStart() {
         super<AppCompatActivity>.onStart()
-        super<UIObject>.onStart()
+        if (isUserUnlocked(this)) super<UIObject>.onStart()
     }
 
     override fun getTheme(): Resources.Theme? {
-        return modifyTheme(super.getTheme())
+        val theme = super.getTheme()
+        return if (isUserUnlocked(this)) modifyTheme(theme) else theme
     }
 }

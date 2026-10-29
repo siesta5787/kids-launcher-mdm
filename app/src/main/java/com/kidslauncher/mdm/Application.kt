@@ -10,6 +10,7 @@ import android.content.pm.ShortcutInfo
 import android.os.Build
 import android.os.Build.VERSION_CODES
 import android.os.UserHandle
+import android.os.UserManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
@@ -24,7 +25,17 @@ import com.kidslauncher.mdm.preferences.resetPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
+
+/**
+ * Whether this user's credential-encrypted storage is unlocked yet. False only between a reboot
+ * and the first unlock ("before first unlock") - the window in which [com.kidslauncher.mdm.ui.HomeActivity],
+ * this app's one direct-boot-aware component, can run but nothing that touches SharedPreferences,
+ * filesDir or cacheDir may, since all of those live in credential-encrypted storage.
+ */
+fun isUserUnlocked(context: Context): Boolean =
+    context.getSystemService(UserManager::class.java).isUserUnlocked
 
 
 class Application : android.app.Application() {
@@ -112,6 +123,40 @@ class Application : android.app.Application() {
             exitProcess(1)
         }
 
+        // HomeActivity is direct-boot-aware, so this process can start before the first unlock
+        // after a reboot - it's the HOME screen Android needs to finish booting, instead of the
+        // Settings app's FallbackHome (see AppEnforcer.homeProviderPackages for why depending on
+        // that went badly). Everything in initAfterUnlock() reads credential-encrypted storage
+        // and would crash in that window, so it waits for ACTION_USER_UNLOCKED instead.
+        if (isUserUnlocked(this)) {
+            initAfterUnlock()
+        } else {
+            ContextCompat.registerReceiver(
+                this,
+                object : BroadcastReceiver() {
+                    override fun onReceive(context: Context, intent: Intent) {
+                        unregisterReceiver(this)
+                        initAfterUnlock()
+                    }
+                },
+                IntentFilter(Intent.ACTION_USER_UNLOCKED),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            // Closes the gap where the unlock lands between the check above and registering.
+            if (isUserUnlocked(this)) initAfterUnlock()
+        }
+    }
+
+    private val initialized = AtomicBoolean(false)
+
+    /**
+     * Everything that used to run unconditionally in [onCreate]. Idempotent - called from
+     * [onCreate] when already unlocked, from the ACTION_USER_UNLOCKED receiver otherwise, and by
+     * HomeActivity before it rebuilds itself on unlock (whichever of the two receivers fires
+     * first wins). Main thread only.
+     */
+    fun initAfterUnlock() {
+        if (!initialized.compareAndSet(false, true)) return
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         LauncherPreferences.init(preferences, this.resources)
