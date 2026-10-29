@@ -59,13 +59,49 @@ internal fun controllablePackages(pm: PackageManager): List<String> {
         .mapNotNull { it.activityInfo?.packageName }
         .toSet()
 
+    val homeProviders = homeProviderPackages(pm)
     return pm.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
         .filter { info ->
             (info.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
                 info.packageName in launchablePackages
         }
         .map { it.packageName }
+        .filter { it !in homeProviders }
         .distinct()
+}
+
+/** Hard backstop for [homeProviderPackages] - hosts AOSP's `FallbackHome`. */
+private const val SETTINGS_PACKAGE = "com.android.settings"
+
+/**
+ * Every package (other than this one) that provides a HOME activity - must never be hidden or
+ * suspended. This app isn't direct-boot-aware, so before the first unlock after a reboot its own
+ * HomeActivity doesn't resolve, and the system's `FallbackHome` (inside the Settings app) is the
+ * only thing that can. Hiding Settings - which used to happen whenever it wasn't on a device's
+ * allowlist, since it has a launcher icon - left zero HOME candidates at boot:
+ * `RootWindowContainer.startHomeOnAllDisplays` logs "No home screen found", never retries, and
+ * the phone sits on the boot logo forever (`dumpsys user` stuck at `State: BOOTING`). Confirmed
+ * live on the GrapheneOS Pixel (2026-10-28): `dumpsys package com.android.settings` showed
+ * `hidden=true suspended=true` on exactly that stuck boot. Kids stay out of Settings via
+ * lock-task pinning instead, which doesn't affect HOME resolution.
+ *
+ * Queried with every match flag that could otherwise drop a candidate - hidden (uninstalled-
+ * for-user) packages, direct-boot-aware/unaware components, disabled components - since a
+ * false negative here is a bricked boot, while a false positive only leaves one app unrestricted.
+ */
+internal fun homeProviderPackages(pm: PackageManager): Set<String> {
+    val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+    val flags = PackageManager.MATCH_UNINSTALLED_PACKAGES or
+        PackageManager.MATCH_DISABLED_COMPONENTS or
+        PackageManager.MATCH_DIRECT_BOOT_AWARE or
+        PackageManager.MATCH_DIRECT_BOOT_UNAWARE
+    val found = try {
+        pm.queryIntentActivities(homeIntent, flags).mapNotNull { it.activityInfo?.packageName }
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "HOME provider query failed - falling back to Settings only", e)
+        emptyList()
+    }
+    return (found + SETTINGS_PACKAGE).toSet()
 }
 
 /**
@@ -98,6 +134,8 @@ object AppEnforcer {
         val allowedPackages = effectivePolicy?.allowlist?.takeIf { it.isNotEmpty() }?.toSet()
         val ownPackage = context.packageName
         val pm = context.packageManager
+
+        restoreHomeProviders(dpm, admin, pm, ownPackage)
 
         val installedPackages = controllablePackages(pm)
 
@@ -434,6 +472,7 @@ object AppEnforcer {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         if (!dpm.isDeviceOwnerApp(context.packageName)) return
         if (packageName == context.packageName) return
+        if (packageName in homeProviderPackages(context.packageManager)) return
         if (OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()) return
 
         val allowedPackages = cachedPolicy()?.allowlist?.takeIf { it.isNotEmpty() }?.toSet() ?: return
@@ -451,6 +490,35 @@ object AppEnforcer {
             }
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to suspend newly-installed $packageName", e)
+        }
+    }
+
+    /**
+     * Un-hides/un-suspends every [homeProviderPackages] entry on every [apply] - excluding them
+     * from [controllablePackages] alone would leave a device that was enforced by an older build
+     * (Settings already hidden) stuck that way forever, since the main loop no longer visits them.
+     */
+    private fun restoreHomeProviders(
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        pm: PackageManager,
+        ownPackage: String,
+    ) {
+        for (packageName in homeProviderPackages(pm) - ownPackage) {
+            try {
+                if (dpm.isApplicationHidden(admin, packageName)) {
+                    val ok = dpm.setApplicationHidden(admin, packageName, false)
+                    Log.i(LOG_TAG, "Un-hid HOME provider $packageName (ok=$ok)")
+                }
+                if (pm.isPackageSuspended(packageName)) {
+                    val failed = dpm.setPackagesSuspended(admin, arrayOf(packageName), false)
+                    Log.i(LOG_TAG, "Un-suspended HOME provider $packageName (failed=${failed?.toList()})")
+                }
+            } catch (e: PackageManager.NameNotFoundException) {
+                // Not installed on this device (e.g. the hardcoded Settings backstop) - nothing to do.
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "Failed to restore HOME provider $packageName", e)
+            }
         }
     }
 
