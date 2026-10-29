@@ -36,7 +36,8 @@ private const val BROWSER_PACKAGE_NAME = "com.kidsmdm.browser"
  * launcher (home-screen) icon - see the function's own doc comment for why this replaced an
  * earlier hand-maintained package-name allowlist.
  */
-internal fun controllablePackages(pm: PackageManager): List<String> {
+internal fun controllablePackages(context: Context): List<String> {
+    val pm = context.packageManager
     // MATCH_UNINSTALLED_PACKAGES is required here, or this list silently drops any package this
     // same enforcer has already hidden via setApplicationHidden - PackageManager excludes hidden
     // packages from getInstalledApplications() by default. Without this flag, a hidden app can
@@ -59,15 +60,36 @@ internal fun controllablePackages(pm: PackageManager): List<String> {
         .mapNotNull { it.activityInfo?.packageName }
         .toSet()
 
-    val homeProviders = homeProviderPackages(pm)
+    val bootExempt = bootExemptPackages(context)
     return pm.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
         .filter { info ->
             (info.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
                 info.packageName in launchablePackages
         }
         .map { it.packageName }
-        .filter { it !in homeProviders }
+        .filter { it !in bootExempt }
         .distinct()
+}
+
+/**
+ * Packages that must never be hidden/suspended so the phone can always finish booting: none, as
+ * long as this app's own [HomeActivity] is direct-boot-aware (v0.51.0+) - it then resolves as HOME
+ * before the first unlock by itself, so nothing else needs to. Otherwise, every
+ * [homeProviderPackages] entry. Checked against the *installed* manifest at runtime rather than
+ * assumed, so a future build that loses the flag fails safe (Settings stays visible) instead of
+ * bricking boot.
+ */
+internal fun bootExemptPackages(context: Context): Set<String> =
+    if (ownHomeIsDirectBootAware(context)) emptySet() else homeProviderPackages(context.packageManager)
+
+private fun ownHomeIsDirectBootAware(context: Context): Boolean = try {
+    context.packageManager.getActivityInfo(
+        ComponentName(context, HomeActivity::class.java),
+        PackageManager.MATCH_DIRECT_BOOT_AWARE or PackageManager.MATCH_DIRECT_BOOT_UNAWARE,
+    ).directBootAware
+} catch (e: Exception) {
+    Log.w(LOG_TAG, "Couldn't read HomeActivity's directBootAware flag - assuming false", e)
+    false
 }
 
 /** Hard backstop for [homeProviderPackages] - hosts AOSP's `FallbackHome`. */
@@ -75,7 +97,8 @@ private const val SETTINGS_PACKAGE = "com.android.settings"
 
 /**
  * Every package (other than this one) that provides a HOME activity - must never be hidden or
- * suspended. This app isn't direct-boot-aware, so before the first unlock after a reboot its own
+ * suspended unless this app's own HOME is direct-boot-aware (see [bootExemptPackages]). Without
+ * that, before the first unlock after a reboot its own
  * HomeActivity doesn't resolve, and the system's `FallbackHome` (inside the Settings app) is the
  * only thing that can. Hiding Settings - which used to happen whenever it wasn't on a device's
  * allowlist, since it has a launcher icon - left zero HOME candidates at boot:
@@ -135,9 +158,9 @@ object AppEnforcer {
         val ownPackage = context.packageName
         val pm = context.packageManager
 
-        restoreHomeProviders(dpm, admin, pm, ownPackage)
+        restoreBootExemptPackages(dpm, admin, context)
 
-        val installedPackages = controllablePackages(pm)
+        val installedPackages = controllablePackages(context)
 
         for (packageName in installedPackages) {
             if (packageName == ownPackage) continue
@@ -472,7 +495,7 @@ object AppEnforcer {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         if (!dpm.isDeviceOwnerApp(context.packageName)) return
         if (packageName == context.packageName) return
-        if (packageName in homeProviderPackages(context.packageManager)) return
+        if (packageName in bootExemptPackages(context)) return
         if (OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()) return
 
         val allowedPackages = cachedPolicy()?.allowlist?.takeIf { it.isNotEmpty() }?.toSet() ?: return
@@ -494,17 +517,18 @@ object AppEnforcer {
     }
 
     /**
-     * Un-hides/un-suspends every [homeProviderPackages] entry on every [apply] - excluding them
+     * Un-hides/un-suspends every [bootExemptPackages] entry on every [apply] - excluding them
      * from [controllablePackages] alone would leave a device that was enforced by an older build
      * (Settings already hidden) stuck that way forever, since the main loop no longer visits them.
+     * A no-op while this app's own HOME is direct-boot-aware (the set is empty then).
      */
-    private fun restoreHomeProviders(
+    private fun restoreBootExemptPackages(
         dpm: DevicePolicyManager,
         admin: ComponentName,
-        pm: PackageManager,
-        ownPackage: String,
+        context: Context,
     ) {
-        for (packageName in homeProviderPackages(pm) - ownPackage) {
+        val pm = context.packageManager
+        for (packageName in bootExemptPackages(context) - context.packageName) {
             try {
                 if (dpm.isApplicationHidden(admin, packageName)) {
                     val ok = dpm.setApplicationHidden(admin, packageName, false)

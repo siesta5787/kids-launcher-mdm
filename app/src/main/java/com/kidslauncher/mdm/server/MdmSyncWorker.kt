@@ -383,7 +383,7 @@ private suspend fun copyWithProgressReports(
  */
 private fun collectInstalledApps(context: Context): List<InstalledApp> {
     val pm = context.packageManager
-    return controllablePackages(pm)
+    return controllablePackages(context)
         .filter { it != context.packageName }
         .mapNotNull { packageName ->
             try {
