@@ -37,8 +37,8 @@ android {
         applicationId = "com.kidslauncher.mdm"
         minSdk = 34
         targetSdk = 36
-        versionCode = 117
-        versionName = "0.23.7"
+        versionCode = 118
+        versionName = "0.50.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -47,9 +47,29 @@ android {
         generateLocaleConfig = true
     }
 
+    // Shipped builds are the release variant, signed with the shared Kids MDM release key (same
+    // key as kids-mdm-im and kids-mdm-browser - their journal ContentProviders are
+    // signature-permission-gated). CI provides it via RELEASE_KEYSTORE_* env vars; without them
+    // (local builds, PR builds) the release APK is simply left unsigned.
+    signingConfigs {
+        System.getenv("RELEASE_KEYSTORE_PATH")?.let { path ->
+            create("release") {
+                storeFile = file(path)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
+            signingConfig = signingConfigs.findByName("release")
+            // Off deliberately: R8 shrinking can strip gomobile's tsnet glue classes, which are
+            // only ever reached from native code via JNI - a crash there on a pinned Device Owner
+            // launcher has no fallback Home app to land in. Keeps release behavior identical to
+            // the debug builds every feature was live-tested on.
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
