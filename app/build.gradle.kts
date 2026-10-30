@@ -37,8 +37,8 @@ android {
         applicationId = "com.kidslauncher.mdm"
         minSdk = 34
         targetSdk = 36
-        versionCode = 125
-        versionName = "0.52.2"
+        versionCode = 126
+        versionName = "0.52.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
