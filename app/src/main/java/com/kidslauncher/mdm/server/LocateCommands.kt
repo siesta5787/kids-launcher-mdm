@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.location.LocationManager
+import android.location.LocationRequest
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -33,7 +34,12 @@ import kotlinx.serialization.Serializable
 
 private const val LOG_TAG = "LocateCommands"
 private const val RING_DURATION_MS = 30_000L
-private const val FRESH_LOCATION_TIMEOUT_MS = 15_000L
+// How long an active fix may take. Routine syncs stay short so they never stall the sync they run
+// in; an explicit ring/locate (or the once-per-boot report before first unlock) gets much longer,
+// since a GPS cold start indoors routinely needs more than 15s - confirmed live on the GrapheneOS
+// Pixel, where every 15s attempt came back empty and nothing ever reached the map.
+private const val ROUTINE_LOCATION_TIMEOUT_MS = 20_000L
+private const val FORCED_LOCATION_TIMEOUT_MS = 60_000L
 
 // An active fetch (requestFreshFix) shows Android's location-in-use indicator and visibly slows
 // down the sync it runs in - confirmed live, reported as "Sync now takes longer and the green
@@ -145,7 +151,8 @@ object LocateCommands {
         // a due cycle often runs right before checkForTrackedAppUpdates triggers a self-update,
         // which SIGKILLs this process, and an async write can lose the race against that kill.
         if (prefsReady) saveLastActiveFetchAt(context, System.currentTimeMillis())
-        val fresh = requestFreshFix(context, lm) ?: try {
+        val timeoutMs = if (forceFresh) FORCED_LOCATION_TIMEOUT_MS else ROUTINE_LOCATION_TIMEOUT_MS
+        val fresh = requestFreshFix(context, lm, timeoutMs) ?: try {
             val providers = mutableListOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 providers.add(LocationManager.FUSED_PROVIDER)
@@ -215,23 +222,30 @@ object LocateCommands {
     /**
      * Actively requests a fresh fix via the modern one-shot [LocationManager.getCurrentLocation]
      * API (no Google Play Services needed, unlike `FusedLocationProviderClient`), bridged into a
-     * suspend call since [MdmSyncWorker] already runs in a coroutine. Bounded by
-     * [FRESH_LOCATION_TIMEOUT_MS] so a GPS fix that can't be acquired (e.g. deep indoors) can never
-     * stall a sync cycle - `getCurrentLocation` is documented to call back with `null` on its own
-     * internal timeout, but this is a second, app-level bound just in case that's ever longer.
+     * suspend call since [MdmSyncWorker] already runs in a coroutine. Bounded by [timeoutMs] so a
+     * fix that can't be acquired (e.g. deep indoors) can never stall a sync cycle indefinitely.
+     *
+     * Prefers the platform's fused provider (GPS + Wi-Fi/cell network location combined - AOSP's own
+     * on GrapheneOS, Google's on a GMS phone; neither needs Play Services through this API). Picking
+     * raw GPS whenever it was enabled - as this used to - meant network location, the only source
+     * that works indoors, was never even tried on a phone that has it.
      */
-    private suspend fun requestFreshFix(context: Context, lm: LocationManager): Location? {
-        val provider = when {
-            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-            else -> return null
-        }
-        return withTimeoutOrNull(FRESH_LOCATION_TIMEOUT_MS) {
+    private suspend fun requestFreshFix(context: Context, lm: LocationManager, timeoutMs: Long): Location? {
+        val provider = listOf(
+            LocationManager.FUSED_PROVIDER,
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+        ).firstOrNull { lm.isProviderEnabled(it) } ?: return null
+        val request = LocationRequest.Builder(0L)
+            .setDurationMillis(timeoutMs)
+            .setQuality(LocationRequest.QUALITY_HIGH_ACCURACY)
+            .build()
+        return withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
                 val cancellationSignal = CancellationSignal()
                 cont.invokeOnCancellation { cancellationSignal.cancel() }
                 try {
-                    lm.getCurrentLocation(provider, cancellationSignal, context.mainExecutor) { location ->
+                    lm.getCurrentLocation(provider, request, cancellationSignal, context.mainExecutor) { location ->
                         if (cont.isActive) cont.resume(location)
                     }
                 } catch (e: Exception) {
