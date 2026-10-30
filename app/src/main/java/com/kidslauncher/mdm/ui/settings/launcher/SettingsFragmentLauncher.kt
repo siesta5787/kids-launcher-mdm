@@ -19,6 +19,7 @@ import com.kidslauncher.mdm.BuildConfig
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.copyToClipboard
 import com.kidslauncher.mdm.getDeviceInfo
+import com.kidslauncher.mdm.server.TsnetClient
 import com.kidslauncher.mdm.server.AppEnforcer
 import com.kidslauncher.mdm.server.MdmDeviceAdminReceiver
 import com.kidslauncher.mdm.server.QuickControls
@@ -55,6 +56,14 @@ private fun maskedSecretSummary(value: String?): String {
     val tail = value.takeLast(4)
     return "••••••••$tail"
 }
+
+/** The stored key is deleted once the device joins (see TsnetClient.clearAuthKeyIfJoined). */
+private fun tailscaleAuthKeySummary(context: Context, value: String?): String =
+    if (value.isNullOrBlank() && TsnetClient.hasSavedIdentity(context)) {
+        "Joined - key removed from this phone after setup"
+    } else {
+        maskedSecretSummary(value)
+    }
 
 /**
  * The [SettingsFragmentLauncher] holds all of the app's settings on a single screen.
@@ -109,7 +118,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         }
 
         val tailscaleAuthKey = findPreference<Preference>(mdm.keys().tailscaleAuthKey())
-        tailscaleAuthKey?.summary = maskedSecretSummary(mdm.tailscaleAuthKey())
+        tailscaleAuthKey?.summary = tailscaleAuthKeySummary(requireContext(), mdm.tailscaleAuthKey())
         tailscaleAuthKey?.setOnPreferenceClickListener {
             showEditTextDialog(
                 requireContext(),
@@ -349,7 +358,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                     val mdm = LauncherPreferences.mdm()
                     findPreference<Preference>(mdm.keys().serverUrl())?.summary = mdm.serverUrl()
                     findPreference<Preference>(mdm.keys().tailscaleAuthKey())?.summary =
-                        maskedSecretSummary(mdm.tailscaleAuthKey())
+                        tailscaleAuthKeySummary(context, mdm.tailscaleAuthKey())
                 }.onFailure { e ->
                     Toast.makeText(
                         context,

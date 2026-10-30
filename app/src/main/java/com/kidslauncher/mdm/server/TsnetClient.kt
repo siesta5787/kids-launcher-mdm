@@ -34,6 +34,10 @@ private const val CRASH_STREAK_COOLDOWN_MS = 15 * 60 * 1000L
  * this exact username, with the per-connection proxyCred as the password. Not configurable. */
 private const val SOCKS_USERNAME = "tsnet"
 
+// tsnet persists this node's identity (node key, login state) here, inside the state dir passed
+// to Tsembed.new_ - once it exists, reconnecting never needs the auth key again.
+private const val TSNET_STATE_FILE = "tailscaled.state"
+
 /**
  * Thin Kotlin wrapper around the embedded tsnet connection (see this repo's
  * `mobile/tsembed` Go package, bound into `libs/tsnet.aar` by CI via
@@ -175,14 +179,19 @@ object TsnetClient {
             return null
         }
 
-        val authKey = LauncherPreferences.mdm().tailscaleAuthKey()
-        if (authKey.isNullOrBlank() || connected) return null
+        val authKey = LauncherPreferences.mdm().tailscaleAuthKey().orEmpty()
+        if (connected) {
+            clearAuthKeyIfJoined(context, authKey)
+            return null
+        }
+        // Nothing to connect with: no key to join with, and no saved identity to rejoin with.
+        if (authKey.isBlank() && !hasSavedIdentity(context)) return null
         val hostname = "kids-launcher-${Build.MODEL}".replace(Regex("[^A-Za-z0-9-]"), "-")
-        val stateDir = context.filesDir.resolve("tailscale").absolutePath
 
         prefs.edit().putBoolean(CRASH_GUARD_PENDING_KEY, true).commit()
         return try {
-            connect(hostname, authKey, stateDir)
+            connect(hostname, authKey, stateDir(context).absolutePath)
+                ?.also { clearAuthKeyIfJoined(context, authKey) }
         } finally {
             // Reached by any path that returns normally (success or a caught/logged failure
             // inside connect() itself, which already has its own try/catch) - proves the process
@@ -192,6 +201,27 @@ object TsnetClient {
                 .putInt(CRASH_COUNT_KEY, 0)
                 .commit()
         }
+    }
+
+    private fun stateDir(context: Context) = context.filesDir.resolve("tailscale")
+
+    /** Whether this device has already joined the tailnet (tsnet's persisted node identity exists). */
+    fun hasSavedIdentity(context: Context): Boolean =
+        stateDir(context).resolve(TSNET_STATE_FILE).length() > 0
+
+    /**
+     * The auth key is only needed to join the tailnet once - after that tsnet reconnects from its
+     * saved identity ([hasSavedIdentity]) and ignores the key. Keeping a (typically reusable) key on
+     * the phone afterwards only means anyone who extracts it can add *new* devices to the tailnet,
+     * so it's deleted as soon as a connection has succeeded. Only called on a proven-working
+     * connection, so a key that hasn't actually joined yet is never thrown away. If the identity is
+     * ever lost (node removed in the Tailscale admin console, app data cleared), re-scanning the
+     * setup QR supplies a fresh key.
+     */
+    private fun clearAuthKeyIfJoined(context: Context, authKey: String) {
+        if (authKey.isBlank() || !hasSavedIdentity(context)) return
+        LauncherPreferences.mdm().tailscaleAuthKey(null)
+        Log.i(LOG_TAG, "Joined the tailnet - cleared the stored auth key")
     }
 
     /** A [Proxy] pointing at the running SOCKS5 proxy, or null if not connected yet - see
