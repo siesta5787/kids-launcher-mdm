@@ -17,6 +17,7 @@ import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.apps.AbstractAppInfo
 import com.kidslauncher.mdm.apps.AbstractDetailedAppInfo
 import com.kidslauncher.mdm.server.AppEnforcer
+import com.kidslauncher.mdm.server.BootState
 import com.kidslauncher.mdm.server.CommandListenerService
 import com.kidslauncher.mdm.server.KidVpnService
 import com.kidslauncher.mdm.preferences.LauncherPreferences
@@ -36,6 +37,18 @@ import kotlin.system.exitProcess
  */
 fun isUserUnlocked(context: Context): Boolean =
     context.getSystemService(UserManager::class.java).isUserUnlocked
+
+/**
+ * True once [LauncherPreferences] is initialized, i.e. the user has unlocked *and*
+ * [Application.initAfterUnlock] has run. Not the same as [isUserUnlocked]: for a moment right after
+ * the first unlock, storage is unlocked but initAfterUnlock hasn't run yet (it's waiting on the
+ * main thread for ACTION_USER_UNLOCKED), and touching [LauncherPreferences] in that window crashes.
+ * Code that can run before the first unlock (Find My Device's locked path) checks this, not
+ * [isUserUnlocked], before reading [LauncherPreferences].
+ */
+@Volatile
+var launcherPreferencesReady = false
+    private set
 
 
 class Application : android.app.Application() {
@@ -160,6 +173,7 @@ class Application : android.app.Application() {
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         LauncherPreferences.init(preferences, this.resources)
+        launcherPreferencesReady = true
 
         // Try to restore old preferences
         migratePreferencesToNewVersion(this)
@@ -169,6 +183,9 @@ class Application : android.app.Application() {
         if (!LauncherPreferences.internal().started()) {
             resetPreferences(this)
         }
+
+        // Find My Device's before-first-unlock copy of the server URL/token - see BootState.
+        BootState.mirror(this)
 
 
         LauncherPreferences.getSharedPreferences()

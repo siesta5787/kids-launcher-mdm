@@ -9,6 +9,7 @@ import com.kidslauncher.mdm.server.dto.EnrollRequest
 import com.kidslauncher.mdm.server.dto.EnrollResponse
 import com.kidslauncher.mdm.server.dto.InstallProgressReport
 import com.kidslauncher.mdm.server.dto.JournalEntryUpload
+import com.kidslauncher.mdm.server.dto.LockedReportRequest
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
 import com.kidslauncher.mdm.server.dto.TrackedAppUpdate
@@ -56,6 +57,10 @@ interface MdmApi {
 
     @POST("api/devices/command-result")
     suspend fun sendCommandResult(@Body request: CommandResultRequest): Response<Unit>
+
+    /** Before-first-unlock heartbeat - see [LockedReportRequest]. Servers before 0.20.0 answer 404. */
+    @POST("api/devices/locked-report")
+    suspend fun sendLockedReport(@Body report: LockedReportRequest): Response<Unit>
 
     @GET("api/devices/apps")
     suspend fun getTrackedAppUpdates(): Response<List<TrackedAppUpdate>>

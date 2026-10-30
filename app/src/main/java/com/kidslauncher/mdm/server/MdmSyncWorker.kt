@@ -60,6 +60,8 @@ suspend fun performMdmSync(context: Context): Boolean = syncMutex.withLock {
     if (serverUrl.isNullOrBlank() || deviceToken.isNullOrBlank()) {
         return false
     }
+    // Keeps Find My Device's before-first-unlock copy of these two in step - see BootState.
+    BootState.mirror(context)
 
     // The embedded tailnet connection (see CLAUDE.md) is kicked off eagerly from
     // Application.onCreate() - this is a retry-until-connected backstop for whenever that hasn't
@@ -162,7 +164,7 @@ private suspend fun reportBlockedDnsEvents(context: Context, api: MdmApi) {
  * out-of-cycle report sooner, not a distinct on-device action). No result is ever reported for
  * `wipe` - the device is gone by the time it would report back.
  */
-private suspend fun dispatchPendingCommand(
+internal suspend fun dispatchPendingCommand(
     context: Context,
     api: MdmApi,
     dpm: DevicePolicyManager,
@@ -203,7 +205,7 @@ private suspend fun reportCommandResult(api: MdmApi, commandId: Long, success: B
     }
 }
 
-private suspend fun currentLocationReport(
+internal suspend fun currentLocationReport(
     context: Context,
     dpm: DevicePolicyManager,
     admin: ComponentName,

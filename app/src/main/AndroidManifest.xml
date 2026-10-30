@@ -45,12 +45,16 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- CommandListenerService holds a long-lived SSE connection open so Find My Device's
-         ring/lock/stop-ring/wipe commands arrive in ~1s instead of waiting for the next 2-minute
-         poll, any time - screen on or off. Android mandates a specific foreground-service type +
-         matching permission as of API 34; "dataSync" (syncing/sending/receiving data) is the
-         correct fit for a long-lived server connection. -->
+         ring/lock/stop-ring/wipe commands arrive in ~1s instead of waiting for the next periodic
+         sync, any time - screen on or off, and (v0.52.0+) before the first unlock after a reboot.
+         It's a "specialUse" foreground service (FOREGROUND_SERVICE_SPECIAL_USE below), not
+         "dataSync": Android 15+ caps dataSync services at 6 hours a day and won't let a
+         LOCKED_BOOT_COMPLETED receiver start one, either of which would break an always-on
+         command channel. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- LockedBootReceiver - starts Find My Device before the first unlock after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- KidVpnService's on-device DNS filter (see CLAUDE.md) - "specialUse" since none of the
          other API 34 foreground-service types fit "local VPN packet filter"; the required
@@ -189,6 +193,7 @@
              PendingIntent on the notification LocateCommands.ring() shows. -->
         <receiver
             android:name=".server.StopRingReceiver"
+            android:directBootAware="true"
             android:exported="false" />
 
         <!-- Deliberately exported, unlike every other receiver in this app - see
@@ -211,10 +216,28 @@
             </intent-filter>
         </receiver>
 
+        <!-- Direct-boot-aware: runs in "locked mode" before the first unlock after a reboot - see
+             the class's own doc comment. -->
         <service
             android:name=".server.CommandListenerService"
+            android:directBootAware="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Device management command channel (remote ring/lock/locate)" />
+        </service>
+
+        <!-- LOCKED_BOOT_COMPLETED is a protected broadcast only the OS can send, so this needn't
+             be exported - same reasoning as PackageReplacedReceiver below. -->
+        <receiver
+            android:name=".server.LockedBootReceiver"
+            android:directBootAware="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Not externally reachable despite the implicit-action intent-filter - MY_PACKAGE_REPLACED
              is a protected system broadcast only the OS can send, always targeted at the just-updated

@@ -3,7 +3,8 @@ package com.kidslauncher.mdm.server
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import androidx.preference.PreferenceManager
+import com.kidslauncher.mdm.isUserUnlocked
+import com.kidslauncher.mdm.launcherPreferencesReady
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import java.net.Authenticator
 import java.net.InetSocketAddress
@@ -141,8 +142,13 @@ object TsnetClient {
      * launch, letting the rest of the app boot normally without tailnet connectivity that cycle,
      * rather than retrying straight into the same crash.
      */
+    @Synchronized
     fun connectFromPreferences(context: Context): String? {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        // Device-protected, so the crash guard also covers attempts before the first unlock (Find
+        // My Device's locked path - see CommandListenerService), where a crash loop matters most.
+        val prefs = BootState.prefs(context)
+        // Only ever while no client exists in this process yet - never move files tsnet has open.
+        if (client == null) migrateStateDirIfNeeded(context)
         val now = System.currentTimeMillis()
 
         // Consumed immediately, regardless of what happens below - this must never stay
@@ -179,7 +185,11 @@ object TsnetClient {
             return null
         }
 
-        val authKey = LauncherPreferences.mdm().tailscaleAuthKey().orEmpty()
+        // Before the first unlock LauncherPreferences can't be read at all - rejoining from the
+        // saved identity (device-protected, see stateDir) is the only option then, which is all
+        // an already-enrolled device needs anyway.
+        val authKey =
+            if (launcherPreferencesReady) LauncherPreferences.mdm().tailscaleAuthKey().orEmpty() else ""
         if (connected) {
             clearAuthKeyIfJoined(context, authKey)
             return null
@@ -203,11 +213,45 @@ object TsnetClient {
         }
     }
 
-    private fun stateDir(context: Context) = context.filesDir.resolve("tailscale")
+    /**
+     * Device-protected storage, so tsnet can rejoin from its saved identity before the first unlock
+     * after a reboot (Find My Device's locked path). Lived in credential-encrypted `filesDir` before
+     * v0.52.0 - see [migrateStateDirIfNeeded].
+     */
+    private fun stateDir(context: Context) =
+        context.createDeviceProtectedStorageContext().filesDir.resolve("tailscale")
+
+    private fun legacyStateDir(context: Context) = context.filesDir.resolve("tailscale")
 
     /** Whether this device has already joined the tailnet (tsnet's persisted node identity exists). */
     fun hasSavedIdentity(context: Context): Boolean =
-        stateDir(context).resolve(TSNET_STATE_FILE).length() > 0
+        stateDir(context).resolve(TSNET_STATE_FILE).length() > 0 ||
+            (isUserUnlocked(context) && legacyStateDir(context).resolve(TSNET_STATE_FILE).length() > 0)
+
+    /**
+     * One-time move of tsnet's state from credential-encrypted to device-protected storage on the
+     * first unlocked run after updating to v0.52.0. Copy-then-delete, not rename: the two storage
+     * areas have different fscrypt policies, and the kernel refuses renames across them. Losing
+     * this state would be unrecoverable without re-scanning the setup QR, since the auth key is
+     * deleted after joining - so the old copy is only removed once the new one verifiably exists.
+     */
+    private fun migrateStateDirIfNeeded(context: Context) {
+        if (!isUserUnlocked(context)) return
+        val legacy = legacyStateDir(context)
+        if (!legacy.exists()) return
+        val target = stateDir(context)
+        try {
+            if (target.resolve(TSNET_STATE_FILE).length() == 0L) {
+                legacy.copyRecursively(target, overwrite = true)
+            }
+            if (target.resolve(TSNET_STATE_FILE).length() > 0) {
+                legacy.deleteRecursively()
+                Log.i(LOG_TAG, "Moved tsnet state to device-protected storage")
+            }
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to move tsnet state to device-protected storage", e)
+        }
+    }
 
     /**
      * The auth key is only needed to join the tailnet once - after that tsnet reconnects from its
@@ -219,7 +263,7 @@ object TsnetClient {
      * setup QR supplies a fresh key.
      */
     private fun clearAuthKeyIfJoined(context: Context, authKey: String) {
-        if (authKey.isBlank() || !hasSavedIdentity(context)) return
+        if (authKey.isBlank() || !launcherPreferencesReady || !hasSavedIdentity(context)) return
         LauncherPreferences.mdm().tailscaleAuthKey(null)
         Log.i(LOG_TAG, "Joined the tailnet - cleared the stored auth key")
     }

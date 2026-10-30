@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import com.kidslauncher.mdm.COMMAND_LISTENER_NOTIFICATION_ID
 import com.kidslauncher.mdm.NOTIFICATION_CHANNEL_LISTENER
 import com.kidslauncher.mdm.R
+import com.kidslauncher.mdm.launcherPreferencesReady
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +65,15 @@ private const val PERIODIC_SYNC_INTERVAL_MS = 5 * 60 * 1000L
  * Also drives [performJournalSync] and [performBrowserHistorySync] off the same two triggers as
  * [performMdmSync] - see [performJournalSync]'s own doc comment for why each is a separate
  * mutex/coroutine rather than folded into [performMdmSync] itself.
+ *
+ * **Locked mode (v0.52.0+):** direct-boot-aware, started by [LockedBootReceiver] before the first
+ * unlock after a reboot, so a lost phone that has rebooted (GrapheneOS's inactivity auto-reboot
+ * makes that the common case) is still reachable. While [lockedMode] is true it reads its
+ * credentials from [BootState], brings up tsnet itself from the saved identity, and runs
+ * [performLockedCheck] instead of the full syncs. [com.kidslauncher.mdm.Application.initAfterUnlock]
+ * calls [start] again on unlock, and [onStartCommand] switches to normal mode in place - same
+ * process, same tsnet connection. Nothing reachable in locked mode may touch
+ * [LauncherPreferences], `filesDir` or `cacheDir`.
  */
 class CommandListenerService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
@@ -71,6 +81,13 @@ class CommandListenerService : Service() {
     private var eventSource: EventSource? = null
     private var reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
     private var stopped = false
+    private var lockedMode = false
+    private var bootLocationSent = false
+
+    // Bumped whenever the current stream is deliberately abandoned (mode switch), so callbacks
+    // from the old one - including the onFailure its own cancel() triggers - are ignored rather
+    // than scheduling a second, duplicate reconnect loop.
+    private var streamGeneration = 0
 
     /**
      * Built fresh on every [connect] call, not cached - the server is now only reachable over the
@@ -100,19 +117,40 @@ class CommandListenerService : Service() {
         // if this doesn't happen in time; connect() below handles "not enrolled yet" on its own by
         // retrying rather than needing this to wait for that state first.
         startForeground(COMMAND_LISTENER_NOTIFICATION_ID, buildNotification())
+        lockedMode = !launcherPreferencesReady
+        if (lockedMode) Log.i(LOG_TAG, "Starting in locked mode (before first unlock)")
         connect()
         schedulePeriodicSync()
-        // Piggybacks on this same foreground service/notification rather than running as a
-        // second one - see UnifiedPushRelay's own doc comment for why. Off by default (a parent
-        // has to opt in from Settings), so this is a no-op on a device where that's never been
-        // touched.
+        if (!lockedMode) startUnifiedPushIfEnabled()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (lockedMode && launcherPreferencesReady) switchToUnlockedMode()
+        return START_STICKY
+    }
+
+    /** Piggybacks on this same foreground service/notification rather than running as a second
+     * one - see UnifiedPushRelay's own doc comment for why. Off by default (a parent has to opt in
+     * from Settings), so this is a no-op on a device where that's never been touched. */
+    private fun startUnifiedPushIfEnabled() {
         if (LauncherPreferences.mdm().unifiedpushDistributorEnabled()) {
             UnifiedPushRelay.start(applicationContext)
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
+    private fun switchToUnlockedMode() {
+        Log.i(LOG_TAG, "Unlocked - switching from locked mode to normal syncing")
+        lockedMode = false
+        handler.removeCallbacksAndMessages(null)
+        streamGeneration++
+        eventSource?.cancel()
+        eventSource = null
+        reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
+        connect()
+        schedulePeriodicSync()
+        startUnifiedPushIfEnabled()
+        // Catch up right away on everything locked mode skipped (policy, enforcement, status).
+        scope.launch { performMdmSync(applicationContext) }
     }
 
     override fun onDestroy() {
@@ -138,30 +176,57 @@ class CommandListenerService : Service() {
     private fun connect() {
         if (stopped) return
 
-        val mdm = LauncherPreferences.mdm()
-        val serverUrl = mdm.serverUrl()
-        val deviceToken = mdm.deviceToken()
-        if (serverUrl.isNullOrBlank() || deviceToken.isNullOrBlank()) {
+        val credentials = BootState.credentials(this)
+        if (credentials == null) {
             handler.postDelayed({ connect() }, NOT_ENROLLED_RETRY_DELAY_MS)
             return
         }
 
-        val base = if (serverUrl.endsWith("/")) serverUrl else "$serverUrl/"
+        // In normal mode HomeActivity brings tsnet up; in locked mode nothing else will, so this
+        // does it first (off the main thread - it blocks for up to 30s). A failure just means the
+        // stream below fails too and scheduleReconnect() retries both.
+        if (lockedMode && !TsnetClient.connected) {
+            val generation = streamGeneration
+            scope.launch {
+                TsnetClient.connectFromPreferences(applicationContext)
+                handler.post { if (generation == streamGeneration) openStream(credentials) }
+            }
+            return
+        }
+        openStream(credentials)
+    }
+
+    private fun openStream(credentials: BootState.Credentials) {
+        if (stopped) return
+        val generation = streamGeneration
+        val base = credentials.serverUrl.let { if (it.endsWith("/")) it else "$it/" }
         val request = Request.Builder()
             .url("${base}api/devices/commands/stream")
-            .header("Authorization", "Bearer $deviceToken")
+            .header("Authorization", "Bearer ${credentials.deviceToken}")
             .build()
 
         eventSource = EventSources.createFactory(buildClient()).newEventSource(
             request,
             object : EventSourceListener() {
                 override fun onOpen(eventSource: EventSource, response: Response) {
+                    if (generation != streamGeneration) return
                     Log.i(LOG_TAG, "Command stream connected")
                     reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
+                    // A lost phone that just rebooted should show up on the map without anyone
+                    // having to send a locate first - once per boot, not on every reconnect.
+                    if (lockedMode && !bootLocationSent) {
+                        bootLocationSent = true
+                        scope.launch { performLockedCheck(applicationContext, reportLocation = true) }
+                    }
                 }
 
                 override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
+                    if (generation != streamGeneration) return
                     Log.i(LOG_TAG, "Command stream nudge received, syncing early")
+                    if (lockedMode) {
+                        scope.launch { performLockedCheck(applicationContext, reportLocation = false) }
+                        return
+                    }
                     scope.launch { performMdmSync(applicationContext) }
                     // Own coroutine, not chained after performMdmSync above - journalSyncMutex
                     // already keeps this from overlapping itself, and a slow media upload
@@ -171,11 +236,13 @@ class CommandListenerService : Service() {
                 }
 
                 override fun onClosed(eventSource: EventSource) {
+                    if (generation != streamGeneration) return
                     Log.i(LOG_TAG, "Command stream closed, reconnecting")
                     scheduleReconnect()
                 }
 
                 override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+                    if (generation != streamGeneration) return
                     Log.w(LOG_TAG, "Command stream connection failed, reconnecting", t)
                     scheduleReconnect()
                 }
@@ -187,9 +254,13 @@ class CommandListenerService : Service() {
         if (stopped) return
         handler.postDelayed(
             {
-                scope.launch { performMdmSync(applicationContext) }
-                scope.launch { performJournalSync(applicationContext) }
-                scope.launch { performBrowserHistorySync(applicationContext) }
+                if (lockedMode) {
+                    scope.launch { performLockedCheck(applicationContext, reportLocation = false) }
+                } else {
+                    scope.launch { performMdmSync(applicationContext) }
+                    scope.launch { performJournalSync(applicationContext) }
+                    scope.launch { performBrowserHistorySync(applicationContext) }
+                }
                 schedulePeriodicSync()
             },
             PERIODIC_SYNC_INTERVAL_MS,

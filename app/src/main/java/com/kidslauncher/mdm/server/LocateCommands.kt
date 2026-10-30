@@ -11,6 +11,7 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.CancellationSignal
 import android.os.Handler
@@ -23,6 +24,7 @@ import androidx.preference.PreferenceManager
 import com.kidslauncher.mdm.NOTIFICATION_CHANNEL_RING
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.RING_NOTIFICATION_ID
+import com.kidslauncher.mdm.launcherPreferencesReady
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -112,9 +114,14 @@ object LocateCommands {
             QuickControls.setLocationEnabled(dpm, admin, true)
         }
 
-        val mdm = LauncherPreferences.mdm()
-        val throttleElapsed =
-            System.currentTimeMillis() - mdm.lastActiveLocationFetchAtMs() >= ACTIVE_LOCATION_FETCH_THROTTLE_MS
+        // Before the first unlock (Find My Device's locked path) the throttle timestamp and cached
+        // fix below live in unreadable credential-encrypted storage - every call is then treated
+        // as a due/forced fetch, which is fine since that path only asks for a location on an
+        // explicit ring/locate command or once right after boot.
+        val prefsReady = launcherPreferencesReady
+        val throttleElapsed = !prefsReady ||
+            System.currentTimeMillis() - LauncherPreferences.mdm().lastActiveLocationFetchAtMs() >=
+            ACTIVE_LOCATION_FETCH_THROTTLE_MS
 
         // A skipped cycle (not forced, throttle window still open) hands back our own last-cached
         // fix directly - no LocationManager call at all, so no location-in-use indicator and no
@@ -137,7 +144,7 @@ object LocateCommands {
         // not the generated setter's apply()) for the same reason as TrackedAppUpdateState.save -
         // a due cycle often runs right before checkForTrackedAppUpdates triggers a self-update,
         // which SIGKILLs this process, and an async write can lose the race against that kill.
-        saveLastActiveFetchAt(context, System.currentTimeMillis())
+        if (prefsReady) saveLastActiveFetchAt(context, System.currentTimeMillis())
         val fresh = requestFreshFix(context, lm) ?: try {
             val providers = mutableListOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -157,6 +164,7 @@ object LocateCommands {
             null
         }
 
+        if (!prefsReady) return fresh
         if (fresh != null) {
             saveCachedFix(context, fresh)
         }
@@ -236,6 +244,7 @@ object LocateCommands {
 
     @Volatile
     private var ringPlayer: MediaPlayer? = null
+    private var ringTone: ToneGenerator? = null
 
     private var originalRingerMode: Int? = null
     private val restoredStreams = mutableMapOf<Int, Int>()
@@ -290,22 +299,34 @@ object LocateCommands {
                 }
             }
 
-            val alarmUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getValidRingtoneUri(context)
-
-            val player = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build(),
-                )
-                setDataSource(context, alarmUri)
-                isLooping = true
-                prepare()
-                start()
+            val player = try {
+                val alarmUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)
+                    ?: RingtoneManager.getValidRingtoneUri(context)
+                MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    )
+                    setDataSource(context, alarmUri)
+                    isLooping = true
+                    prepare()
+                    start()
+                }
+            } catch (e: Exception) {
+                // The alarm sound is usually a content:// URI served by MediaProvider, which may
+                // not be readable before the first unlock after a reboot - a generated tone
+                // needs no files at all, so ringing still works on a just-rebooted lost phone.
+                Log.w(LOG_TAG, "Alarm sound unavailable - falling back to a generated tone", e)
+                null
             }
             ringPlayer = player
+            if (player == null) {
+                ringTone = ToneGenerator(AudioManager.STREAM_ALARM, ToneGenerator.MAX_VOLUME).also {
+                    it.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, RING_DURATION_MS.toInt())
+                }
+            }
 
             showStopRingNotification(context)
 
@@ -352,10 +373,13 @@ object LocateCommands {
         try {
             ringPlayer?.stop()
             ringPlayer?.release()
+            ringTone?.stopTone()
+            ringTone?.release()
         } catch (e: Exception) {
             // Already stopped/released - harmless.
         } finally {
             ringPlayer = null
+            ringTone = null
         }
     }
 
