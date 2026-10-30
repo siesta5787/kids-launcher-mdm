@@ -114,6 +114,12 @@ object TsnetClient {
             ip
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to connect to tailnet", e)
+            // Never retry on the same tsnet.Server: on Android it can't watch for network changes
+            // (netlink is SELinux-blocked for apps), so one started before the network came up
+            // stays stuck in "Starting" forever - confirmed live in Find My Device's locked mode,
+            // which starts at LOCKED_BOOT_COMPLETED, a couple of seconds before Wi-Fi connects. A
+            // fresh one on the next attempt picks up whatever network exists by then.
+            close()
             null
         }
     }
