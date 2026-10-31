@@ -93,25 +93,25 @@ jobs:
         name: tsnet-aar-${{ github.sha }}
         path: app/libs/tsnet.aar
 
-    - name: Delete Old Pre-Release
+    - name: Read version
+      id: version
+      run: echo "name=$(grep -m1 'versionName = ' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')" >> "$GITHUB_OUTPUT"
+    - name: Publish release
       if: github.ref == 'refs/heads/master'
-      # No-op (not a failure) the first time this ever runs on a fork/repo, since there's no
-      # existing "pre-release" tag yet to delete.
-      run: gh release delete pre-release --cleanup-tag || true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Create Pre-Release
-      if: github.ref == 'refs/heads/master'
+      # A normal (non-prerelease) release per master push, tagged from versionName and marked
+      # latest - so https://github.com/siesta5787/kids-launcher-mdm/releases/latest/download/app-release.apk
+      # (kid-phone-server's provisioning QR) always resolves to the newest build. allowUpdates is
+      # off on purpose: pushing without bumping versionName fails here instead of silently
+      # overwriting an already-published version.
       uses: ncipollo/release-action@v1
       with:
         commit: ${{ github.sha }}
-        tag: "pre-release"
-        name: "Latest build"
-        prerelease: true
-        body: "Release build, updated automatically on every commit to master. Package `com.kidslauncher.mdm`, signed with the shared Kids MDM release key."
+        tag: v${{ steps.version.outputs.name }}
+        name: v${{ steps.version.outputs.name }}
+        prerelease: false
+        makeLatest: true
+        body: "Package `com.kidslauncher.mdm`, signed with the shared Kids MDM release key."
         generateReleaseNotes: true
-        removeArtifacts: true
-        replacesArtifacts: true
         artifacts: "app/build/outputs/apk/release/app-release.apk"
-        allowUpdates: true
+        allowUpdates: false
         token: ${{ secrets.GITHUB_TOKEN }}
