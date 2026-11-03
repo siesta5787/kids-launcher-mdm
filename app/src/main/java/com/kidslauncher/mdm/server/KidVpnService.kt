@@ -72,11 +72,19 @@ class KidVpnService : VpnService() {
         // Must be the first thing this service does, unconditionally - see CommandListenerService's
         // own established gotcha for this same API-34 requirement (this is also a Service).
         startForeground(VPN_FILTER_NOTIFICATION_ID, buildNotification())
+        created = true
         DnsFilterEngine.loadFromDisk(applicationContext)
-        startVpn()
+        if (LauncherPreferences.mdm().vpnFilterEnabled()) startVpn()
     }
 
     override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        // A stop() that landed while this start was still queued (see stop()'s doc comment) only
+        // flips the preference - this is where that deferred stop actually takes effect, now that
+        // startForeground() has already been satisfied.
+        if (!LauncherPreferences.mdm().vpnFilterEnabled()) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         if (pfd == null) startVpn()
         return START_STICKY
     }
@@ -221,6 +229,7 @@ class KidVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        created = false
         stopSelfCleanly()
         super.onDestroy()
     }
@@ -236,6 +245,11 @@ class KidVpnService : VpnService() {
     }
 
     companion object {
+        /** True between [onCreate]'s `startForeground()` and [onDestroy] - see [stop]. Written on
+         * the main thread, read from whatever thread [AppEnforcer.apply] runs on. */
+        @Volatile
+        private var created = false
+
         /**
          * Call once at app startup - safe to call repeatedly, Android no-ops a redundant start
          * (matches [CommandListenerService.start]'s own established pattern). Unconditional, not
@@ -252,10 +266,25 @@ class KidVpnService : VpnService() {
             ContextCompat.startForegroundService(context, intent)
         }
 
-        /** Stops the service if running - safe to call whether or not it's currently up. Used by
-         * [AppEnforcer.applyVpnRestrictions] when a parent turns filtering off for this device. */
+        /**
+         * Stops the service if running - safe to call whether or not it's currently up, including
+         * right after a [start] that hasn't reached [onCreate] yet. Used by
+         * [AppEnforcer.applyVpnRestrictions] when a parent turns filtering off for this device (or
+         * the pause-restrictions kill-switch / offline override does). Callers must have already
+         * cleared the cached vpnFilterEnabled preference, which is what [onStartCommand] checks.
+         *
+         * Only calls `stopService()` once [onCreate] has run. Confirmed live (Moto G Play, 0.52.6):
+         * a background sync's apply() called [start], the pause toggle's apply() called this a
+         * moment later, and `stopService()` tore the service down while Android was still waiting
+         * on its `startForeground()` - which the OS treats exactly like never calling it, crashing
+         * the whole launcher with `ForegroundServiceDidNotStartInTimeException`. If the service
+         * isn't created yet, any start still queued gets stopped by [onStartCommand] instead, after
+         * `startForeground()`; if none is queued, there's nothing to stop.
+         */
         fun stop(context: Context) {
-            context.stopService(Intent(context, KidVpnService::class.java))
+            if (created) {
+                context.stopService(Intent(context, KidVpnService::class.java))
+            }
         }
     }
 }
