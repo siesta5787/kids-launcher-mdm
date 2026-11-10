@@ -4,8 +4,15 @@ import com.kidslauncher.mdm.server.dto.PolicyResponse
 import java.util.Calendar
 
 enum class LockReason {
-    NONE, SCREEN_TIME, BEDTIME
+    NONE, SCREEN_TIME, BEDTIME,
+
+    /** A parent pressed "Lock now" on the admin site - see [PolicyResponse.lockOverride]. */
+    PARENT,
 }
+
+/** [PolicyResponse.lockOverride] values - anything else (including null) means "follow the schedule". */
+const val LOCK_OVERRIDE_LOCK = "lock"
+const val LOCK_OVERRIDE_UNLOCK = "unlock"
 
 /**
  * Pure decision logic for whether the device should currently be locked - no Android or network
@@ -16,6 +23,14 @@ object KidModeEnforcer {
 
     fun evaluate(policy: PolicyResponse?, now: Calendar): LockReason {
         if (policy == null) return LockReason.NONE
+
+        // A parent's "Lock now"/"Unlock now" from the admin site beats the schedule until it
+        // expires. Expiry is checked against the device's own clock (the same clock the schedule
+        // below already trusts), so it lapses back to the schedule on time even while offline.
+        when (activeLockOverride(policy, now.timeInMillis)) {
+            LOCK_OVERRIDE_LOCK -> return LockReason.PARENT
+            LOCK_OVERRIDE_UNLOCK -> return LockReason.NONE
+        }
 
         val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
 
@@ -34,6 +49,16 @@ object KidModeEnforcer {
         } else {
             LockReason.NONE
         }
+    }
+
+    /** [PolicyResponse.lockOverride] if it's a known value that hasn't expired yet, else null.
+     * A null [PolicyResponse.lockOverrideUntilMs] means it holds until the parent clears it. */
+    private fun activeLockOverride(policy: PolicyResponse, nowMillis: Long): String? {
+        val override = policy.lockOverride ?: return null
+        if (override != LOCK_OVERRIDE_LOCK && override != LOCK_OVERRIDE_UNLOCK) return null
+        val until = policy.lockOverrideUntilMs
+        if (until != null && nowMillis >= until) return null
+        return override
     }
 
     /** True while [minuteOfDay] falls inside a restricted [start]-[end] window (e.g. bedtime).

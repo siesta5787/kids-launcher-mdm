@@ -443,8 +443,12 @@ fun cachedPolicy(): PolicyResponse? =
  * device's own clock - no network call, so it works offline and doesn't wait for the next sync.
  * The home screen and lock screen both call this on a local timer while visible so the schedule
  * engages and releases promptly on both edges, not just whenever a sync happens to land.
+ *
+ * Whenever the decision flips, the lock-task pinning is re-applied right away too (see
+ * [AppEnforcer.applyLockTaskState]) - the lock screen relies on it to keep recents and the
+ * notification shade closed, so it can't wait for the next full sync.
  */
-fun reevaluateLockReasonFromCache() {
+fun reevaluateLockReasonFromCache(context: Context) {
     val mdm = LauncherPreferences.mdm()
     val policy = mdm.kidModePolicy()?.let { decodeCachedPolicy(it) }
     val reason = if (OfflineOverride.isActive() || mdm.restrictionsPaused()) LockReason.NONE else {
@@ -452,6 +456,7 @@ fun reevaluateLockReasonFromCache() {
     }
     if (mdm.lockReason() != reason) {
         mdm.lockReason(reason)
+        AppEnforcer.applyLockTaskState(context.applicationContext, policy)
     }
 }
 

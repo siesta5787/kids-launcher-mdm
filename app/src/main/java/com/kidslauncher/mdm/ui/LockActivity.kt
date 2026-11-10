@@ -1,11 +1,13 @@
 package com.kidslauncher.mdm.ui
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -18,6 +20,7 @@ import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 
 private const val LOCK_REASON_REFRESH_INTERVAL_MS = 60_000L
+private const val LOG_TAG = "LockActivity"
 
 /**
  * Full-screen block shown while [LockReason] (from [com.kidslauncher.mdm.server.MdmSyncWorker])
@@ -33,6 +36,10 @@ class LockActivity : UIObjectActivity() {
         SharedPreferences.OnSharedPreferenceChangeListener { _, prefKey ->
             if (prefKey == LauncherPreferences.mdm().keys().lockReason()) {
                 finishIfUnlocked()
+            } else if (prefKey == LauncherPreferences.mdm().keys().kioskEnabled()) {
+                // A sync can flip the lock on (showing this screen) a moment before AppEnforcer
+                // finishes pinning on its background thread.
+                ensureLockTaskEngaged()
             }
         }
 
@@ -43,7 +50,7 @@ class LockActivity : UIObjectActivity() {
     // sync happens to land, which could leave someone stuck well after their allowed time began.
     private val refreshRunnable = object : Runnable {
         override fun run() {
-            reevaluateLockReasonFromCache()
+            reevaluateLockReasonFromCache(this@LockActivity)
             refreshHandler.postDelayed(this, LOCK_REASON_REFRESH_INTERVAL_MS)
         }
     }
@@ -124,7 +131,32 @@ class LockActivity : UIObjectActivity() {
         when (LauncherPreferences.mdm().lockReason()) {
             LockReason.BEDTIME -> binding.lockMessage.setText(R.string.lock_reason_bedtime)
             LockReason.SCREEN_TIME -> binding.lockMessage.setText(R.string.lock_reason_screen_time)
+            LockReason.PARENT -> binding.lockMessage.setText(R.string.lock_reason_parent)
             LockReason.NONE -> finish()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ensureLockTaskEngaged()
+    }
+
+    /**
+     * AppEnforcer always pins the device while locked (see its applyKioskState), but entering
+     * lock-task mode still takes an Activity calling startLockTask() - normally HomeActivity's
+     * reconcileKioskMode(), which only runs when the home screen resumes. This screen can come up
+     * without that happening first (e.g. the lock engaging while the kid is inside another app), so
+     * it starts lock-task itself rather than sitting there with recents and the notification shade
+     * still reachable until the next time Home is pressed.
+     */
+    private fun ensureLockTaskEngaged() {
+        if (!LauncherPreferences.mdm().kioskEnabled()) return
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        if (activityManager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE) return
+        try {
+            startLockTask()
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "startLockTask from the lock screen failed", e)
         }
     }
 

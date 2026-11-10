@@ -175,7 +175,7 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             view?.post {
                 CoroutineScope(Dispatchers.IO).launch {
                     AppEnforcer.apply(context, cachedPolicy())
-                    reevaluateLockReasonFromCache()
+                    reevaluateLockReasonFromCache(context)
                 }
             }
             true

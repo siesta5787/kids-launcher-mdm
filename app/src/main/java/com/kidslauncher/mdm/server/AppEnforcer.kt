@@ -10,12 +10,26 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.UserManager
+import android.telecom.TelecomManager
 import android.util.Log
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.HomeActivity
 
 private const val LOG_TAG = "AppEnforcer"
+
+/**
+ * Lock-task features while the bedtime/screen-time/parent lock screen is up - deliberately not the
+ * policy's own `lockTaskFeatures`, which always turns on recents (OVERVIEW) and the notification
+ * shade (NOTIFICATIONS) for normal kiosk use. Those two were how a kid got past the lock screen.
+ * HOME is off too (nothing to go "home" to). KEYGUARD must stay on no matter what - see
+ * kid-phone-server's CLAUDE.md on the boot deadlock it prevents. SYSTEM_INFO (clock/battery) and
+ * GLOBAL_ACTIONS (power menu, so the phone can still be turned off or restarted) don't reach any
+ * app.
+ */
+private const val LOCKED_LOCK_TASK_FEATURES = DevicePolicyManager.LOCK_TASK_FEATURE_KEYGUARD or
+    DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO or
+    DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS
 
 /** applicationId of the kids-mdm-browser fork - see [AppEnforcer.applyBrowserPolicy]. */
 private const val BROWSER_PACKAGE_NAME = "com.kidsmdm.browser"
@@ -198,11 +212,7 @@ object AppEnforcer {
             }
         }
 
-        applyKioskState(
-            dpm, admin, ownPackage, allowedPackages,
-            kioskDesired = effectivePolicy?.kioskDesired == true,
-            lockTaskFeatures = effectivePolicy?.lockTaskFeatures ?: 0,
-        )
+        applyKioskState(context, dpm, admin, effectivePolicy)
 
         clearRadioRestrictions(dpm, admin)
 
@@ -226,21 +236,49 @@ object AppEnforcer {
     }
 
     /**
-     * Only engages lock-task/kiosk pinning when BOTH an allowlist is configured AND the server
-     * says to via [PolicyResponse.kioskDesired] - the admin site is the sole source of truth for
-     * this, there is no on-device switch. Still gated on an allowlist existing at all: pinning
+     * Just the lock-task half of [apply] - cheap enough (a few Binder calls, no per-package loop,
+     * no VPN restarts) to run the moment the bedtime/screen-time lock engages or clears from
+     * [reevaluateLockReasonFromCache], instead of leaving recents/notifications open until the
+     * next full sync. Same override handling as [apply].
+     */
+    fun applyLockTaskState(context: Context, policy: PolicyResponse?) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!dpm.isDeviceOwnerApp(context.packageName)) return
+        val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
+        val overrideActive = OfflineOverride.isActive() || LauncherPreferences.mdm().restrictionsPaused()
+        applyKioskState(context, dpm, admin, if (overrideActive) null else policy)
+    }
+
+    /**
+     * Normally only engages lock-task/kiosk pinning when BOTH an allowlist is configured AND the
+     * server says to via [PolicyResponse.kioskDesired] - the admin site is the sole source of truth
+     * for this, there is no on-device switch. Still gated on an allowlist existing at all: pinning
      * with zero allowed packages would strand the device on nothing but the launcher itself.
+     *
+     * The exception is while the bedtime/screen-time/parent lock is on ([LockReason] not NONE):
+     * then the device is always pinned, tighter than normal kiosk - see [LOCKED_LOCK_TASK_FEATURES]
+     * and [lockedLockTaskPackages]. Before this, the lock screen got the policy's normal kiosk
+     * features, which always include recents and the notification shade, so a kid could switch
+     * straight back to an app (or tap a notification into one) from behind [com.kidslauncher.mdm.ui.LockActivity].
+     * Stranding the device on the launcher is the point here, and the lock always has a way out:
+     * the schedule, the parent's admin-site "Unlock now", or the offline override PIN on the lock
+     * screen itself (which nulls [effectivePolicy], so this never pins while an override is active).
      */
     private fun applyKioskState(
+        context: Context,
         dpm: DevicePolicyManager,
         admin: ComponentName,
-        ownPackage: String,
-        allowedPackages: Set<String>?,
-        kioskDesired: Boolean,
-        lockTaskFeatures: Long,
+        effectivePolicy: PolicyResponse?,
     ) {
         val mdm = LauncherPreferences.mdm()
-        val shouldEngageKiosk = allowedPackages != null && kioskDesired
+        val ownPackage = context.packageName
+        val allowedPackages = effectivePolicy?.allowlist?.takeIf { it.isNotEmpty() }?.toSet()
+        val screenLocked = effectivePolicy != null && mdm.lockReason() != LockReason.NONE
+        val shouldEngageKiosk = screenLocked || (allowedPackages != null && effectivePolicy?.kioskDesired == true)
+        val lockTaskFeatures =
+            if (screenLocked) LOCKED_LOCK_TASK_FEATURES.toLong() else effectivePolicy?.lockTaskFeatures ?: 0
+        val pinnedPackages =
+            if (screenLocked) lockedLockTaskPackages(context, allowedPackages) else allowedPackages.orEmpty() + ownPackage
 
         if (!shouldEngageKiosk) {
             try {
@@ -273,11 +311,29 @@ object AppEnforcer {
         }
 
         try {
-            dpm.setLockTaskPackages(admin, (allowedPackages + ownPackage).toTypedArray())
+            dpm.setLockTaskPackages(admin, pinnedPackages.toTypedArray())
             mdm.kioskEnabled(true)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to pin kiosk packages", e)
         }
+    }
+
+    /**
+     * What's pinned while the lock screen is up: the launcher itself, plus the default phone app
+     * (if the kid is allowed it at all) so an incoming call can still come through - nothing else.
+     * Every other allowed app's task gets closed by Android when it drops off this list, which is
+     * what stops a kid launching one indirectly (e.g. a messenger's own "open" link from another
+     * allowed app) while locked.
+     */
+    private fun lockedLockTaskPackages(context: Context, allowedPackages: Set<String>?): Set<String> {
+        val dialer = try {
+            (context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager).defaultDialerPackage
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Couldn't read default dialer package", e)
+            null
+        }
+        val keepDialer = dialer != null && (allowedPackages == null || dialer in allowedPackages)
+        return setOfNotNull(context.packageName, dialer.takeIf { keepDialer })
     }
 
     /**

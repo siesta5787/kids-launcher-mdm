@@ -29,6 +29,10 @@ import kotlinx.serialization.Serializable
  * were still on the device - [MdmSyncWorker] uninstalls each silently (Device Owner privilege, no
  * confirmation dialog) on every sync where this is non-empty; the server clears an entry once a
  * later status report confirms the package is actually gone, not on any client-side acknowledgement.
+ * [lockOverride] is a parent's "Lock now" (`"lock"`) / "Unlock now" (`"unlock"`) from the admin
+ * site, beating the bedtime/screen-time schedule until [lockOverrideUntilMs] (epoch millis,
+ * checked against the device clock; null = until the parent puts it back on the schedule). null
+ * means follow the schedule - see [com.kidslauncher.mdm.server.KidModeEnforcer].
  */
 @Serializable
 data class PolicyResponse(
@@ -49,4 +53,6 @@ data class PolicyResponse(
     val dnsFilterVersion: String? = null,
     val dnsUpstreamProvider: String = "cloudflare",
     val packagesToUninstall: List<String> = emptyList(),
+    val lockOverride: String? = null,
+    val lockOverrideUntilMs: Long? = null,
 )

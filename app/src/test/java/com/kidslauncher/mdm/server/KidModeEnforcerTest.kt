@@ -121,4 +121,49 @@ class KidModeEnforcerTest {
             KidModeEnforcer.evaluate(policy, calendarAt(Calendar.SATURDAY, 3, 0))
         )
     }
+
+    private val bedtimePolicy = PolicyResponse(
+        bedtimeStartMinutes = 21 * 60,
+        bedtimeEndMinutes = 7 * 60,
+    )
+
+    @Test
+    fun `parent lock beats an open schedule`() {
+        val policy = PolicyResponse(lockOverride = LOCK_OVERRIDE_LOCK)
+        assertEquals(
+            LockReason.PARENT,
+            KidModeEnforcer.evaluate(policy, calendarAt(Calendar.MONDAY, 12, 0))
+        )
+    }
+
+    @Test
+    fun `parent unlock beats bedtime`() {
+        val policy = bedtimePolicy.copy(lockOverride = LOCK_OVERRIDE_UNLOCK)
+        assertEquals(
+            LockReason.NONE,
+            KidModeEnforcer.evaluate(policy, calendarAt(Calendar.MONDAY, 23, 0))
+        )
+    }
+
+    @Test
+    fun `override falls back to the schedule once it expires`() {
+        val now = calendarAt(Calendar.MONDAY, 23, 0)
+        val active = bedtimePolicy.copy(
+            lockOverride = LOCK_OVERRIDE_UNLOCK,
+            lockOverrideUntilMs = now.timeInMillis + 60_000,
+        )
+        assertEquals(LockReason.NONE, KidModeEnforcer.evaluate(active, now))
+
+        val expired = active.copy(lockOverrideUntilMs = now.timeInMillis)
+        assertEquals(LockReason.BEDTIME, KidModeEnforcer.evaluate(expired, now))
+    }
+
+    @Test
+    fun `unknown override value is ignored`() {
+        val policy = bedtimePolicy.copy(lockOverride = "something-new")
+        assertEquals(
+            LockReason.BEDTIME,
+            KidModeEnforcer.evaluate(policy, calendarAt(Calendar.MONDAY, 23, 0))
+        )
+    }
 }
