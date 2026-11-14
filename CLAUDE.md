@@ -78,6 +78,10 @@ The admin-configurable "open/restricted/disabled" WiFi/Bluetooth policy (server'
 - **`PolicyResponse.lockOverride`/`lockOverrideUntilMs`** (server v0.22.0): a parent's "Lock now"/"Unlock now" from the device page. `KidModeEnforcer.evaluate` checks it first (`"lock"` -> `LockReason.PARENT`, `"unlock"` -> NONE) until the end time, checked against the device clock so it lapses offline.
 - **Not yet confirmed live**: whether an incoming call still rings through during a lock now that NOTIFICATIONS (heads-up) is off - the dialer is kept pinned for this, but test it.
 
+## Push stream read timeout (v0.53.1)
+
+- **`CommandListenerService`'s SSE client had `readTimeout(0)`, so a silently-dead stream was never noticed** - every push nudge was lost and admin-site changes (ring, lock/unlock, policy saves) only landed on the 5-minute periodic sync (reported live 2026-11-13). Server, Box agent proxy and event delivery were all ruled out by running them locally: events reached a client through the real box-agent in ~20 ms. Now 45 s (three missed 15 s server keep-alives) -> `onFailure` -> reconnect. Don't set it back to 0, and keep it comfortably above the server's `KeepAlive` interval if that ever changes.
+
 ## Find My Device before first unlock (v0.52.0)
 
 A phone that has rebooted and not been unlocked (GrapheneOS's inactivity auto-reboot makes that the normal state of a lost phone) stays reachable for ring/stop_ring/lock/wipe/locate.

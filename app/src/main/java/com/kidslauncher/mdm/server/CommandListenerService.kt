@@ -34,6 +34,9 @@ private const val MAX_RECONNECT_DELAY_MS = 60_000L
 private const val NOT_ENROLLED_RETRY_DELAY_MS = 30_000L
 private const val PERIODIC_SYNC_INTERVAL_MS = 5 * 60 * 1000L
 
+/** Three missed server keep-alives (sent every 15s) - see [CommandListenerService.buildClient]. */
+private const val STREAM_READ_TIMEOUT_MS = 45_000L
+
 /**
  * Holds a long-lived SSE connection open to `/api/devices/commands/stream` so Find My Device's
  * ring/lock/stop-ring/wipe arrive in ~1s instead of waiting for the periodic sync below - a
@@ -101,9 +104,14 @@ class CommandListenerService : Service() {
      */
     private fun buildClient(): OkHttpClient {
         val builder = OkHttpClient.Builder()
-            // SSE connections are meant to stay open indefinitely - a normal read timeout would
-            // tear this down and force a reconnect every time it elapsed.
-            .readTimeout(0, TimeUnit.MILLISECONDS)
+            // The server sends a keep-alive comment every 15s (kid-phone-server's
+            // commands_stream), so a healthy stream never goes this long without data. This used
+            // to be 0 (no timeout), which meant a connection that died silently - network switch,
+            // tsnet re-routing, anything that drops it without a clean close - was never noticed:
+            // the stream sat "open" forever, every push nudge was lost, and admin-site changes
+            // only arrived on the 5-minute periodic sync (reported live, 2026-11-13). Timing out
+            // fires onFailure, which reconnects.
+            .readTimeout(STREAM_READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         TsnetClient.proxy()?.let { builder.proxy(it) }
         return builder.build()
     }
