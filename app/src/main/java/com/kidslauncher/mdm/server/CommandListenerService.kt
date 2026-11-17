@@ -34,6 +34,11 @@ private const val MAX_RECONNECT_DELAY_MS = 60_000L
 private const val NOT_ENROLLED_RETRY_DELAY_MS = 30_000L
 private const val PERIODIC_SYNC_INTERVAL_MS = 5 * 60 * 1000L
 
+/** How often [AppGroups.tick] re-checks app-group limits and allowed hours. A Handler delay, so
+ * it pauses while the phone is asleep - nobody is using apps then, and the first tick after
+ * waking catches up. */
+private const val APP_GROUP_TICK_INTERVAL_MS = 60 * 1000L
+
 /** Three missed server keep-alives (sent every 15s) - see [CommandListenerService.buildClient]. */
 private const val STREAM_READ_TIMEOUT_MS = 45_000L
 
@@ -129,6 +134,7 @@ class CommandListenerService : Service() {
         if (lockedMode) Log.i(LOG_TAG, "Starting in locked mode (before first unlock)")
         connect()
         schedulePeriodicSync()
+        scheduleAppGroupTick()
         if (!lockedMode) startUnifiedPushIfEnabled()
     }
 
@@ -156,6 +162,7 @@ class CommandListenerService : Service() {
         reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
         connect()
         schedulePeriodicSync()
+        scheduleAppGroupTick()
         startUnifiedPushIfEnabled()
         // Catch up right away on everything locked mode skipped (policy, enforcement, status).
         scope.launch { performMdmSync(applicationContext) }
@@ -272,6 +279,20 @@ class CommandListenerService : Service() {
                 schedulePeriodicSync()
             },
             PERIODIC_SYNC_INTERVAL_MS,
+        )
+    }
+
+    /** Every minute in normal mode - never in locked mode, since [AppGroups.tick] reads
+     * [LauncherPreferences]. Runs off the main thread (it reads usage events and may make
+     * DevicePolicyManager calls). */
+    private fun scheduleAppGroupTick() {
+        if (stopped) return
+        handler.postDelayed(
+            {
+                if (!lockedMode) scope.launch { AppGroups.tick(applicationContext) }
+                scheduleAppGroupTick()
+            },
+            APP_GROUP_TICK_INTERVAL_MS,
         )
     }
 

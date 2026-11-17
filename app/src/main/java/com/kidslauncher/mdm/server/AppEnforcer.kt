@@ -143,7 +143,7 @@ internal fun homeProviderPackages(pm: PackageManager): Set<String> {
 
 /**
  * Suspends/unsuspends installed apps to match [PolicyResponse.allowlist] (null/empty means no
- * restriction - nothing suspended), and - only when the server says so via
+ * restriction - nothing suspended) and the app groups ([AppGroups] - suspend only), and - only when the server says so via
  * [PolicyResponse.kioskDesired] - pins the device to the allowed packages via Android's Device
  * Owner lock-task API, plus the WiFi/Bluetooth radio restrictions below. Only acts when this app
  * is device owner - a no-op otherwise, so it's safe to ship before the phone is actually
@@ -168,49 +168,10 @@ object AppEnforcer {
 
         enforceDefaultHome(dpm, admin, context)
 
-        val allowedPackages = effectivePolicy?.allowlist?.takeIf { it.isNotEmpty() }?.toSet()
-        val ownPackage = context.packageName
-        val pm = context.packageManager
-
         restoreBootExemptPackages(dpm, admin, context)
 
-        val installedPackages = controllablePackages(context)
-
-        for (packageName in installedPackages) {
-            if (packageName == ownPackage) continue
-
-            val shouldBeSuspended = allowedPackages != null && packageName !in allowedPackages
-            val currentlySuspended = try {
-                pm.isPackageSuspended(packageName)
-            } catch (e: PackageManager.NameNotFoundException) {
-                continue
-            }
-            if (shouldBeSuspended == currentlySuspended) continue
-
-            try {
-                // Both calls can fail *without* throwing - setPackagesSuspended returns the
-                // subset of package names it couldn't act on (some privileged/protected system
-                // packages silently refuse suspension by platform policy) and
-                // setApplicationHidden returns a plain boolean. Discarding these previously made
-                // that failure mode invisible - confirmed live with a carrier-privileged /product-
-                // partition system app that stayed reachable despite being correctly excluded
-                // from the allowlist, with nothing in logs to explain why.
-                val notSuspended = dpm.setPackagesSuspended(admin, arrayOf(packageName), shouldBeSuspended)
-                if (!notSuspended.isNullOrEmpty()) {
-                    Log.w(LOG_TAG, "Platform refused to ${if (shouldBeSuspended) "suspend" else "unsuspend"} $packageName (setPackagesSuspended)")
-                }
-                val hiddenOk = dpm.setApplicationHidden(admin, packageName, shouldBeSuspended)
-                if (!hiddenOk) {
-                    Log.w(LOG_TAG, "Platform refused to ${if (shouldBeSuspended) "hide" else "unhide"} $packageName (setApplicationHidden)")
-                }
-            } catch (e: Exception) {
-                Log.w(
-                    LOG_TAG,
-                    "Failed to ${if (shouldBeSuspended) "suspend" else "unsuspend"} $packageName",
-                    e
-                )
-            }
-        }
+        // Allowlist (hide + suspend) and app groups (suspend only) - see applyPackageStates.
+        AppGroups.enforce(context, effectivePolicy)
 
         applyKioskState(context, dpm, admin, effectivePolicy)
 
@@ -233,6 +194,71 @@ object AppEnforcer {
         applySideloadRestriction(dpm, admin, blockSideloading = !overrideActive)
 
         applyBrowserPolicy(dpm, admin, context, locked = !overrideActive)
+    }
+
+    /**
+     * Brings every [controllablePackages] entry to one of three states: **hidden + suspended** when
+     * it's off [PolicyResponse.allowlist] (null/empty allowlist = nothing is), **suspended only**
+     * when it's allowed but in a currently-blocked app group ([groupBlocked], see [AppGroups]) -
+     * the icon stays, greyed out, and Android shows its "can't open" dialog - or **normal**.
+     * [effectivePolicy] is already null while an override is active, which opens everything.
+     * Called from [apply] and from [AppGroups.tick] (every minute) via [AppGroups.enforce], so it
+     * only touches a package whose state actually differs.
+     */
+    internal fun applyPackageStates(context: Context, effectivePolicy: PolicyResponse?, groupBlocked: Set<String>) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!dpm.isDeviceOwnerApp(context.packageName)) return
+        val admin = ComponentName(context, MdmDeviceAdminReceiver::class.java)
+        val allowedPackages = effectivePolicy?.allowlist?.takeIf { it.isNotEmpty() }?.toSet()
+        val ownPackage = context.packageName
+        val pm = context.packageManager
+        // Never suspended by an app group, even if a parent put it in one: an incoming call (or an
+        // emergency call) must still work while "Phone" is paused or out of time. Taking it off the
+        // allowlist entirely stays possible - that's a deliberate, separate choice.
+        val dialer = defaultDialerPackage(context)
+
+        for (packageName in controllablePackages(context)) {
+            if (packageName == ownPackage) continue
+
+            val shouldBeHidden = allowedPackages != null && packageName !in allowedPackages
+            val shouldBeSuspended = shouldBeHidden || (packageName in groupBlocked && packageName != dialer)
+            val (currentlySuspended, currentlyHidden) = try {
+                pm.isPackageSuspended(packageName) to dpm.isApplicationHidden(admin, packageName)
+            } catch (e: PackageManager.NameNotFoundException) {
+                continue
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "Couldn't read suspended/hidden state of $packageName", e)
+                continue
+            }
+
+            // Both calls can fail *without* throwing - setPackagesSuspended returns the subset of
+            // package names it couldn't act on (some privileged/protected system packages
+            // silently refuse suspension by platform policy) and setApplicationHidden returns a
+            // plain boolean. Discarding these previously made that failure mode invisible -
+            // confirmed live with a carrier-privileged /product-partition system app that stayed
+            // reachable despite being correctly excluded from the allowlist, with nothing in logs
+            // to explain why.
+            if (shouldBeSuspended != currentlySuspended) {
+                try {
+                    val notSuspended = dpm.setPackagesSuspended(admin, arrayOf(packageName), shouldBeSuspended)
+                    if (!notSuspended.isNullOrEmpty()) {
+                        Log.w(LOG_TAG, "Platform refused to ${if (shouldBeSuspended) "suspend" else "unsuspend"} $packageName (setPackagesSuspended)")
+                    }
+                } catch (e: Exception) {
+                    Log.w(LOG_TAG, "Failed to ${if (shouldBeSuspended) "suspend" else "unsuspend"} $packageName", e)
+                }
+            }
+            if (shouldBeHidden != currentlyHidden) {
+                try {
+                    val hiddenOk = dpm.setApplicationHidden(admin, packageName, shouldBeHidden)
+                    if (!hiddenOk) {
+                        Log.w(LOG_TAG, "Platform refused to ${if (shouldBeHidden) "hide" else "unhide"} $packageName (setApplicationHidden)")
+                    }
+                } catch (e: Exception) {
+                    Log.w(LOG_TAG, "Failed to ${if (shouldBeHidden) "hide" else "unhide"} $packageName", e)
+                }
+            }
+        }
     }
 
     /**
@@ -326,14 +352,16 @@ object AppEnforcer {
      * allowed app) while locked.
      */
     private fun lockedLockTaskPackages(context: Context, allowedPackages: Set<String>?): Set<String> {
-        val dialer = try {
-            (context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager).defaultDialerPackage
-        } catch (e: Exception) {
-            Log.w(LOG_TAG, "Couldn't read default dialer package", e)
-            null
-        }
+        val dialer = defaultDialerPackage(context)
         val keepDialer = dialer != null && (allowedPackages == null || dialer in allowedPackages)
         return setOfNotNull(context.packageName, dialer.takeIf { keepDialer })
+    }
+
+    internal fun defaultDialerPackage(context: Context): String? = try {
+        (context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager).defaultDialerPackage
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Couldn't read default dialer package", e)
+        null
     }
 
     /**

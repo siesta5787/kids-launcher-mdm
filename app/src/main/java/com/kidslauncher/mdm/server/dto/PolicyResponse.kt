@@ -33,6 +33,8 @@ import kotlinx.serialization.Serializable
  * site, beating the bedtime/screen-time schedule until [lockOverrideUntilMs] (epoch millis,
  * checked against the device clock; null = until the parent puts it back on the schedule). null
  * means follow the schedule - see [com.kidslauncher.mdm.server.KidModeEnforcer].
+ * [appGroups] are the parent's app groups (shared daily limit / allowed hours / pause per group) -
+ * see [com.kidslauncher.mdm.server.AppGroups]. Empty from servers older than v0.23.0.
  */
 @Serializable
 data class PolicyResponse(
@@ -55,4 +57,5 @@ data class PolicyResponse(
     val packagesToUninstall: List<String> = emptyList(),
     val lockOverride: String? = null,
     val lockOverrideUntilMs: Long? = null,
+    val appGroups: List<AppGroupPolicy> = emptyList(),
 )

@@ -128,6 +128,8 @@ suspend fun performMdmSync(context: Context): Boolean = syncMutex.withLock {
                 appVersionCode = BuildConfig.VERSION_CODE,
                 offlineOverrideUsed = mdm.offlineOverrideUsedPendingReport(),
                 location = currentLocationReport(context, dpm, admin, forceFreshLocation),
+                usageAccessGranted = AppGroups.hasUsageAccess(context),
+                appGroupUsage = AppGroups.usageReport(context, policy),
             )
         )
         // The report just landed, so this doesn't need to stay pending - if it was never used,

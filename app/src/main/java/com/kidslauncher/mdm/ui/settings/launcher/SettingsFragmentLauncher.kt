@@ -3,8 +3,10 @@ package com.kidslauncher.mdm.ui.settings.launcher
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.EditText
@@ -21,6 +23,8 @@ import com.kidslauncher.mdm.copyToClipboard
 import com.kidslauncher.mdm.getDeviceInfo
 import com.kidslauncher.mdm.server.TsnetClient
 import com.kidslauncher.mdm.server.AppEnforcer
+import com.kidslauncher.mdm.server.AppGroups
+import com.kidslauncher.mdm.server.OfflineOverride
 import com.kidslauncher.mdm.server.MdmDeviceAdminReceiver
 import com.kidslauncher.mdm.server.QuickControls
 import com.kidslauncher.mdm.server.UnifiedPushRegistrationReceiver
@@ -76,6 +80,11 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
     private val scanSetupQrLauncher = registerForActivityResult(ScanContract()) { result ->
         handleSetupQrScanResult(result)
     }
+
+    /** True while restrictions are lifted only so the parent can grant usage access - restored in
+     * [onResume] once they come back. See [openUsageAccessSettings]. */
+    private var liftedForUsageAccess = false
+    private var overrideReportPendingBefore = false
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
@@ -155,6 +164,11 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("settings_mdm_usage_access")?.setOnPreferenceClickListener {
+            openUsageAccessSettings(requireContext())
+            true
+        }
+
         val restrictionsPaused = findPreference<Preference>(mdm.keys().restrictionsPaused())
         restrictionsPaused?.setOnPreferenceChangeListener { _, _ ->
             // The Preference framework persists the new value right after this listener returns
@@ -206,6 +220,65 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
                 UnifiedPushRelay.stop()
             }
             true
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val context = requireContext()
+        findPreference<Preference>("settings_mdm_usage_access")?.summary = getString(
+            if (AppGroups.hasUsageAccess(context)) {
+                R.string.settings_mdm_usage_access_granted
+            } else {
+                R.string.settings_mdm_usage_access_missing
+            }
+        )
+        if (liftedForUsageAccess) {
+            liftedForUsageAccess = false
+            val reportWasPending = overrideReportPendingBefore
+            CoroutineScope(Dispatchers.IO).launch {
+                OfflineOverride.clear()
+                // This wasn't a kid using the unlock code - don't flag it on the admin site as one.
+                LauncherPreferences.mdm().offlineOverrideUsedPendingReport(reportWasPending)
+                AppEnforcer.apply(context, cachedPolicy())
+                reevaluateLockReasonFromCache(context)
+            }
+        }
+    }
+
+    /**
+     * App-group time limits need Android's usage access, which a Device Owner can't grant itself
+     * (see [AppGroups]), so the parent flips it once in system Settings. Kiosk pinning blocks the
+     * system Settings app (and it may be hidden), so restrictions are lifted first through the
+     * offline override - which expires by itself after two hours if this screen never comes back
+     * (process killed, etc.) - and put back in [onResume].
+     */
+    private fun openUsageAccessSettings(context: Context) {
+        if (AppGroups.hasUsageAccess(context)) {
+            Toast.makeText(context, R.string.settings_mdm_usage_access_granted, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val mdm = LauncherPreferences.mdm()
+        val alreadyLifted = OfflineOverride.isActive() || mdm.restrictionsPaused()
+        overrideReportPendingBefore = mdm.offlineOverrideUsedPendingReport()
+        CoroutineScope(Dispatchers.IO).launch {
+            if (!alreadyLifted) {
+                OfflineOverride.activate(context)
+                reevaluateLockReasonFromCache(context)
+            }
+            withContext(Dispatchers.Main) {
+                liftedForUsageAccess = !alreadyLifted
+                val forThisApp = Intent(
+                    android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS,
+                    Uri.fromParts("package", context.packageName, null),
+                )
+                try {
+                    startActivity(forThisApp)
+                } catch (e: ActivityNotFoundException) {
+                    startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                }
+                Toast.makeText(context, R.string.toast_mdm_usage_access_hint, Toast.LENGTH_LONG).show()
+            }
         }
     }
 

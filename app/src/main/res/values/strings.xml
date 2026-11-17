@@ -114,6 +114,13 @@
 
     <string name="settings_mdm_unifiedpush_distributor_enabled">Push notifications for other apps</string>
     <string name="settings_mdm_unifiedpush_distributor_enabled_summary">Lets other apps on this phone receive push notifications through this app (UnifiedPush) instead of needing a separate app installed for it. Off unless you turn it on.</string>
+    <string name="settings_mdm_usage_access">App time tracking</string>
+    <string name="settings_mdm_usage_access_granted">Allowed - app groups\' daily time limits are counted on this phone.</string>
+    <string name="settings_mdm_usage_access_missing">Not allowed yet - tap to allow. Needed for app groups\' daily time limits. Restrictions lift for a moment while you do it, then come back.</string>
+    <string name="toast_mdm_usage_access_hint">Turn on usage access for this app, then press Back.</string>
+    <string name="app_group_time_up">Time\'s up for %1$s today</string>
+    <string name="app_group_outside_hours">%1$s isn\'t allowed right now</string>
+    <string name="app_group_paused">%1$s is paused</string>
 
     <string name="settings_gate_dialog_title">Enter code to open settings</string>
 

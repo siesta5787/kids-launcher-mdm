@@ -13,4 +13,7 @@ data class StatusReportRequest(
     val appVersionCode: Int? = null,
     val offlineOverrideUsed: Boolean = false,
     val location: LocationReport? = null,
+    /** Whether Android's usage access is granted - app-group daily limits need it. */
+    val usageAccessGranted: Boolean? = null,
+    val appGroupUsage: List<AppGroupUsageReport>? = null,
 )

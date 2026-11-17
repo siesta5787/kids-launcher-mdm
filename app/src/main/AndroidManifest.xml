@@ -3,6 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- App groups (AppGroups.kt) count each group's daily screen time from Android's usage
+         events. This is an app-op permission a Device Owner can't grant itself, so declaring it
+         only makes the app appear under Settings > Usage access; a parent allows it once from
+         this app's own Settings ("App time tracking"). -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <!-- In-app "Scan setup QR" flow (SettingsFragmentLauncher, zxing-android-embedded) - Device
          Owner self-grants this the same way as other prompt-free permissions elsewhere in this
          file, so scanning never shows the runtime permission dialog. -->

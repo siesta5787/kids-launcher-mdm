@@ -76,7 +76,8 @@ object KidModeEnforcer {
         return !inWindow(minuteOfDay, start, end)
     }
 
-    private fun inWindow(minuteOfDay: Int, start: Int, end: Int): Boolean {
+    /** Also used by [AppGroupRules] for an app group's allowed hours. */
+    internal fun inWindow(minuteOfDay: Int, start: Int, end: Int): Boolean {
         return if (start < end) {
             minuteOfDay in start until end
         } else {
