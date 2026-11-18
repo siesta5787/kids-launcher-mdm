@@ -200,7 +200,8 @@ object AppEnforcer {
      * Brings every [controllablePackages] entry to one of three states: **hidden + suspended** when
      * it's off [PolicyResponse.allowlist] (null/empty allowlist = nothing is), **suspended only**
      * when it's allowed but in a currently-blocked app group ([groupBlocked], see [AppGroups]) -
-     * the icon stays, greyed out, and Android shows its "can't open" dialog - or **normal**.
+     * the icon stays, greyed out, and Android shows its "can't open" dialog - or **normal**. The
+     * default dialer gets no exception: a parent can pause "Phone" like any other app.
      * [effectivePolicy] is already null while an override is active, which opens everything.
      * Called from [apply] and from [AppGroups.tick] (every minute) via [AppGroups.enforce], so it
      * only touches a package whose state actually differs.
@@ -212,16 +213,14 @@ object AppEnforcer {
         val allowedPackages = effectivePolicy?.allowlist?.takeIf { it.isNotEmpty() }?.toSet()
         val ownPackage = context.packageName
         val pm = context.packageManager
-        // Never suspended by an app group, even if a parent put it in one: an incoming call (or an
-        // emergency call) must still work while "Phone" is paused or out of time. Taking it off the
-        // allowlist entirely stays possible - that's a deliberate, separate choice.
-        val dialer = defaultDialerPackage(context)
 
         for (packageName in controllablePackages(context)) {
             if (packageName == ownPackage) continue
 
             val shouldBeHidden = allowedPackages != null && packageName !in allowedPackages
-            val shouldBeSuspended = shouldBeHidden || (packageName in groupBlocked && packageName != dialer)
+            // The default dialer is group-blockable like any other app, at the parent's request
+            // (v0.54.1) - see this repo's CLAUDE.md on what that means for calls.
+            val shouldBeSuspended = shouldBeHidden || packageName in groupBlocked
             val (currentlySuspended, currentlyHidden) = try {
                 pm.isPackageSuspended(packageName) to dpm.isApplicationHidden(admin, packageName)
             } catch (e: PackageManager.NameNotFoundException) {
@@ -357,7 +356,7 @@ object AppEnforcer {
         return setOfNotNull(context.packageName, dialer.takeIf { keepDialer })
     }
 
-    internal fun defaultDialerPackage(context: Context): String? = try {
+    private fun defaultDialerPackage(context: Context): String? = try {
         (context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager).defaultDialerPackage
     } catch (e: Exception) {
         Log.w(LOG_TAG, "Couldn't read default dialer package", e)

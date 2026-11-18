@@ -203,8 +203,7 @@ object AppGroups {
      */
     @Synchronized
     fun enforce(context: Context, effectivePolicy: PolicyResponse?, evaluation: Evaluation = evaluate(context, effectivePolicy)) {
-        // The default dialer is never group-blocked - see AppEnforcer.applyPackageStates.
-        val blocked = evaluation.blockedPackages - setOfNotNull(AppEnforcer.defaultDialerPackage(context))
+        val blocked = evaluation.blockedPackages
         val previous = lastApplied
         AppEnforcer.applyPackageStates(context, effectivePolicy, blocked)
         lastApplied = blocked
@@ -226,8 +225,7 @@ object AppGroups {
             val effectivePolicy =
                 if (OfflineOverride.isActive() || mdm.restrictionsPaused()) null else cachedPolicy()
             val evaluation = evaluate(context, effectivePolicy)
-            val blocked = evaluation.blockedPackages - setOfNotNull(AppEnforcer.defaultDialerPackage(context))
-            if (blocked == lastApplied) return
+            if (evaluation.blockedPackages == lastApplied) return
             enforce(context, effectivePolicy, evaluation)
         } catch (e: Exception) {
             Log.w(LOG_TAG, "App group tick failed", e)
