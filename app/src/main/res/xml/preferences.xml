@@ -40,6 +40,11 @@
         android:title="@string/settings_mdm_sync_now" />
 
     <Preference
+        android:key="settings_mdm_play_signin"
+        android:title="@string/settings_mdm_play_signin"
+        android:summary="@string/settings_mdm_play_signin_summary" />
+
+    <Preference
         android:key="settings_mdm_usage_access"
         android:title="@string/settings_mdm_usage_access" />
 

@@ -41,6 +41,7 @@ import com.kidslauncher.mdm.server.reevaluateLockReasonFromCache
 import com.kidslauncher.mdm.openAppsList
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import com.kidslauncher.mdm.ui.LegalInfoActivity
+import com.kidslauncher.mdm.ui.PlaySignInActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -161,6 +162,11 @@ class SettingsFragmentLauncher : PreferenceFragmentCompat() {
         val syncNow = findPreference<Preference>("settings_mdm_sync_now")
         syncNow?.setOnPreferenceClickListener {
             syncNowWithServer(requireContext())
+            true
+        }
+
+        findPreference<Preference>("settings_mdm_play_signin")?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), PlaySignInActivity::class.java))
             true
         }
 

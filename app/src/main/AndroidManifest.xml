@@ -126,6 +126,11 @@
         <activity
             android:name=".ui.LegalInfoActivity"
             android:exported="false" />
+        <!-- "Sign in to Google Play" (server v0.24.0+) - only reachable from the PIN-gated
+             Settings screen; not exported, so no other app can open it. -->
+        <activity
+            android:name=".ui.PlaySignInActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.ReportCrashActivity"
             android:exported="false" />

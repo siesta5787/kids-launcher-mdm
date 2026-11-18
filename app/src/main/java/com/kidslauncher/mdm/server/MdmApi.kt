@@ -1,6 +1,8 @@
 package com.kidslauncher.mdm.server
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.kidslauncher.mdm.server.dto.PlaySignInRequest
+import com.kidslauncher.mdm.server.dto.PlaySignInResponse
 import com.kidslauncher.mdm.server.dto.BrowserHistoryUpload
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
 import com.kidslauncher.mdm.server.dto.DnsBlocklistCategory
@@ -59,6 +61,10 @@ interface MdmApi {
     suspend fun sendCommandResult(@Body request: CommandResultRequest): Response<Unit>
 
     /** Before-first-unlock heartbeat - see [LockedReportRequest]. Servers before 0.20.0 answer 404. */
+    /** Server v0.24.0+ - only accepted while the parent has "Sign in using a phone" open. */
+    @POST("api/devices/play-signin")
+    suspend fun playSignIn(@Body request: PlaySignInRequest): Response<PlaySignInResponse>
+
     @POST("api/devices/locked-report")
     suspend fun sendLockedReport(@Body report: LockedReportRequest): Response<Unit>
 

@@ -115,6 +115,14 @@
     <string name="settings_mdm_unifiedpush_distributor_enabled">Push notifications for other apps</string>
     <string name="settings_mdm_unifiedpush_distributor_enabled_summary">Lets other apps on this phone receive push notifications through this app (UnifiedPush) instead of needing a separate app installed for it. Off unless you turn it on.</string>
     <string name="settings_mdm_usage_access">App time tracking</string>
+    <string name="settings_mdm_play_signin">Sign in to Google Play</string>
+    <string name="settings_mdm_play_signin_summary">For parents: signs your server in to Google Play so it can add and update Play apps. Start it from the parent website first (Settings → Google Play).</string>
+    <string name="play_signin_title">Sign in to Google Play</string>
+    <string name="play_signin_instructions">Sign in with the spare Google account you typed on the parent website. Your password goes only to Google; the phone then sends your server a one-time code and forgets the sign-in.</string>
+    <string name="play_signin_sending">Signed in - finishing on the server…</string>
+    <string name="play_signin_not_enrolled">This phone isn\'t enrolled with a server yet.</string>
+    <string name="play_signin_server_too_old">Your server needs updating before it can use Google Play.</string>
+    <string name="play_signin_failed">Couldn\'t reach the server: %1$s</string>
     <string name="settings_mdm_usage_access_granted">Allowed - app groups\' daily time limits are counted on this phone.</string>
     <string name="settings_mdm_usage_access_missing">Not allowed yet - tap to allow. Needed for app groups\' daily time limits. Restrictions lift for a moment while you do it, then come back.</string>
     <string name="toast_mdm_usage_access_hint">Turn on usage access for this app, then press Back.</string>
