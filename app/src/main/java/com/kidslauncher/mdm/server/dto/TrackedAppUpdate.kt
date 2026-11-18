@@ -21,4 +21,14 @@ data class TrackedAppUpdate(
     val releaseTag: String,
     val downloadUrl: String,
     val isLauncher: Boolean,
+    /** Split APKs (Google Play apps, server v0.24.0+) installed in the same session as
+     * [downloadUrl]'s base APK - empty for a single-APK release. The server only sends these to
+     * launchers that report a version code that can install them (v0.55.0+). */
+    val splits: List<TrackedAppSplit> = emptyList(),
+)
+
+@Serializable
+data class TrackedAppSplit(
+    val name: String,
+    val downloadUrl: String,
 )

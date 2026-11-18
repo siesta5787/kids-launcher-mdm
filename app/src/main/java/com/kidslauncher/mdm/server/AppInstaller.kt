@@ -11,6 +11,9 @@ import java.io.File
 private const val LOG_TAG = "AppInstaller"
 const val APP_INSTALL_ACTION = "com.kidslauncher.mdm.APP_INSTALL_RESULT"
 const val APP_INSTALL_APK_PATH_EXTRA = "apk_path"
+/** Every downloaded file of the install (base + split APKs), so [AppInstallReceiver] can delete
+ * them all - [APP_INSTALL_APK_PATH_EXTRA] stays the base APK. */
+const val APP_INSTALL_ALL_PATHS_EXTRA = "apk_paths"
 const val APP_INSTALL_KEY_EXTRA = "install_key"
 const val APP_INSTALL_NAME_EXTRA = "install_name"
 const val APP_INSTALL_IS_LAUNCHER_EXTRA = "is_launcher"
@@ -40,7 +43,7 @@ object AppInstaller {
      * comparison. */
     fun installSilently(
         context: Context,
-        apkFile: File,
+        apkFiles: List<File>,
         installKey: String,
         displayName: String,
         isLauncher: Boolean,
@@ -56,10 +59,16 @@ object AppInstaller {
         try {
             val sessionId = packageInstaller.createSession(params)
             packageInstaller.openSession(sessionId).use { session ->
-                apkFile.inputStream().use { input ->
-                    session.openWrite(installKey, 0, apkFile.length()).use { output ->
-                        input.copyTo(output)
-                        session.fsync(output)
+                // One session for the base APK and every split APK (Google Play apps) - Android
+                // only accepts splits installed together with their base. Each write needs its
+                // own name within the session; the base keeps installKey as before.
+                apkFiles.forEachIndexed { index, apkFile ->
+                    val name = if (index == 0) installKey else "$installKey.split$index"
+                    apkFile.inputStream().use { input ->
+                        session.openWrite(name, 0, apkFile.length()).use { output ->
+                            input.copyTo(output)
+                            session.fsync(output)
+                        }
                     }
                 }
 
@@ -73,7 +82,8 @@ object AppInstaller {
                 // resolution here is entirely by component.
                 val resultIntent = Intent(context, AppInstallReceiver::class.java)
                     .setAction(APP_INSTALL_ACTION)
-                    .putExtra(APP_INSTALL_APK_PATH_EXTRA, apkFile.absolutePath)
+                    .putExtra(APP_INSTALL_APK_PATH_EXTRA, apkFiles.first().absolutePath)
+                    .putExtra(APP_INSTALL_ALL_PATHS_EXTRA, apkFiles.map { it.absolutePath }.toTypedArray())
                     .putExtra(APP_INSTALL_KEY_EXTRA, installKey)
                     .putExtra(APP_INSTALL_NAME_EXTRA, displayName)
                     .putExtra(APP_INSTALL_IS_LAUNCHER_EXTRA, isLauncher)
@@ -90,7 +100,7 @@ object AppInstaller {
             }
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to start silent install of $installKey", e)
-            apkFile.delete()
+            apkFiles.forEach { it.delete() }
         }
     }
 

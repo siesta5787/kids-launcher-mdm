@@ -298,24 +298,37 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
         // is never reached).
         notifyAppInstalling(context, update.id, update.name)
         try {
-            val response = api.downloadTrackedApp(update.downloadUrl)
-            val body = response.body()
-            if (body == null) {
-                notifyAppInstallResult(context, update.id, update.name, success = false)
-                TrackedAppUpdateState.clearAttempt(context, key)
-                reportInstallFailure(api, update.id)
-                continue
-            }
             // Unique per attempt (not just per app id) - defense in depth alongside the syncMutex
             // above: even a future caller that bypasses the mutex can't have two downloads corrupt
             // or delete each other's file if they never share a path. context.cacheDir is
             // OS-reclaimable under storage pressure, so a launcher self-update's file (deliberately
             // left behind on success - see AppInstallReceiver) doesn't need explicit cleanup here.
-            val apkFile = File(context.cacheDir, "tracked_app_${key}_${System.nanoTime()}.apk")
-            copyWithProgressReports(body, apkFile, api, update.id)
-            Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag}, installing")
+            val attempt = "tracked_app_${key}_${System.nanoTime()}"
+            // The base APK first, then any split APKs (Google Play) - all installed together in
+            // one session by installSilently. Progress is reported across all of them combined.
+            val urls = listOf(update.downloadUrl) + update.splits.map { it.downloadUrl }
+            val apkFiles = urls.mapIndexed { index, _ ->
+                File(context.cacheDir, if (index == 0) "$attempt.apk" else "${attempt}_split$index.apk")
+            }
+            var downloadFailed = false
+            for ((index, url) in urls.withIndex()) {
+                val body = api.downloadTrackedApp(url).body()
+                if (body == null) {
+                    downloadFailed = true
+                    break
+                }
+                copyWithProgressReports(body, apkFiles[index], api, update.id, index, urls.size)
+            }
+            if (downloadFailed) {
+                apkFiles.forEach { it.delete() }
+                notifyAppInstallResult(context, update.id, update.name, success = false)
+                TrackedAppUpdateState.clearAttempt(context, key)
+                reportInstallFailure(api, update.id)
+                continue
+            }
+            Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag} (${apkFiles.size} file(s)), installing")
             AppInstaller.installSilently(
-                context, apkFile, key, update.name, update.isLauncher, update.releaseTag
+                context, apkFiles, key, update.name, update.isLauncher, update.releaseTag
             )
             // Deliberately does NOT clear the in-flight marker here - installSilently's commit()
             // is async, so this attempt is still unresolved until AppInstallReceiver's
@@ -351,6 +364,8 @@ private suspend fun copyWithProgressReports(
     apkFile: File,
     api: MdmApi,
     trackedAppId: Long,
+    fileIndex: Int = 0,
+    fileCount: Int = 1,
 ) {
     val contentLength = body.contentLength()
     var lastReportedPercent = -1
@@ -364,7 +379,10 @@ private suspend fun copyWithProgressReports(
                 output.write(buffer, 0, read)
                 bytesRead += read
                 if (contentLength <= 0) continue
-                val percent = ((bytesRead * 100) / contentLength).toInt().coerceIn(0, 100)
+                // Each file is an equal share of the whole - split APKs are usually small next to
+                // the base one, so this runs a little ahead at the end, which is fine for a bar.
+                val filePercent = ((bytesRead * 100) / contentLength).toInt().coerceIn(0, 100)
+                val percent = (fileIndex * 100 + filePercent) / fileCount
                 if (percent >= lastReportedPercent + 5) {
                     lastReportedPercent = percent
                     try {

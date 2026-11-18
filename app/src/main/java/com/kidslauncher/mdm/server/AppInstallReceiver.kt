@@ -30,7 +30,9 @@ class AppInstallReceiver : BroadcastReceiver() {
         val status =
             intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-        val apkPath = intent.getStringExtra(APP_INSTALL_APK_PATH_EXTRA)
+        // All files of the install (base + split APKs); older pending intents only carry the base.
+        val apkPaths = intent.getStringArrayExtra(APP_INSTALL_ALL_PATHS_EXTRA)?.toList()
+            ?: listOfNotNull(intent.getStringExtra(APP_INSTALL_APK_PATH_EXTRA))
         val installKey = intent.getStringExtra(APP_INSTALL_KEY_EXTRA)
         val installName = intent.getStringExtra(APP_INSTALL_NAME_EXTRA) ?: installKey ?: "app"
         val isLauncher = intent.getBooleanExtra(APP_INSTALL_IS_LAUNCHER_EXTRA, false)
@@ -71,7 +73,7 @@ class AppInstallReceiver : BroadcastReceiver() {
         // packageName == context.packageName comparison - a tracked app's package name is optional
         // now (see kid-phone-server's tracked_app_add.html) and can't be trusted for this.
         if (status != PackageInstaller.STATUS_SUCCESS || !isLauncher) {
-            apkPath?.let { File(it).delete() }
+            apkPaths.forEach { File(it).delete() }
         }
     }
 
