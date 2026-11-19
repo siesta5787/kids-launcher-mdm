@@ -310,20 +310,21 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             val apkFiles = urls.mapIndexed { index, _ ->
                 File(context.cacheDir, if (index == 0) "$attempt.apk" else "${attempt}_split$index.apk")
             }
-            var downloadFailed = false
+            var downloadFailure: String? = null
             for ((index, url) in urls.withIndex()) {
-                val body = api.downloadTrackedApp(url).body()
+                val response = api.downloadTrackedApp(url)
+                val body = response.body()
                 if (body == null) {
-                    downloadFailed = true
+                    downloadFailure = "Download failed: HTTP ${response.code()} for file ${index + 1} of ${urls.size}"
                     break
                 }
                 copyWithProgressReports(body, apkFiles[index], api, update.id, index, urls.size)
             }
-            if (downloadFailed) {
+            if (downloadFailure != null) {
                 apkFiles.forEach { it.delete() }
                 notifyAppInstallResult(context, update.id, update.name, success = false)
                 TrackedAppUpdateState.clearAttempt(context, key)
-                reportInstallFailure(api, update.id)
+                reportInstallFailure(api, update.id, downloadFailure)
                 continue
             }
             Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag} (${apkFiles.size} file(s)), installing")
@@ -338,7 +339,7 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             Log.w(LOG_TAG, "Update check failed for ${update.packageName}", e)
             notifyAppInstallResult(context, update.id, update.name, success = false)
             TrackedAppUpdateState.clearAttempt(context, key)
-            reportInstallFailure(api, update.id)
+            reportInstallFailure(api, update.id, "Download failed: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 }
@@ -347,9 +348,11 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
  * [TrackedAppUpdateState.recordFailed] (a transient network hiccup should still retry next cycle,
  * see [TrackedAppUpdateState.clearAttempt]'s own doc comment), so this alone is what lets the
  * server show "Install failed" instead of the row just quietly staying "Not installed". */
-private suspend fun reportInstallFailure(api: MdmApi, trackedAppId: Long) {
+private suspend fun reportInstallFailure(api: MdmApi, trackedAppId: Long, reason: String) {
     try {
-        api.reportInstallProgress(InstallProgressReport(trackedAppId, percent = 0, failed = true))
+        api.reportInstallProgress(
+            InstallProgressReport(trackedAppId, percent = 0, failed = true, message = reason)
+        )
     } catch (e: Exception) {
         Log.w(LOG_TAG, "Failed to report install failure", e)
     }

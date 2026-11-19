@@ -62,7 +62,9 @@ class AppInstallReceiver : BroadcastReceiver() {
                     TrackedAppUpdateState.recordFailed(context, installKey, releaseTag)
                 }
                 appId?.let { notifyAppInstallResult(context, it, installName, success = false) }
-                appId?.let { reportInstallFailureToServer(context, it) }
+                appId?.let {
+                    reportInstallFailureToServer(context, it, message ?: "Android install status $status")
+                }
             }
         }
 
@@ -85,7 +87,7 @@ class AppInstallReceiver : BroadcastReceiver() {
      * the device. `goAsync()` keeps this receiver's process alive long enough for the network call
      * to finish - same reasoning as [MdmDeviceAdminReceiver.onProfileProvisioningComplete].
      */
-    private fun reportInstallFailureToServer(context: Context, trackedAppId: Long) {
+    private fun reportInstallFailureToServer(context: Context, trackedAppId: Long, reason: String) {
         val mdm = LauncherPreferences.mdm()
         val serverUrl = mdm.serverUrl()
         val deviceToken = mdm.deviceToken()
@@ -95,7 +97,9 @@ class AppInstallReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 createMdmApi(serverUrl, deviceToken)
-                    .reportInstallProgress(InstallProgressReport(trackedAppId, percent = 0, failed = true))
+                    .reportInstallProgress(
+                        InstallProgressReport(trackedAppId, percent = 0, failed = true, message = reason)
+                    )
             } catch (e: Exception) {
                 Log.w(LOG_TAG, "Failed to report install failure", e)
             } finally {

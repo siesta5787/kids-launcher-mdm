@@ -11,4 +11,7 @@ data class InstallProgressReport(
     val trackedAppId: Long,
     val percent: Int,
     val failed: Boolean = false,
+    /** Why it failed - Android's install status message, or the download error. Shown on the
+     * parent site's device page (server v0.24.2+; older servers ignore it). */
+    val message: String? = null,
 )
