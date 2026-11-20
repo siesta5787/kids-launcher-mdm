@@ -14,4 +14,7 @@ data class InstallProgressReport(
     /** Why it failed - Android's install status message, or the download error. Shown on the
      * parent site's device page (server v0.24.2+; older servers ignore it). */
     val message: String? = null,
+    /** Where it's downloading from - `google_play`, `github` or `server` - shown next to the
+     * percentage on the parent site (server v0.25.0+; older servers ignore it). */
+    val source: String? = null,
 )

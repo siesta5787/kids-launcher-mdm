@@ -12,6 +12,8 @@ import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.notifyAppInstallResult
 import com.kidslauncher.mdm.notifyAppInstalling
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
+import com.kidslauncher.mdm.server.dto.DirectDownloadFile
+import com.kidslauncher.mdm.server.dto.DirectDownloads
 import com.kidslauncher.mdm.server.dto.InstallProgressReport
 import com.kidslauncher.mdm.server.dto.InstalledApp
 import com.kidslauncher.mdm.server.dto.LocationReport
@@ -26,6 +28,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import okhttp3.ResponseBody
 import java.io.File
+import java.security.MessageDigest
 import java.time.Instant
 import java.util.Calendar
 import kotlin.math.roundToInt
@@ -320,8 +323,19 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
                 fileCount = urls.size,
                 totalBytes = if (sizes.all { it != null && it > 0 }) sizes.sumOf { it!! } else null,
             )
+            // Straight from Google Play / GitHub when the server offers it (v0.25.0+), each file
+            // checked against the server's copy; any file that can't be done that way comes from
+            // the server instead. See DirectDownloader.
+            val direct = directDownloadsFor(api, update, urls.size)
             var downloadFailure: String? = null
             for ((index, url) in urls.withIndex()) {
+                val directFile = direct?.files?.get(index)
+                if (directFile != null &&
+                    downloadDirect(directFile, direct.source, apkFiles[index], progress, index)
+                ) {
+                    continue
+                }
+                progress.setSource(SOURCE_SERVER)
                 val response = api.downloadTrackedApp(url)
                 val body = response.body()
                 if (body == null) {
@@ -329,6 +343,9 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
                     break
                 }
                 copyWithProgressReports(body, apkFiles[index], progress, index)
+            }
+            if (direct != null) {
+                Log.i(LOG_TAG, "${update.name}: download sources ${progress.sourcesUsed}")
             }
             if (downloadFailure != null) {
                 apkFiles.forEach { it.delete() }
@@ -352,6 +369,59 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             TrackedAppUpdateState.clearAttempt(context, key)
             reportInstallFailure(api, update.id, "Download failed: ${e.message ?: e.javaClass.simpleName}")
         }
+    }
+}
+
+private const val SOURCE_SERVER = "server"
+
+/** The server's direct links for [update], or null - older server (404), no direct option, or
+ * links that don't line up with this release's [fileCount] files. Never fails the install. */
+private suspend fun directDownloadsFor(
+    api: MdmApi,
+    update: TrackedAppUpdate,
+    fileCount: Int,
+): DirectDownloads? {
+    val links = try {
+        api.getDirectDownloads(update.id).body()
+    } catch (e: Exception) {
+        Log.i(LOG_TAG, "No direct download links for ${update.name}", e)
+        null
+    } ?: return null
+    if (links.releaseTag != update.releaseTag || links.files.size != fileCount) {
+        Log.i(LOG_TAG, "Direct links for ${update.name} don't match this release, using the server")
+        return null
+    }
+    return links
+}
+
+/** Downloads one file straight from its source into [apkFile]. True only if it arrived complete
+ * and identical to the server's copy; otherwise [apkFile] is deleted and the caller downloads
+ * that file from the server. */
+private suspend fun downloadDirect(
+    file: DirectDownloadFile,
+    source: String,
+    apkFile: File,
+    progress: DownloadProgress,
+    fileIndex: Int,
+): Boolean {
+    progress.setSource(source)
+    return try {
+        val body = DirectDownloader.open(file) ?: return false
+        val matched = copyWithProgressReports(body, apkFile, progress, fileIndex) { bytes, sha256 ->
+            DirectDownloader.matches(file, bytes, sha256).also {
+                if (!it) Log.w(LOG_TAG, "Direct download of file ${fileIndex + 1} doesn't match the server's copy ($bytes bytes)")
+            }
+        }
+        if (!matched) {
+            apkFile.delete()
+            progress.fileFailed()
+        }
+        matched
+    } catch (e: Exception) {
+        Log.w(LOG_TAG, "Direct download of file ${fileIndex + 1} failed, using the server", e)
+        apkFile.delete()
+        progress.fileFailed()
+        false
     }
 }
 
@@ -382,10 +452,35 @@ private class DownloadProgress(
     private val fileCount: Int,
     private val totalBytes: Long?,
 ) {
-    private val startedAt = SystemClock.elapsedRealtime()
+    private var startedAt = SystemClock.elapsedRealtime()
     private var finishedFilesBytes = 0L
     private var lastReportedPercent = -1
     private var lastNotifiedAt = 0L
+    private var source: String? = null
+
+    /** Each file's source, in order, for the log - e.g. [google_play, google_play, server]. */
+    val sourcesUsed = mutableListOf<String>()
+
+    /** The next file comes from [newSource] - reported straight away when it changes, so the
+     * parent site's "from Google Play" / "from this server" is right from the start. */
+    fun setSource(newSource: String) {
+        if (newSource != source) {
+            source = newSource
+            lastReportedPercent = -100
+            lastNotifiedAt = 0L
+            // A fresh time-left estimate - the new source's speed is nothing like the old one's.
+            startedAt = SystemClock.elapsedRealtime()
+            startPercent = null
+        }
+    }
+
+    /** Overall percent when the current source started, for its time-left estimate. */
+    private var startPercent: Int? = null
+
+    /** The current file's direct download was discarded; it starts over from the server. */
+    fun fileFailed() {
+        sourcesUsed.add("${source ?: "?"} (failed)")
+    }
 
     suspend fun onProgress(fileIndex: Int, fileBytesRead: Long, fileLength: Long, fileDone: Boolean) {
         val percent = when {
@@ -395,12 +490,16 @@ private class DownloadProgress(
                 (fileIndex * 100 + (fileBytesRead * 100 / fileLength).toInt()) / fileCount
             else -> return
         }.coerceIn(0, 99)
-        if (fileDone) finishedFilesBytes += fileBytesRead
+        if (startPercent == null) startPercent = percent
+        if (fileDone) {
+            finishedFilesBytes += fileBytesRead
+            sourcesUsed.add(source ?: SOURCE_SERVER)
+        }
 
         val now = SystemClock.elapsedRealtime()
         if (now - lastNotifiedAt >= 1000) {
             lastNotifiedAt = now
-            notifyAppInstalling(context, update.id, update.name, percent, detail(percent, now))
+            notifyAppInstalling(context, update.id, update.name, percent, withSource(detail(percent, now)))
         }
         if (percent >= lastReportedPercent + 2) {
             lastReportedPercent = percent
@@ -415,10 +514,23 @@ private class DownloadProgress(
         report(100)
     }
 
+    private fun withSource(detail: String): String {
+        val from = when (source) {
+            "google_play" -> R.string.download_source_google_play
+            "github" -> R.string.download_source_github
+            SOURCE_SERVER -> R.string.download_source_server
+            else -> return detail
+        }
+        return context.getString(R.string.notification_app_progress_source, detail, context.getString(from))
+    }
+
     private fun detail(percent: Int, now: Long): String {
         val elapsedSecs = (now - startedAt) / 1000.0
-        if (percent <= 0 || elapsedSecs < 5) return "$percent%"
-        val leftSecs = elapsedSecs * (100 - percent) / percent
+        // From this source's own progress since it started - a switch from a fast direct
+        // download to the server (or back) changes the speed completely.
+        val gained = percent - (startPercent ?: 0)
+        if (percent <= 0 || elapsedSecs < 5 || gained <= 0) return "$percent%"
+        val leftSecs = elapsedSecs * (100 - percent) / gained
         val left = if (leftSecs < 60) {
             context.getString(R.string.time_left_under_a_minute)
         } else {
@@ -429,35 +541,43 @@ private class DownloadProgress(
 
     private suspend fun report(percent: Int) {
         try {
-            api.reportInstallProgress(InstallProgressReport(update.id, percent))
+            api.reportInstallProgress(InstallProgressReport(update.id, percent, source = source))
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to report install progress", e)
         }
     }
 }
 
-/** Copies [body]'s bytes to [apkFile], feeding [progress] as it goes. */
+/** Copies [body]'s bytes to [apkFile], feeding [progress] as it goes. Returns the byte count and
+ * lowercase hex SHA-256 of what was written, for checking a direct download (see
+ * [downloadDirect]). [progress] is only told the file is done if [verify] accepts those. */
 private suspend fun copyWithProgressReports(
     body: ResponseBody,
     apkFile: File,
     progress: DownloadProgress,
     fileIndex: Int,
-) {
+    verify: (bytes: Long, sha256: String) -> Boolean = { _, _ -> true },
+): Boolean {
     val contentLength = body.contentLength()
+    val digest = MessageDigest.getInstance("SHA-256")
+    var bytesRead = 0L
     body.byteStream().use { input ->
         apkFile.outputStream().use { output ->
             val buffer = ByteArray(64 * 1024)
-            var bytesRead = 0L
             while (true) {
                 val read = input.read(buffer)
                 if (read == -1) break
                 output.write(buffer, 0, read)
+                digest.update(buffer, 0, read)
                 bytesRead += read
                 progress.onProgress(fileIndex, bytesRead, contentLength, fileDone = false)
             }
-            progress.onProgress(fileIndex, bytesRead, contentLength, fileDone = true)
         }
     }
+    val sha256 = digest.digest().joinToString("") { "%02x".format(it) }
+    if (!verify(bytesRead, sha256)) return false
+    progress.onProgress(fileIndex, bytesRead, contentLength, fileDone = true)
+    return true
 }
 
 /**

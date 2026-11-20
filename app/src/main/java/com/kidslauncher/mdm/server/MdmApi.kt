@@ -5,6 +5,7 @@ import com.kidslauncher.mdm.server.dto.PlaySignInRequest
 import com.kidslauncher.mdm.server.dto.PlaySignInResponse
 import com.kidslauncher.mdm.server.dto.BrowserHistoryUpload
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
+import com.kidslauncher.mdm.server.dto.DirectDownloads
 import com.kidslauncher.mdm.server.dto.DnsBlocklistCategory
 import com.kidslauncher.mdm.server.dto.DnsEventReport
 import com.kidslauncher.mdm.server.dto.EnrollRequest
@@ -70,6 +71,12 @@ interface MdmApi {
 
     @GET("api/devices/apps")
     suspend fun getTrackedAppUpdates(): Response<List<TrackedAppUpdate>>
+
+    /** Links straight to Google Play / GitHub for tracked app [id]'s live release - see
+     * [DirectDownloads]. 404 when there's no direct option (older server, manual upload, or the
+     * source said no); the caller then downloads the server's copy. */
+    @GET("api/devices/apps/{id}/direct")
+    suspend fun getDirectDownloads(@Path("id") id: Long): Response<DirectDownloads>
 
     /** Fire-and-forget from the caller's side (see [InstallProgressReport]'s own doc comment) -
      * called on a throttled schedule during [downloadTrackedApp], not on every chunk. */
