@@ -72,12 +72,21 @@ class KidVpnService : VpnService() {
         // Must be the first thing this service does, unconditionally - see CommandListenerService's
         // own established gotcha for this same API-34 requirement (this is also a Service).
         startForeground(VPN_FILTER_NOTIFICATION_ID, buildNotification())
-        created = true
+        instance = this
         DnsFilterEngine.loadFromDisk(applicationContext)
         if (LauncherPreferences.mdm().vpnFilterEnabled()) startVpn()
     }
 
+    /** [start] on an already-running service - main thread, like every other touch of [pfd]. */
+    private fun ensureRunning() {
+        if (instance !== this) return
+        if (LauncherPreferences.mdm().vpnFilterEnabled() && pfd == null) startVpn()
+    }
+
     override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        // Android has delivered the start, so it no longer waits on a startForeground() for it -
+        // stop() may call stopService() again from here on.
+        synchronized(lock) { startPending = false }
         // A stop() that landed while this start was still queued (see stop()'s doc comment) only
         // flips the preference - this is where that deferred stop actually takes effect, now that
         // startForeground() has already been satisfied.
@@ -229,7 +238,7 @@ class KidVpnService : VpnService() {
     }
 
     override fun onDestroy() {
-        created = false
+        if (instance === this) instance = null
         stopSelfCleanly()
         super.onDestroy()
     }
@@ -245,10 +254,18 @@ class KidVpnService : VpnService() {
     }
 
     companion object {
-        /** True between [onCreate]'s `startForeground()` and [onDestroy] - see [stop]. Written on
-         * the main thread, read from whatever thread [AppEnforcer.apply] runs on. */
+        /** The running service, between [onCreate]'s `startForeground()` and [onDestroy] - see
+         * [start] and [stop]. Written on the main thread, read from whatever thread
+         * [AppEnforcer.apply] runs on. */
         @Volatile
-        private var created = false
+        private var instance: KidVpnService? = null
+
+        private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+
+        /** A startForegroundService() not yet delivered to [onStartCommand] - while it is, Android
+         * crashes the launcher if the service is stopped. Guarded by [lock]. */
+        private var startPending = false
+        private val lock = Any()
 
         /**
          * Call once at app startup - safe to call repeatedly, Android no-ops a redundant start
@@ -262,8 +279,28 @@ class KidVpnService : VpnService() {
          * sync, so filtering doesn't need to wait on that.
          */
         fun start(context: Context) {
-            val intent = Intent(context, KidVpnService::class.java)
-            ContextCompat.startForegroundService(context, intent)
+            // Already running: just make sure the tunnel's up, in-process. Never
+            // startForegroundService() again - each call leaves Android waiting for a fresh
+            // startForeground() until the start is delivered, and a stop() landing in that gap
+            // crashes the launcher with ForegroundServiceDidNotStartInTimeException. Confirmed live
+            // (Moto G Play, 0.56.0): a background sync's start() and the "bypass restrictions"
+            // switch's stop() a moment later, with the service already running.
+            synchronized(lock) {
+                // One already on its way - its onStartCommand brings the tunnel up.
+                if (startPending) return
+                val running = instance
+                if (running != null) {
+                    mainHandler.post { running.ensureRunning() }
+                    return
+                }
+                startPending = true
+                try {
+                    ContextCompat.startForegroundService(context, Intent(context, KidVpnService::class.java))
+                } catch (e: RuntimeException) {
+                    startPending = false
+                    throw e
+                }
+            }
         }
 
         /**
@@ -279,11 +316,18 @@ class KidVpnService : VpnService() {
          * on its `startForeground()` - which the OS treats exactly like never calling it, crashing
          * the whole launcher with `ForegroundServiceDidNotStartInTimeException`. If the service
          * isn't created yet, any start still queued gets stopped by [onStartCommand] instead, after
-         * `startForeground()`; if none is queued, there's nothing to stop.
+         * `startForeground()`; if none is queued, there's nothing to stop. Since 0.56.1 [start]
+         * never calls `startForegroundService()` on a running service, and never while another
+         * start is still pending ([startPending]), so a stop can't land in that gap anymore.
          */
         fun stop(context: Context) {
-            if (created) {
-                context.stopService(Intent(context, KidVpnService::class.java))
+            synchronized(lock) {
+                // A start still on its way is stopped by onStartCommand instead (the preference is
+                // already off), after Android has had its startForeground().
+                if (startPending) return
+                if (instance != null) {
+                    context.stopService(Intent(context, KidVpnService::class.java))
+                }
             }
         }
     }
