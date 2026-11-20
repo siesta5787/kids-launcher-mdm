@@ -35,6 +35,8 @@ import kotlinx.serialization.Serializable
  * means follow the schedule - see [com.kidslauncher.mdm.server.KidModeEnforcer].
  * [appGroups] are the parent's app groups (shared daily limit / allowed hours / pause per group) -
  * see [com.kidslauncher.mdm.server.AppGroups]. Empty from servers older than v0.23.0.
+ * [vpnBypassPackages] are apps left out of [com.kidslauncher.mdm.server.KidVpnService]'s tunnel
+ * entirely, for apps that refuse to work while a VPN is running (server v0.26.0+).
  */
 @Serializable
 data class PolicyResponse(
@@ -58,4 +60,5 @@ data class PolicyResponse(
     val lockOverride: String? = null,
     val lockOverrideUntilMs: Long? = null,
     val appGroups: List<AppGroupPolicy> = emptyList(),
+    val vpnBypassPackages: List<String> = emptyList(),
 )

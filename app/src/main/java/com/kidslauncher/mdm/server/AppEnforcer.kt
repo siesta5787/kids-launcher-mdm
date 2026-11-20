@@ -14,6 +14,7 @@ import android.telecom.TelecomManager
 import android.util.Log
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.preferences.LauncherPreferences
+import kotlinx.serialization.encodeToString
 import com.kidslauncher.mdm.ui.HomeActivity
 
 private const val LOG_TAG = "AppEnforcer"
@@ -187,6 +188,8 @@ object AppEnforcer {
         // no override is active AND no policy has ever been fetched, which has no admin choice yet
         // to respect.
         val vpnFilterEnabled = if (overrideActive) false else (policy?.vpnFilterEnabled ?: true)
+        // Kept as last synced when there's no policy (offline, or before the first sync).
+        policy?.let { cacheVpnBypassPackages(it.vpnBypassPackages) }
         applyVpnRestrictions(context, dpm, admin, vpnFilterEnabled)
 
         applyPrivateDnsLock(dpm, admin)
@@ -437,6 +440,16 @@ object AppEnforcer {
      * whether to start the service at all, rather than always starting and then immediately
      * stopping it again once this function runs on the first sync.
      */
+    /** Caches [PolicyResponse.vpnBypassPackages] for [KidVpnService], which compares it with the
+     * apps its tunnel currently leaves out whenever [KidVpnService.start] runs (every apply) and
+     * rebuilds the tunnel if they differ. */
+    private fun cacheVpnBypassPackages(packages: List<String>) {
+        val json = ServerJson.encodeToString(packages.distinct().sorted())
+        if (json != LauncherPreferences.mdm().vpnBypassPackagesJson()) {
+            LauncherPreferences.mdm().vpnBypassPackagesJson(json)
+        }
+    }
+
     private fun applyVpnRestrictions(
         context: Context,
         dpm: DevicePolicyManager,

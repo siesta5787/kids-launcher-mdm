@@ -113,6 +113,11 @@ import eu.jonahbauer.android.preference.annotations.Preferences;
                         // before any policy has ever been fetched - knows whether to start the service
                         // at all. See AppEnforcer.applyVpnRestrictions, the only writer.
                         @Preference(name = "vpn_filter_enabled", type = boolean.class, defaultValue = "true"),
+                        // JSON array of package names left out of KidVpnService's tunnel
+                        // (PolicyResponse.vpnBypassPackages, cached like vpn_filter_enabled) - for
+                        // apps that refuse to work while a VPN is running. Written only by
+                        // AppEnforcer.applyVpnRestrictions, read by KidVpnService.
+                        @Preference(name = "vpn_bypass_packages_json", type = String.class),
                         // Off by default - a parent has to explicitly opt in from Settings before
                         // this app starts advertising itself as a UnifiedPush distributor at all
                         // (see server.UnifiedPushRegistrationReceiver, enabled/disabled at runtime

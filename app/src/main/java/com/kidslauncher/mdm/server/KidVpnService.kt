@@ -11,6 +11,7 @@ import com.kidslauncher.mdm.NOTIFICATION_CHANNEL_VPN_FILTER
 import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.VPN_FILTER_NOTIFICATION_ID
 import com.kidslauncher.mdm.preferences.LauncherPreferences
+import kotlinx.serialization.decodeFromString
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import kotlinx.coroutines.CoroutineScope
@@ -77,10 +78,50 @@ class KidVpnService : VpnService() {
         if (LauncherPreferences.mdm().vpnFilterEnabled()) startVpn()
     }
 
-    /** [start] on an already-running service - main thread, like every other touch of [pfd]. */
+    /** Apps the current tunnel leaves out (see [bypassPackages]) - main thread only. */
+    private var appliedBypass: List<String> = emptyList()
+
+    /** [start] on an already-running service (and every delivered start) - main thread, like
+     * every other touch of [pfd]. Brings the tunnel up, or rebuilds it when the apps it should
+     * leave out have changed: a parent ticked/unticked one, or a ticked app got installed. */
     private fun ensureRunning() {
         if (instance !== this) return
-        if (LauncherPreferences.mdm().vpnFilterEnabled() && pfd == null) startVpn()
+        if (!LauncherPreferences.mdm().vpnFilterEnabled()) return
+        if (pfd == null) {
+            startVpn()
+        } else if (installedBypassPackages() != appliedBypass) {
+            Log.i(LOG_TAG, "Apps skipping the filter changed, rebuilding the tunnel")
+            val old = pfd
+            val fresh = establishTunnel() ?: return
+            pfd = fresh
+            scope.launch { readLoop(fresh) }
+            // Android has already swapped to the new interface; the old read loop ends when this
+            // closes.
+            try {
+                old?.close()
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "Failed to close the old VPN interface", e)
+            }
+        }
+    }
+
+    /** The parent's skip-the-filter apps that are installed here, sorted - what
+     * `addDisallowedApplication` will actually accept. Never the launcher itself. */
+    private fun installedBypassPackages(): List<String> {
+        val json = LauncherPreferences.mdm().vpnBypassPackagesJson() ?: return emptyList()
+        val packages = try {
+            ServerJson.decodeFromString<List<String>>(json)
+        } catch (e: Exception) {
+            return emptyList()
+        }
+        return packages.filter { it != packageName && isInstalled(it) }.sorted()
+    }
+
+    private fun isInstalled(pkg: String): Boolean = try {
+        packageManager.getApplicationInfo(pkg, 0)
+        true
+    } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+        false
     }
 
     override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
@@ -94,11 +135,20 @@ class KidVpnService : VpnService() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
-        if (pfd == null) startVpn()
+        ensureRunning()
         return START_STICKY
     }
 
     private fun startVpn() {
+        val established = establishTunnel() ?: return
+        pfd = established
+        scope.launch { readLoop(established) }
+    }
+
+    /** A new tunnel interface (replacing any current one - Android swaps over), or null. Leaves
+     * out the parent's skip-the-filter apps: they use the normal network directly, and Android
+     * tells them there's no VPN (`TRANSPORT_VPN` isn't on their default network). */
+    private fun establishTunnel(): ParcelFileDescriptor? {
         try {
             val builder = Builder()
                 .setSession("Kid Phone Filter")
@@ -107,18 +157,30 @@ class KidVpnService : VpnService() {
                 .addRoute(FAKE_DNS_SERVER, 32)
                 .setMtu(MTU)
                 .setBlocking(true)
+            val bypass = installedBypassPackages()
+            val applied = bypass.filter { pkg ->
+                try {
+                    builder.addDisallowedApplication(pkg)
+                    true
+                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
+                }
+            }
             val established = builder.establish()
             if (established == null) {
                 // Happens if the user has since revoked VPN permission, or another VPN grabbed it
                 // first - nothing more this service can do until re-invoked. Not thrown as an
                 // exception since this is an expected, recoverable state, not a bug.
                 Log.w(LOG_TAG, "VPN establish() returned null - permission revoked or another VPN active")
-                return
+                return null
             }
-            pfd = established
-            scope.launch { readLoop(established) }
+            // What was asked for, so a package that couldn't be added doesn't rebuild forever.
+            appliedBypass = bypass
+            if (applied.isNotEmpty()) Log.i(LOG_TAG, "Apps skipping the filter: $applied")
+            return established
         } catch (e: Exception) {
             Log.w(LOG_TAG, "Failed to establish VPN", e)
+            return null
         }
     }
 
