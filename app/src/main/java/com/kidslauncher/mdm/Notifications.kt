@@ -91,13 +91,30 @@ fun createNotificationChannels(context: Context) {
  * launcher's own self-update) - cancelled by [notifyAppInstallResult] once the real result is
  * known. One notification per app (keyed by [appId], the server's stable tracked-app id) so
  * several updates queued in the same sync cycle don't clobber each other's progress notification. */
-fun notifyAppInstalling(context: Context, appId: Long, appName: String) {
+fun notifyAppInstalling(
+    context: Context,
+    appId: Long,
+    appName: String,
+    percent: Int? = null,
+    detail: String? = null,
+) {
+    // While downloading: "Downloading X" with a real progress bar and "45% · about 6 min left".
+    // Once handed to Android (percent null): "Installing X…" with an indeterminate bar - a big
+    // app's install itself can take minutes.
+    val title = if (percent != null) {
+        context.getString(R.string.notification_app_downloading_title, appName)
+    } else {
+        context.getString(R.string.notification_app_installing_title, appName)
+    }
     val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_APP_INSTALL)
         .setSmallIcon(android.R.drawable.stat_sys_download)
-        .setContentTitle(context.getString(R.string.notification_app_installing_title, appName))
+        .setContentTitle(title)
         .setOngoing(true)
         .setAutoCancel(false)
+        .setOnlyAlertOnce(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
+        .setProgress(100, percent ?: 0, percent == null)
+    detail?.let { builder.setContentText(it) }
 
     try {
         NotificationManagerCompat.from(context).notify(appInstallNotificationId(appId), builder.build())

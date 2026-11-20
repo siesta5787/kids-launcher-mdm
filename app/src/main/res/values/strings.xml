@@ -180,6 +180,10 @@
     <string name="notification_vpn_filter_text">Blocking ads and inappropriate content.</string>
     <string name="notification_channel_app_install">App installs and updates</string>
     <string name="notification_app_installing_title">Installing %1$s…</string>
+    <string name="notification_app_downloading_title">Downloading %1$s</string>
+    <string name="notification_app_progress_detail">%1$d%% · %2$s</string>
+    <string name="time_left_minutes">about %1$d min left</string>
+    <string name="time_left_under_a_minute">less than a minute left</string>
     <string name="notification_app_install_failed_title">Couldn\'t install %1$s</string>
     <string name="crash_info"><![CDATA[
         Looks like something went wrong, sorry about that!<br><br>

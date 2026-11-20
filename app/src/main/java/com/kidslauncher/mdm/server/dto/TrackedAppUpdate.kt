@@ -20,6 +20,9 @@ data class TrackedAppUpdate(
     val packageName: String,
     val releaseTag: String,
     val downloadUrl: String,
+    /** Bytes in [downloadUrl]'s file (server v0.24.5+) - with the splits' sizes, lets progress
+     * and time left be measured in bytes rather than per file. */
+    val size: Long? = null,
     val isLauncher: Boolean,
     /** Split APKs (Google Play apps, server v0.24.0+) installed in the same session as
      * [downloadUrl]'s base APK - empty for a single-APK release. The server only sends these to
@@ -31,4 +34,5 @@ data class TrackedAppUpdate(
 data class TrackedAppSplit(
     val name: String,
     val downloadUrl: String,
+    val size: Long? = null,
 )

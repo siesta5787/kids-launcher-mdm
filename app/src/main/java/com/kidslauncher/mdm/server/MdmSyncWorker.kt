@@ -5,8 +5,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import android.util.Log
 import com.kidslauncher.mdm.BuildConfig
+import com.kidslauncher.mdm.R
 import com.kidslauncher.mdm.notifyAppInstallResult
 import com.kidslauncher.mdm.notifyAppInstalling
 import com.kidslauncher.mdm.server.dto.CommandResultRequest
@@ -16,6 +18,7 @@ import com.kidslauncher.mdm.server.dto.LocationReport
 import com.kidslauncher.mdm.server.dto.PendingCommand
 import com.kidslauncher.mdm.server.dto.PolicyResponse
 import com.kidslauncher.mdm.server.dto.StatusReportRequest
+import com.kidslauncher.mdm.server.dto.TrackedAppUpdate
 import com.kidslauncher.mdm.preferences.LauncherPreferences
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,6 +28,7 @@ import okhttp3.ResponseBody
 import java.io.File
 import java.time.Instant
 import java.util.Calendar
+import kotlin.math.roundToInt
 
 private const val LOG_TAG = "MdmSyncWorker"
 
@@ -310,6 +314,12 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
             val apkFiles = urls.mapIndexed { index, _ ->
                 File(context.cacheDir, if (index == 0) "$attempt.apk" else "${attempt}_split$index.apk")
             }
+            val sizes = listOf(update.size) + update.splits.map { it.size }
+            val progress = DownloadProgress(
+                context, api, update,
+                fileCount = urls.size,
+                totalBytes = if (sizes.all { it != null && it > 0 }) sizes.sumOf { it!! } else null,
+            )
             var downloadFailure: String? = null
             for ((index, url) in urls.withIndex()) {
                 val response = api.downloadTrackedApp(url)
@@ -318,7 +328,7 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
                     downloadFailure = "Download failed: HTTP ${response.code()} for file ${index + 1} of ${urls.size}"
                     break
                 }
-                copyWithProgressReports(body, apkFiles[index], api, update.id, index, urls.size)
+                copyWithProgressReports(body, apkFiles[index], progress, index)
             }
             if (downloadFailure != null) {
                 apkFiles.forEach { it.delete() }
@@ -328,6 +338,7 @@ private suspend fun checkForTrackedAppUpdates(context: Context, api: MdmApi) {
                 continue
             }
             Log.i(LOG_TAG, "Downloaded ${update.packageName} ${update.releaseTag} (${apkFiles.size} file(s)), installing")
+            progress.downloadFinished()
             AppInstaller.installSilently(
                 context, apkFiles, key, update.name, update.isLauncher, update.releaseTag
             )
@@ -358,43 +369,93 @@ private suspend fun reportInstallFailure(api: MdmApi, trackedAppId: Long, reason
     }
 }
 
-/** Copies [body]'s bytes to [apkFile] while reporting download progress to the server on every
- * 5% crossing (not every chunk - a large APK over a slow connection could otherwise fire dozens
- * of requests a second). Best-effort: a failed progress report is logged and ignored, never
- * allowed to interrupt the actual download it's reporting on. */
+/**
+ * Overall progress of one app's download (base APK plus any split APKs), measured in bytes when
+ * the server sent every file's size (v0.24.5+), else by file. Drives the "Downloading X - 45% ·
+ * about 6 min left" notification (at most once a second) and the reports the parent site's device
+ * page shows (every 2%). Reporting is best-effort: a failed report never interrupts the download.
+ */
+private class DownloadProgress(
+    private val context: Context,
+    private val api: MdmApi,
+    private val update: TrackedAppUpdate,
+    private val fileCount: Int,
+    private val totalBytes: Long?,
+) {
+    private val startedAt = SystemClock.elapsedRealtime()
+    private var finishedFilesBytes = 0L
+    private var lastReportedPercent = -1
+    private var lastNotifiedAt = 0L
+
+    suspend fun onProgress(fileIndex: Int, fileBytesRead: Long, fileLength: Long, fileDone: Boolean) {
+        val percent = when {
+            totalBytes != null ->
+                ((finishedFilesBytes + fileBytesRead) * 100 / totalBytes).toInt()
+            fileLength > 0 ->
+                (fileIndex * 100 + (fileBytesRead * 100 / fileLength).toInt()) / fileCount
+            else -> return
+        }.coerceIn(0, 99)
+        if (fileDone) finishedFilesBytes += fileBytesRead
+
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastNotifiedAt >= 1000) {
+            lastNotifiedAt = now
+            notifyAppInstalling(context, update.id, update.name, percent, detail(percent, now))
+        }
+        if (percent >= lastReportedPercent + 2) {
+            lastReportedPercent = percent
+            report(percent)
+        }
+    }
+
+    /** Everything's downloaded and handed to Android - "Installing X…" here, and 100% to the
+     * server, which shows "Installing…" from then on. */
+    suspend fun downloadFinished() {
+        notifyAppInstalling(context, update.id, update.name)
+        report(100)
+    }
+
+    private fun detail(percent: Int, now: Long): String {
+        val elapsedSecs = (now - startedAt) / 1000.0
+        if (percent <= 0 || elapsedSecs < 5) return "$percent%"
+        val leftSecs = elapsedSecs * (100 - percent) / percent
+        val left = if (leftSecs < 60) {
+            context.getString(R.string.time_left_under_a_minute)
+        } else {
+            context.getString(R.string.time_left_minutes, (leftSecs / 60).roundToInt())
+        }
+        return context.getString(R.string.notification_app_progress_detail, percent, left)
+    }
+
+    private suspend fun report(percent: Int) {
+        try {
+            api.reportInstallProgress(InstallProgressReport(update.id, percent))
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, "Failed to report install progress", e)
+        }
+    }
+}
+
+/** Copies [body]'s bytes to [apkFile], feeding [progress] as it goes. */
 private suspend fun copyWithProgressReports(
     body: ResponseBody,
     apkFile: File,
-    api: MdmApi,
-    trackedAppId: Long,
-    fileIndex: Int = 0,
-    fileCount: Int = 1,
+    progress: DownloadProgress,
+    fileIndex: Int,
 ) {
     val contentLength = body.contentLength()
-    var lastReportedPercent = -1
     body.byteStream().use { input ->
         apkFile.outputStream().use { output ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            val buffer = ByteArray(64 * 1024)
             var bytesRead = 0L
             while (true) {
                 val read = input.read(buffer)
                 if (read == -1) break
                 output.write(buffer, 0, read)
                 bytesRead += read
-                if (contentLength <= 0) continue
-                // Each file is an equal share of the whole - split APKs are usually small next to
-                // the base one, so this runs a little ahead at the end, which is fine for a bar.
-                val filePercent = ((bytesRead * 100) / contentLength).toInt().coerceIn(0, 100)
-                val percent = (fileIndex * 100 + filePercent) / fileCount
-                if (percent >= lastReportedPercent + 5) {
-                    lastReportedPercent = percent
-                    try {
-                        api.reportInstallProgress(InstallProgressReport(trackedAppId, percent))
-                    } catch (e: Exception) {
-                        Log.w(LOG_TAG, "Failed to report install progress", e)
-                    }
-                }
+                progress.onProgress(fileIndex, bytesRead, contentLength, fileDone = false)
             }
+            progress.onProgress(fileIndex, bytesRead, contentLength, fileDone = true)
         }
     }
 }
