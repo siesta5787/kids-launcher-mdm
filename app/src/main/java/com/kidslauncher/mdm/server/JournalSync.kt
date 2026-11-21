@@ -67,7 +67,9 @@ suspend fun performJournalSync(context: Context): Unit = journalSyncMutex.withLo
             }
         }
 
-        sinceId = entries.maxOf { it.id } + 1
+        // The provider returns `_id > sinceId`, so the cursor is the last id already synced (not
+        // the next one: "+ 1" skipped the first new row after every sync).
+        sinceId = entries.maxOf { it.id }
         mdm.journalSyncSinceId(sinceId)
     }
 }
