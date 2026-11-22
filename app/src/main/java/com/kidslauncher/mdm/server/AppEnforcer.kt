@@ -224,7 +224,7 @@ object AppEnforcer {
             if (packageName == ownPackage) continue
 
             val notAllowed = allowedPackages != null && packageName !in allowedPackages
-            // The Play Store is only ever paused, never hidden (v0.57.1): hiding also stops its
+            // The Play Store is only ever paused, never hidden (v0.58.1): hiding also stops its
             // background service, which games like Toca Boca need to fetch their game data -
             // confirmed live, it sat on its loading spinner until the Play Store was usable. Paused,
             // a kid can't open it (and AppFilter leaves it off the home screen) but other apps can
