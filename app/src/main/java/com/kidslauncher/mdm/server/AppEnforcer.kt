@@ -107,6 +107,9 @@ private fun ownHomeIsDirectBootAware(context: Context): Boolean = try {
     false
 }
 
+/** Google Play Store - paused rather than hidden when not allowed, see [AppEnforcer.applyPackageStates]. */
+private const val PLAY_STORE_PACKAGE = "com.android.vending"
+
 /** Hard backstop for [homeProviderPackages] - hosts AOSP's `FallbackHome`. */
 private const val SETTINGS_PACKAGE = "com.android.settings"
 
@@ -220,10 +223,16 @@ object AppEnforcer {
         for (packageName in controllablePackages(context)) {
             if (packageName == ownPackage) continue
 
-            val shouldBeHidden = allowedPackages != null && packageName !in allowedPackages
+            val notAllowed = allowedPackages != null && packageName !in allowedPackages
+            // The Play Store is only ever paused, never hidden (v0.57.1): hiding also stops its
+            // background service, which games like Toca Boca need to fetch their game data -
+            // confirmed live, it sat on its loading spinner until the Play Store was usable. Paused,
+            // a kid can't open it (and AppFilter leaves it off the home screen) but other apps can
+            // still use it in the background.
+            val shouldBeHidden = notAllowed && packageName != PLAY_STORE_PACKAGE
             // The default dialer is group-blockable like any other app, at the parent's request
             // (v0.54.1) - see this repo's CLAUDE.md on what that means for calls.
-            val shouldBeSuspended = shouldBeHidden || packageName in groupBlocked
+            val shouldBeSuspended = notAllowed || packageName in groupBlocked
             val (currentlySuspended, currentlyHidden) = try {
                 pm.isPackageSuspended(packageName) to dpm.isApplicationHidden(admin, packageName)
             } catch (e: PackageManager.NameNotFoundException) {
