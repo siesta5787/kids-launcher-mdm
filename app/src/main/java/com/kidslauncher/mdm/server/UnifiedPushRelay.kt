@@ -1,7 +1,6 @@
 package com.kidslauncher.mdm.server
 
 import android.content.Context
-import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -134,8 +133,14 @@ object UnifiedPushRelay {
      * ("cannot publish to UnifiedPush topic without previously active subscriber"), regardless of
      * this app's own connection state, not just malformed for a genuinely binary payload. */
     fun register(context: Context, token: String, packageName: String): String {
-        val topic = generateTopic()
         val registrations = load().toMutableMap()
+        // The spec: "SHOULD NOT create a new endpoint if a valid registration exist for the token".
+        // Apps re-register on every start (the UnifiedPush connector library does); a new topic
+        // each time made them re-tell their push server, losing pushes whenever that failed.
+        registrations[token]?.takeIf { it.packageName == packageName }?.let { existing ->
+            return "https://$NTFY_HOST/${existing.topic}?up=1"
+        }
+        val topic = generateTopic()
         registrations[token] = UnifiedPushRegistration(packageName, topic)
         save(registrations)
         if (running) connect(context)
@@ -271,11 +276,10 @@ object UnifiedPushRelay {
         }
         val (token, registration) = entry
 
-        val intent = Intent(ACTION_MESSAGE)
-            .setPackage(registration.packageName)
-            .putExtra(EXTRA_TOKEN, token)
-            .putExtra(EXTRA_BYTES_MESSAGE, decodePayload(envelope))
-        context.sendBroadcast(intent)
+        // Raise the app to the foreground for 5 s while delivering (UnifiedPush AND_3 MUST), so it
+        // can start its own foreground service to fetch the message.
+        UnifiedPushRaiseToForegroundFactory.getInstance(context, registration.packageName)
+            .raiseAndSend(token, decodePayload(envelope))
     }
 
     private fun decodePayload(envelope: NtfyEnvelope): ByteArray {
