@@ -13,4 +13,8 @@ data class InstalledApp(
     val packageName: String,
     val label: String,
     val preinstalled: Boolean,
+    /** False for a preinstalled app that's on the phone but not set up for this user (e.g. skipped
+     * in the phone's setup) - Android shows it nowhere, and [AppEnforcer] restores it if the parent
+     * allows it. Server v0.27.0+ labels these. */
+    val installed: Boolean = true,
 )

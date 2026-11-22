@@ -602,6 +602,7 @@ private fun collectInstalledApps(context: Context): List<InstalledApp> {
                     packageName = packageName,
                     label = pm.getApplicationLabel(info).toString(),
                     preinstalled = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                    installed = (info.flags and ApplicationInfo.FLAG_INSTALLED) != 0,
                 )
             } catch (e: PackageManager.NameNotFoundException) {
                 null

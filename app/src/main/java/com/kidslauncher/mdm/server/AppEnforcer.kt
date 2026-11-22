@@ -174,6 +174,8 @@ object AppEnforcer {
 
         restoreBootExemptPackages(dpm, admin, context)
 
+        restoreAllowedSystemApps(dpm, admin, context, policy?.allowlist)
+
         // Allowlist (hide + suspend) and app groups (suspend only) - see applyPackageStates.
         AppGroups.enforce(context, effectivePolicy)
 
@@ -456,6 +458,40 @@ object AppEnforcer {
         val json = ServerJson.encodeToString(packages.distinct().sorted())
         if (json != LauncherPreferences.mdm().vpnBypassPackagesJson()) {
             LauncherPreferences.mdm().vpnBypassPackagesJson(json)
+        }
+    }
+
+    /**
+     * Sets up any preinstalled app the parent allowed that's on the phone but not installed for
+     * this user - e.g. one skipped in the phone's own setup (confirmed on the Moto G Play: Clock
+     * and Calculator ticked on the parent site, missing from the launcher and from Android's own
+     * app list). [controllablePackages] reports such apps (it has to list packages Android doesn't
+     * show, to find ones this app hid itself), so the parent sees them and can tick them;
+     * `enableSystemApp` is the Device Owner way to install an existing system package for the
+     * user. Hidden-by-us apps aren't affected - they keep `FLAG_INSTALLED`.
+     */
+    private fun restoreAllowedSystemApps(
+        dpm: DevicePolicyManager,
+        admin: ComponentName,
+        context: Context,
+        allowlist: List<String>?,
+    ) {
+        val pm = context.packageManager
+        for (packageName in allowlist.orEmpty()) {
+            val info = try {
+                pm.getApplicationInfo(packageName, PackageManager.MATCH_UNINSTALLED_PACKAGES)
+            } catch (e: PackageManager.NameNotFoundException) {
+                continue
+            }
+            val system = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            val installed = (info.flags and ApplicationInfo.FLAG_INSTALLED) != 0
+            if (!system || installed) continue
+            try {
+                dpm.enableSystemApp(admin, packageName)
+                Log.i(LOG_TAG, "Set up preinstalled app $packageName for this user (allowed by parent)")
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, "Couldn't set up preinstalled app $packageName", e)
+            }
         }
     }
 
